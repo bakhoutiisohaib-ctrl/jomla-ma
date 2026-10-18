@@ -1,6 +1,7 @@
 const express  = require('express')
 const router   = express.Router()
 const Product  = require('../models/Product')
+const Supplier = require('../models/Supplier')
 const { authenticate } = require('../middleware/auth')
 const { validateProduct, validateProductUpdate, validateMongoId } = require('../middleware/validators')
 const { asyncHandler } = require('../middleware/errorHandler')
@@ -67,7 +68,7 @@ router.get('/', cacheMiddleware(20), asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationParams(req)
 
   const products = await Product.find()
-    .select('name price city category supplierId supplierPhone views')
+    .select('name price city category supplierId supplierPhone views moq unit priceTiers inStock imageUrl description createdAt')
     .sort({ views: -1 })
     .limit(limit)
     .skip(skip)
@@ -127,12 +128,26 @@ router.get('/', cacheMiddleware(20), asyncHandler(async (req, res) => {
 
 // إضافة منتج جديد (يتطلب المصادقة)
 router.post('/', authenticate, validateProduct, asyncHandler(async (req, res) => {
+  let supplierPhone = req.body.supplierPhone
+  if (!supplierPhone && req.supplier?.id) {
+    const s = await Supplier.findById(req.supplier.id)
+    if (s) supplierPhone = s.phone
+  }
+
   const product = new Product({
     ...req.body,
-    supplierId: req.supplier.id // من التوكن
+    supplierId: req.supplier.id,
+    supplierPhone: supplierPhone || ''
   })
 
   await product.save()
+
+  // ربط المنتج بحساب المورد
+  if (req.supplier?.id) {
+    await Supplier.findByIdAndUpdate(req.supplier.id, {
+      $addToSet: { products: product._id }
+    })
+  }
 
   res.status(201).json({
     message: '✅ تم إضافة المنتج بنجاح',
@@ -154,13 +169,17 @@ router.put('/:id', authenticate, validateMongoId, validateProductUpdate, asyncHa
   }
 
   // تحديث البيانات المسموحة
-  const { name, category, price, city, description, imageUrl } = req.body
-  if (name) product.name = name
-  if (category) product.category = category
-  if (price) product.price = price
-  if (city) product.city = city
-  if (description) product.description = description
-  if (imageUrl) product.imageUrl = imageUrl
+  const { name, category, price, city, description, imageUrl, moq, unit, priceTiers, inStock } = req.body
+  if (name !== undefined) product.name = name
+  if (category !== undefined) product.category = category
+  if (price !== undefined) product.price = price
+  if (city !== undefined) product.city = city
+  if (description !== undefined) product.description = description
+  if (imageUrl !== undefined) product.imageUrl = imageUrl
+  if (moq !== undefined) product.moq = moq
+  if (unit !== undefined) product.unit = unit
+  if (priceTiers !== undefined) product.priceTiers = priceTiers
+  if (inStock !== undefined) product.inStock = inStock
 
   await product.save()
 
@@ -263,7 +282,7 @@ router.get('/search', asyncHandler(async (req, res) => {
   if (parsed.city) filter.city = { $regex: escapeRegex(parsed.city), $options: 'i' }
 
   let results = await Product.find(filter)
-    .select('name price city category supplierId supplierPhone views')
+    .select('name price city category supplierId supplierPhone views moq unit priceTiers inStock imageUrl description createdAt')
     .sort({ views: -1 })
     .limit(limit)
     .skip(skip)

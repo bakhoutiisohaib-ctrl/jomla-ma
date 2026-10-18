@@ -158,7 +158,13 @@ router.post('/enhance', authenticate, upload.single('image'), validateEnhance, a
   "title": "اسم منتج احترافي وجذاب",
   "description": "وصف احترافي 2-3 جمل بالعربية يجذب تجار الجملة",
   "keywords": ["كلمة1", "كلمة2", "كلمة3"],
-  "suggestedPrice": "نطاق سعر مقترح بالدرهم",
+  "suggestedPrice": 50,
+  "suggestedMoq": 10,
+  "suggestedUnit": "قطعة",
+  "suggestedPriceTiers": [
+    { "minQty": 10, "maxQty": 49, "price": 50 },
+    { "minQty": 50, "maxQty": 200, "price": 45 }
+  ],
   "tips": "نصيحة واحدة لتحسين تصوير هاد المنتج"
 }`
         }

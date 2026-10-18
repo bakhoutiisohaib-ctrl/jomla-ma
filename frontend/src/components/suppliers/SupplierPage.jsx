@@ -118,12 +118,17 @@ export default function SupplierPage({ supplierId, onBack }) {
                   <img src={p.imageUrl} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               )}
-              <h3 style={{ margin: '0 0 8px', fontSize: '14px', color: '#1a1a1a' }}>
-                {p.name}
-              </h3>
-              <span style={{ fontSize: '18px', fontWeight: '700', color: '#E85D24' }}>
-                {p.price} درهم
-              </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: '6px' }}>
+                <span style={{ fontSize: '18px', fontWeight: '700', color: '#E85D24' }}>
+                  {p.price} درهم
+                </span>
+                <span style={{ fontSize: '12px', color: '#666' }}>
+                  / {p.unit || 'قطعة'}
+                </span>
+              </div>
+              <div style={{ marginTop: '6px', fontSize: '11px', color: '#B45309', background: '#FEF3C7', padding: '2px 6px', borderRadius: '10px', display: 'inline-block' }}>
+                📦 أقل طلب: {p.moq || 1} {p.unit || 'قطعة'}
+              </div>
             </div>
           ))}
         </div>

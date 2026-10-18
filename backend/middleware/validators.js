@@ -16,7 +16,7 @@ const handleValidationErrors = (req, res, next) => {
 const validateProduct = [
   body('name')
     .notEmpty().withMessage('اسم المنتج مطلوب')
-    .isLength({ min: 3 }).withMessage('اسم المنتج يجب أن يكون 3 أحرف على الأقل'),
+    .isLength({ min: 2 }).withMessage('اسم المنتج يجب أن يكون حرفين على الأقل'),
   body('category')
     .notEmpty().withMessage('الفئة مطلوبة'),
   body('price')
@@ -24,8 +24,17 @@ const validateProduct = [
     .isNumeric().withMessage('السعر يجب أن يكون رقماً'),
   body('city')
     .notEmpty().withMessage('المدينة مطلوبة'),
+  body('moq')
+    .optional()
+    .isInt({ min: 1 }).withMessage('الحد الأدنى للطلب (MOQ) يجب أن يكون 1 على الأقل'),
+  body('unit')
+    .optional()
+    .isString().withMessage('وحدة البيع غير صحيحة'),
+  body('priceTiers')
+    .optional()
+    .isArray().withMessage('جدول أسعار الكميات يجب أن يكون مصفوفة'),
   body('supplierPhone')
-    .notEmpty().withMessage('رقم المورد مطلوب')
+    .optional()
     .matches(/^[+0-9\s\-()]+$/).withMessage('رقم الهاتف غير صحيح'),
   handleValidationErrors
 ]
@@ -33,10 +42,19 @@ const validateProduct = [
 const validateProductUpdate = [
   body('name')
     .optional()
-    .isLength({ min: 3 }).withMessage('اسم المنتج يجب أن يكون 3 أحرف على الأقل'),
+    .isLength({ min: 2 }).withMessage('اسم المنتج يجب أن يكون حرفين على الأقل'),
   body('price')
     .optional()
     .isNumeric().withMessage('السعر يجب أن يكون رقماً'),
+  body('moq')
+    .optional()
+    .isInt({ min: 1 }).withMessage('الحد الأدنى للطلب (MOQ) يجب أن يكون 1 على الأقل'),
+  body('unit')
+    .optional()
+    .isString().withMessage('وحدة البيع غير صحيحة'),
+  body('priceTiers')
+    .optional()
+    .isArray().withMessage('جدول أسعار الكميات يجب أن يكون مصفوفة'),
   body('supplierPhone')
     .optional()
     .matches(/^[+0-9\s\-()]+$/).withMessage('رقم الهاتف غير صحيح'),

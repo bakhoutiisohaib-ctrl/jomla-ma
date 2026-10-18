@@ -23,6 +23,9 @@ const memoryCache = new Map()
 const crypto = require('crypto')
 
 const cacheMiddleware = (ttl = 30) => async (req, res, next) => {
+  if (process.env.NODE_ENV === 'test') {
+    return next()
+  }
   // include method and a short hash of body for non-GET requests to avoid collisions
   let bodyHash = ''
   try {

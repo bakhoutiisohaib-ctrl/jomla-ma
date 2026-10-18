@@ -8,7 +8,16 @@ export default function SupplierDashboard({ supplier, onLogout }) {
   const [products, setProducts] = useState([])
   const [reviews, setReviews] = useState([])
   const [stats, setStats] = useState({ totalViews: 0, totalProducts: 0, avgRating: 0 })
-  const [form, setForm] = useState({ name: '', category: '', price: '', city: supplier.city || '' })
+  const [form, setForm] = useState({
+    name: '',
+    category: '',
+    price: '',
+    moq: 10,
+    unit: 'قطعة',
+    city: supplier.city || ''
+  })
+  const [priceTiers, setPriceTiers] = useState([])
+  const [tierInput, setTierInput] = useState({ minQty: '', maxQty: '', price: '' })
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [aiResult, setAiResult] = useState(null)
@@ -76,8 +85,18 @@ export default function SupplierDashboard({ supplier, onLogout }) {
       const data = await res.json()
       if (data.aiData) {
         setAiResult(data)
-        setForm(prev => ({ ...prev, name: data.aiData.title || prev.name, imageUrl: data.enhancedImage }))
-        setMsg('✅ AI حسّن المنتج!')
+        setForm(prev => ({
+          ...prev,
+          name: data.aiData.title || prev.name,
+          imageUrl: data.enhancedImage,
+          price: data.aiData.suggestedPrice || prev.price,
+          moq: data.aiData.suggestedMoq || prev.moq,
+          unit: data.aiData.suggestedUnit || prev.unit
+        }))
+        if (Array.isArray(data.aiData.suggestedPriceTiers) && data.aiData.suggestedPriceTiers.length > 0) {
+          setPriceTiers(data.aiData.suggestedPriceTiers)
+        }
+        setMsg('✅ AI حسّن المنتج واقترح تسعير الجملة والحد الأدنى للطلب!')
       }
     } catch {
       setMsg('⚠️ خطأ في AI')
@@ -86,24 +105,50 @@ export default function SupplierDashboard({ supplier, onLogout }) {
     }
   }
 
+  function addPriceTier() {
+    if (!tierInput.minQty || !tierInput.price) {
+      return setMsg('⚠️ أدخل أقل كمية والسعر للشريحة')
+    }
+    const newTier = {
+      minQty: Number(tierInput.minQty),
+      maxQty: tierInput.maxQty ? Number(tierInput.maxQty) : null,
+      price: Number(tierInput.price)
+    }
+    setPriceTiers([...priceTiers, newTier])
+    setTierInput({ minQty: '', maxQty: '', price: '' })
+  }
+
+  function removePriceTier(idx) {
+    setPriceTiers(priceTiers.filter((_, i) => i !== idx))
+  }
+
   async function addProduct() {
-    if (!form.name || !form.price || !form.category) return setMsg('⚠️ كمل جميع الخانات')
+    if (!form.name || !form.price || !form.category) return setMsg('⚠️ كمل جميع الخانات المطلوبة')
     setLoading(true)
+    const token = localStorage.getItem('supplierToken')
     try {
       const res = await fetch(`${API}/products`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           ...form,
           price: Number(form.price),
+          moq: Number(form.moq) || 1,
+          unit: form.unit || 'قطعة',
+          priceTiers: priceTiers.filter(t => t.minQty && t.price),
           supplierId: supplier._id,
+          supplierPhone: supplier.phone || '',
           description: aiResult?.aiData?.description || form.description || '',
           imageUrl: aiResult?.enhancedImage || form.imageUrl || ''
         })
       })
       const data = await res.json()
       setMsg(data.message)
-      setForm({ name: '', category: '', price: '', city: supplier.city || '' })
+      setForm({ name: '', category: '', price: '', moq: 10, unit: 'قطعة', city: supplier.city || '' })
+      setPriceTiers([])
       setAiResult(null)
       setPreview(null)
       setImageFile(null)
@@ -116,8 +161,12 @@ export default function SupplierDashboard({ supplier, onLogout }) {
   }
 
   async function deleteProduct(id) {
+    const token = localStorage.getItem('supplierToken')
     try {
-      await fetch(`${API}/products/${id}`, { method: 'DELETE' })
+      await fetch(`${API}/products/${id}`, {
+        method: 'DELETE',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      })
       fetchMyProducts()
     } catch {
       setMsg('❌ تعذر حذف المنتج')
@@ -148,7 +197,7 @@ export default function SupplierDashboard({ supplier, onLogout }) {
   const tabs = [
     { id: 'overview', label: '📊 نظرة عامة' },
     { id: 'products', label: '📦 منتجاتي' },
-    { id: 'add',      label: '➕ إضافة منتج' },
+    { id: 'add',      label: '➕ إضافة منتج جملة' },
     { id: 'reviews',  label: '⭐ التقييمات' },
     { id: 'market',   label: '📈 تحليل السوق' },
   ]
@@ -210,7 +259,7 @@ export default function SupplierDashboard({ supplier, onLogout }) {
             </label>
             <div style={{ direction: 'rtl' }}>
               <div style={{ color: 'white', fontSize: '18px', fontWeight: '700' }}>{supplier.name}</div>
-              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '12px' }}>📍 {supplier.city}</div>
+              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '12px' }}>📍 {supplier.city} | متجر جملة</div>
             </div>
           </div>
           <button
@@ -277,9 +326,9 @@ export default function SupplierDashboard({ supplier, onLogout }) {
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '20px' }}>
               {[
-                { icon: '📦', label: 'المنتجات', value: stats.totalProducts },
-                { icon: '👁️', label: 'المشاهدات', value: stats.totalViews },
-                { icon: '⭐', label: 'التقييم', value: stats.avgRating > 0 ? `${stats.avgRating}/5` : 'لا يوجد' },
+                { icon: '📦', label: 'المنتجات المعروضة', value: stats.totalProducts },
+                { icon: '👁️', label: 'المشاهدات الكلية', value: stats.totalViews },
+                { icon: '⭐', label: 'متوسط التقييم', value: stats.avgRating > 0 ? `${stats.avgRating}/5` : 'لا يوجد' },
               ].map((s, i) => (
                 <div
                   key={i}
@@ -299,10 +348,10 @@ export default function SupplierDashboard({ supplier, onLogout }) {
             </div>
 
             <div style={{ background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', direction: 'rtl' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: '16px' }}>أحدث المنتجات</h3>
+              <h3 style={{ margin: '0 0 16px', fontSize: '16px' }}>أحدث منتجات الجملة المضافة</h3>
               {products.slice(0, 3).map(p => (
                 <div key={p._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eee' }}>
-                  <span>{p.name}</span>
+                  <span>{p.name} (أقل طلب: {p.moq || 1} {p.unit || 'قطعة'})</span>
                   <span style={{ fontWeight: '700', color: '#E85D24' }}>{p.price} درهم</span>
                 </div>
               ))}
@@ -313,13 +362,23 @@ export default function SupplierDashboard({ supplier, onLogout }) {
         {/* Products Tab */}
         {activeTab === 'products' && (
           <div style={{ direction: 'rtl' }}>
-            <h2 style={{ fontSize: '18px', marginBottom: '16px' }}>قائمة المنتجات ({products.length})</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+            <h2 style={{ fontSize: '18px', marginBottom: '16px' }}>قائمة منتجات الجملة ({products.length})</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
               {products.map(p => (
                 <div key={p._id} style={{ background: 'white', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                   {p.imageUrl && <img src={p.imageUrl} alt="" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} />}
-                  <h4 style={{ margin: '0 0 6px' }}>{p.name}</h4>
-                  <div style={{ color: '#E85D24', fontWeight: '700', marginBottom: '12px' }}>{p.price} درهم</div>
+                  <h4 style={{ margin: '0 0 4px', fontSize: '15px' }}>{p.name}</h4>
+                  <div style={{ color: '#E85D24', fontWeight: '700', fontSize: '16px', marginBottom: '4px' }}>
+                    {p.price} درهم / {p.unit || 'قطعة'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#B45309', background: '#FEF3C7', padding: '2px 8px', borderRadius: '12px', display: 'inline-block', marginBottom: '8px' }}>
+                    📦 أقل طلب (MOQ): {p.moq || 1} {p.unit || 'قطعة'}
+                  </div>
+                  {p.priceTiers && p.priceTiers.length > 0 && (
+                    <div style={{ fontSize: '11px', color: '#0F766E', marginBottom: '10px' }}>
+                      🏷️ {p.priceTiers.length} شرائح أسعار حسب الكمية
+                    </div>
+                  )}
                   <button
                     onClick={() => deleteProduct(p._id)}
                     style={{ width: '100%', padding: '8px', background: '#FAECE7', color: '#993C1D', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
@@ -332,15 +391,121 @@ export default function SupplierDashboard({ supplier, onLogout }) {
           </div>
         )}
 
-        {/* Add Product Tab */}
+        {/* Add Product Tab (Wholesale Core) */}
         {activeTab === 'add' && (
-          <div style={{ background: 'white', borderRadius: '16px', padding: '28px', maxWidth: '520px', margin: '0 auto', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', direction: 'rtl' }}>
-            <h2 style={{ margin: '0 0 20px', fontSize: '18px' }}>إضافة منتج جديد</h2>
-            {inp('اسم المنتج *', 'name')}
-            {inp('الفئة (ملابس، أحذية...) *', 'category')}
-            {inp('سعر الجملة بالدرهم *', 'price', 'number')}
-            {inp('المدينة', 'city')}
+          <div style={{ background: 'white', borderRadius: '16px', padding: '28px', maxWidth: '580px', margin: '0 auto', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', direction: 'rtl' }}>
+            <h2 style={{ margin: '0 0 8px', fontSize: '18px' }}>إضافة منتج جملة جديد</h2>
+            <p style={{ fontSize: '13px', color: '#666', margin: '0 0 20px' }}>
+              حدد السعر الأساسي، أقل كمية للطلب (MOQ)، وشرائح أسعار الكميات.
+            </p>
 
+            {inp('اسم المنتج *', 'name')}
+            {inp('الفئة (ملابس، أحذية، إلكترونيات...) *', 'category')}
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>السعر الأساسي (درهم) *</label>
+                {inp('السعر الأساسي *', 'price', 'number')}
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>وحدة البيع</label>
+                <select
+                  value={form.unit}
+                  onChange={e => setForm({ ...form, unit: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #ddd',
+                    fontSize: '14px',
+                    direction: 'rtl',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    marginBottom: '10px',
+                    fontFamily: "'Cairo', sans-serif",
+                    background: 'white'
+                  }}
+                >
+                  <option value="قطعة">قطعة</option>
+                  <option value="درزينة (12 قطعة)">درزينة (12 قطعة)</option>
+                  <option value="كرتونة">كرتونة</option>
+                  <option value="طرد">طرد</option>
+                  <option value="حزمة">حزمة</option>
+                  <option value="كيلوغرام">كيلوغرام</option>
+                  <option value="متر">متر</option>
+                  <option value="أخرى">أخرى</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>الحد الأدنى للطلب (MOQ) *</label>
+                {inp('أقل كمية للطلب', 'moq', 'number')}
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>المدينة</label>
+                {inp('المدينة', 'city')}
+              </div>
+            </div>
+
+            {/* شرائح الأسعار (Tiered Pricing) */}
+            <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '10px', margin: '12px 0', border: '1px solid #E2E8F0' }}>
+              <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '6px', color: '#1E293B' }}>
+                🏷️ أسعار الجملة للكميات الكبيرة (Tiered Pricing)
+              </div>
+              <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 10px' }}>
+                شجع المشترين على شراء كميات أكبر بتقديم تخفيض لكل شريحة.
+              </p>
+
+              {priceTiers.map((tier, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '8px 12px', borderRadius: '6px', marginBottom: '6px', border: '1px solid #eee' }}>
+                  <span style={{ fontSize: '13px' }}>
+                    من <strong>{tier.minQty}</strong> {tier.maxQty ? `إلى ${tier.maxQty}` : 'فما فوق'} {form.unit}: <strong>{tier.price} درهم</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removePriceTier(idx)}
+                    style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '14px' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+
+              <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                <input
+                  type="number"
+                  placeholder="من كمية"
+                  value={tierInput.minQty}
+                  onChange={e => setTierInput({ ...tierInput, minQty: e.target.value })}
+                  style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl' }}
+                />
+                <input
+                  type="number"
+                  placeholder="إلى كمية (اختياري)"
+                  value={tierInput.maxQty}
+                  onChange={e => setTierInput({ ...tierInput, maxQty: e.target.value })}
+                  style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl' }}
+                />
+                <input
+                  type="number"
+                  placeholder="السعر (درهم)"
+                  value={tierInput.price}
+                  onChange={e => setTierInput({ ...tierInput, price: e.target.value })}
+                  style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl' }}
+                />
+                <button
+                  type="button"
+                  onClick={addPriceTier}
+                  style={{ padding: '8px 14px', background: '#0F766E', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                >
+                  + أضف
+                </button>
+              </div>
+            </div>
+
+            {/* صورة المنتج وتحسين AI */}
             <div style={{ margin: '14px 0' }}>
               <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '6px' }}>صورة المنتج:</label>
               <div style={{ display: 'flex', gap: '10px' }}>
@@ -368,7 +533,7 @@ export default function SupplierDashboard({ supplier, onLogout }) {
                     disabled={imgLoading}
                     style={{ display: 'block', width: '100%', marginTop: '8px', padding: '10px', background: '#25D366', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
                   >
-                    {imgLoading ? '⏳ AI كيحسن الصورة...' : '✨ تحسين بالذكاء الاصطناعي'}
+                    {imgLoading ? '⏳ AI كيحسن الصورة والتسعير...' : '✨ تحسين بالذكاء الاصطناعي واقتراح أسعار الجملة'}
                   </button>
                 )}
               </div>
@@ -379,7 +544,7 @@ export default function SupplierDashboard({ supplier, onLogout }) {
               disabled={loading}
               style={{ width: '100%', padding: '12px', background: '#C1272D', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginTop: '14px' }}
             >
-              {loading ? 'جاري الإضافة...' : 'نشر المنتج الآن'}
+              {loading ? 'جاري الإضافة...' : 'نشر منتج الجملة الآن'}
             </button>
           </div>
         )}
