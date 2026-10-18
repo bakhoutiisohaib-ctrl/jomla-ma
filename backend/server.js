@@ -80,6 +80,10 @@ console.log('Mounted productAI route at /api/product-ai')
 const analyticsRoutes = require('./routes/analytics')
 app.use('/api/analytics', analyticsRoutes)
 
+// RFQ route (طلب عروض الأسعار بالجملة)
+const rfqRoutes = require('./routes/rfq')
+app.use('/api/rfq', rfqRoutes)
+
 // Swagger UI
 try {
   const swaggerUi = require('swagger-ui-express')

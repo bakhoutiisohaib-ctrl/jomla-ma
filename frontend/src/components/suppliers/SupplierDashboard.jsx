@@ -7,6 +7,10 @@ export default function SupplierDashboard({ supplier, onLogout }) {
   const [activeTab, setActiveTab] = useState('overview')
   const [products, setProducts] = useState([])
   const [reviews, setReviews] = useState([])
+  const [rfqs, setRfqs] = useState([])
+  const [rfqCounts, setRfqCounts] = useState({ total: 0, pending: 0, responded: 0 })
+  const [selectedRfq, setSelectedRfq] = useState(null)
+  const [rfqReply, setRfqReply] = useState({ unitPrice: '', deliveryDays: 3, notes: '' })
   const [stats, setStats] = useState({ totalViews: 0, totalProducts: 0, avgRating: 0 })
   const [form, setForm] = useState({
     name: '',
@@ -51,10 +55,27 @@ export default function SupplierDashboard({ supplier, onLogout }) {
     }
   }, [supplier._id])
 
+  const fetchMyRfqs = useCallback(async () => {
+    const token = localStorage.getItem('supplierToken')
+    try {
+      const res = await fetch(`${API}/rfq/supplier`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      })
+      const data = await res.json()
+      if (data.data) {
+        setRfqs(data.data)
+        setRfqCounts(data.counts || { total: 0, pending: 0, responded: 0 })
+      }
+    } catch {
+      setRfqs([])
+    }
+  }, [])
+
   useEffect(() => {
     fetchMyProducts()
     fetchMyReviews()
-  }, [fetchMyProducts, fetchMyReviews])
+    fetchMyRfqs()
+  }, [fetchMyProducts, fetchMyReviews, fetchMyRfqs])
 
   async function handleImageUpload(e) {
     const file = e.target.files[0]
@@ -173,6 +194,32 @@ export default function SupplierDashboard({ supplier, onLogout }) {
     }
   }
 
+  async function respondToRfq(rfqId, status = 'responded') {
+    const token = localStorage.getItem('supplierToken')
+    try {
+      const res = await fetch(`${API}/rfq/${rfqId}/respond`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          unitPrice: Number(rfqReply.unitPrice),
+          deliveryDays: Number(rfqReply.deliveryDays) || 3,
+          notes: rfqReply.notes,
+          status
+        })
+      })
+      const data = await res.json()
+      setMsg(data.message)
+      setSelectedRfq(null)
+      setRfqReply({ unitPrice: '', deliveryDays: 3, notes: '' })
+      fetchMyRfqs()
+    } catch {
+      setMsg('❌ تعذر إرسال الرد على طلب عرض السعر')
+    }
+  }
+
   const inp = (ph, key, type = 'text') => (
     <input
       type={type}
@@ -196,6 +243,7 @@ export default function SupplierDashboard({ supplier, onLogout }) {
 
   const tabs = [
     { id: 'overview', label: '📊 نظرة عامة' },
+    { id: 'rfq',      label: `📑 طلبات الأسعار RFQ (${rfqCounts.pending || 0})` },
     { id: 'products', label: '📦 منتجاتي' },
     { id: 'add',      label: '➕ إضافة منتج جملة' },
     { id: 'reviews',  label: '⭐ التقييمات' },
@@ -259,7 +307,7 @@ export default function SupplierDashboard({ supplier, onLogout }) {
             </label>
             <div style={{ direction: 'rtl' }}>
               <div style={{ color: 'white', fontSize: '18px', fontWeight: '700' }}>{supplier.name}</div>
-              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '12px' }}>📍 {supplier.city} | متجر جملة</div>
+              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '12px' }}>📍 {supplier.city} | متجر جملة معتمد</div>
             </div>
           </div>
           <button
@@ -292,7 +340,7 @@ export default function SupplierDashboard({ supplier, onLogout }) {
                 fontSize: '13px',
                 fontFamily: "'Cairo', sans-serif",
                 whiteSpace: 'nowrap',
-                fontWeight: '500',
+                fontWeight: '600',
                 background: activeTab === t.id ? 'white' : 'transparent',
                 color: activeTab === t.id ? '#C1272D' : 'rgba(255,255,255,0.85)',
                 borderRadius: '8px 8px 0 0'
@@ -304,7 +352,7 @@ export default function SupplierDashboard({ supplier, onLogout }) {
         </div>
       </div>
 
-      <div style={{ maxWidth: '900px', margin: '24px auto', padding: '0 16px' }}>
+      <div style={{ maxWidth: '960px', margin: '24px auto', padding: '0 16px' }}>
         {msg && (
           <div
             style={{
@@ -324,11 +372,12 @@ export default function SupplierDashboard({ supplier, onLogout }) {
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '20px' }}>
               {[
-                { icon: '📦', label: 'المنتجات المعروضة', value: stats.totalProducts },
-                { icon: '👁️', label: 'المشاهدات الكلية', value: stats.totalViews },
-                { icon: '⭐', label: 'متوسط التقييم', value: stats.avgRating > 0 ? `${stats.avgRating}/5` : 'لا يوجد' },
+                { icon: '📦', label: 'المنتجات', value: stats.totalProducts },
+                { icon: '📑', label: 'طلبات RFQ جديدة', value: rfqCounts.pending },
+                { icon: '👁️', label: 'المشاهدات', value: stats.totalViews },
+                { icon: '⭐', label: 'التقييم', value: stats.avgRating > 0 ? `${stats.avgRating}/5` : 'لا يوجد' },
               ].map((s, i) => (
                 <div
                   key={i}
@@ -340,22 +389,194 @@ export default function SupplierDashboard({ supplier, onLogout }) {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
                   }}
                 >
-                  <div style={{ fontSize: '28px', marginBottom: '6px' }}>{s.icon}</div>
-                  <div style={{ fontSize: '22px', fontWeight: '700', color: '#1a1a1a' }}>{s.value}</div>
+                  <div style={{ fontSize: '26px', marginBottom: '6px' }}>{s.icon}</div>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#1a1a1a' }}>{s.value}</div>
                   <div style={{ fontSize: '12px', color: '#888' }}>{s.label}</div>
                 </div>
               ))}
             </div>
 
             <div style={{ background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', direction: 'rtl' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: '16px' }}>أحدث منتجات الجملة المضافة</h3>
-              {products.slice(0, 3).map(p => (
-                <div key={p._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eee' }}>
-                  <span>{p.name} (أقل طلب: {p.moq || 1} {p.unit || 'قطعة'})</span>
-                  <span style={{ fontWeight: '700', color: '#E85D24' }}>{p.price} درهم</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px' }}>آخر طلبات عروض الأسعار (RFQ)</h3>
+                <button
+                  onClick={() => setActiveTab('rfq')}
+                  style={{ background: 'none', border: 'none', color: '#0F766E', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                >
+                  عرض الكل ({rfqCounts.total}) ←
+                </button>
+              </div>
+              {rfqs.length === 0 ? (
+                <div style={{ color: '#888', fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>
+                  لا توجد طلبات عروض أسعار حتى الآن
                 </div>
-              ))}
+              ) : (
+                rfqs.slice(0, 3).map(r => (
+                  <div key={r._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #eee' }}>
+                    <div>
+                      <div style={{ fontWeight: '700', fontSize: '14px' }}>{r.productId?.name || 'منتج محذوف'}</div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>المشتري: {r.buyerName} ({r.quantity} {r.productId?.unit || 'قطعة'})</div>
+                    </div>
+                    <span
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '20px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        background: r.status === 'pending' ? '#FEF3C7' : '#E1F5EE',
+                        color: r.status === 'pending' ? '#B45309' : '#0F766E'
+                      }}
+                    >
+                      {r.status === 'pending' ? 'قيد المراجعة' : 'تم الرد'}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
+          </div>
+        )}
+
+        {/* RFQ Management Tab (B2B Request For Quotation) */}
+        {activeTab === 'rfq' && (
+          <div style={{ direction: 'rtl' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '18px', margin: 0 }}>طلبات عروض الأسعار الرسمية (RFQ)</h2>
+              <span style={{ fontSize: '13px', color: '#64748B' }}>
+                المجموع: {rfqs.length} طلب | {rfqCounts.pending} بانتظار ردك
+              </span>
+            </div>
+
+            {rfqs.length === 0 ? (
+              <div style={{ background: 'white', borderRadius: '16px', padding: '60px 20px', textAlign: 'center', color: '#888' }}>
+                <div style={{ fontSize: '40px', marginBottom: '10px' }}>📭</div>
+                <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>لا توجد طلبات عروض أسعار حتى الآن</div>
+                <div style={{ fontSize: '13px', marginTop: '4px' }}>ستظهر هنا طلبات الشراء بالجملة التي يرسلها التجار لمنتجاتك</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {rfqs.map(r => {
+                  const whatsappBuyer = `https://wa.me/${r.buyerPhone}?text=${encodeURIComponent(
+                    `السلام عليكم أخي ${r.buyerName}، معكم متجر ${supplier.name} من منصة Jomla.ma بخصوص طلب عرض السعر رقم #${r._id.slice(-6)} لمنتج "${r.productId?.name}"...`
+                  )}`
+
+                  return (
+                    <div
+                      key={r._id}
+                      style={{
+                        background: 'white',
+                        borderRadius: '14px',
+                        padding: '20px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                        border: '1px solid #E2E8F0'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          {r.productId?.imageUrl && (
+                            <img src={r.productId.imageUrl} alt="" style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '8px' }} />
+                          )}
+                          <div>
+                            <div style={{ fontWeight: '700', fontSize: '15px' }}>{r.productId?.name}</div>
+                            <div style={{ fontSize: '12px', color: '#64748B' }}>
+                              رقم الطلب: #{r._id.slice(-6)} | {new Date(r.createdAt).toLocaleDateString('ar-MA')}
+                            </div>
+                          </div>
+                        </div>
+
+                        <span
+                          style={{
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            background:
+                              r.status === 'pending' ? '#FEF3C7' : r.status === 'responded' ? '#E1F5EE' : '#F1F5F9',
+                            color:
+                              r.status === 'pending' ? '#B45309' : r.status === 'responded' ? '#0F766E' : '#475569'
+                          }}
+                        >
+                          {r.status === 'pending' ? '⏳ بانتظار عرضك' : r.status === 'responded' ? '✅ تم إرسال عرض السعر' : 'مرفوض'}
+                        </span>
+                      </div>
+
+                      <div style={{ background: '#F8FAFC', padding: '12px 16px', borderRadius: '10px', marginBottom: '14px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', fontSize: '13px' }}>
+                        <div><strong>المشتري:</strong> {r.buyerName}</div>
+                        <div><strong>الهاتف:</strong> {r.buyerPhone}</div>
+                        <div><strong>مدينة التوصيل:</strong> {r.buyerCity || 'غير محددة'}</div>
+                        <div><strong>الكمية المطلوبة:</strong> <span style={{ color: '#B45309', fontWeight: '700' }}>{r.quantity} {r.productId?.unit || 'قطعة'}</span></div>
+                        {r.targetPrice && <div><strong>السعر المستهدف:</strong> {r.targetPrice} درهم / قطعة</div>}
+                      </div>
+
+                      {r.notes && (
+                        <div style={{ fontSize: '13px', color: '#334155', marginBottom: '14px', background: '#FFFBEB', padding: '10px 14px', borderRadius: '8px', borderRight: '4px solid #F59E0B' }}>
+                          <strong>ملاحظات المشتري:</strong> {r.notes}
+                        </div>
+                      )}
+
+                      {/* إذا كان قد تم الرد مسبقاً */}
+                      {r.status === 'responded' && r.offer && (
+                        <div style={{ background: '#F0FDF4', padding: '12px 16px', borderRadius: '10px', border: '1px solid #BBF7D0', marginBottom: '12px', fontSize: '13px' }}>
+                          <div style={{ fontWeight: '700', color: '#166534', marginBottom: '4px' }}>📋 عرض السعر الذي أرسلته للمشتري:</div>
+                          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                            <div>سعر الوحدة: <strong>{r.offer.unitPrice} درهم</strong></div>
+                            <div>المجموع الكلي: <strong>{r.offer.totalPrice} درهم</strong></div>
+                            <div>مدة التجهيز والتوصيل: <strong>{r.offer.deliveryDays} أيام</strong></div>
+                          </div>
+                          {r.offer.notes && <div style={{ marginTop: '4px', color: '#15803D' }}>ملاحظاتك: {r.offer.notes}</div>}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <a
+                          href={whatsappBuyer}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            padding: '9px 18px',
+                            background: '#25D366',
+                            color: 'white',
+                            borderRadius: '8px',
+                            textDecoration: 'none',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          💬 محادثة المشتري عبر واتساب
+                        </a>
+
+                        {r.status === 'pending' && (
+                          <button
+                            onClick={() => {
+                              setSelectedRfq(r)
+                              setRfqReply({
+                                unitPrice: r.targetPrice || r.productId?.price || '',
+                                deliveryDays: 3,
+                                notes: ''
+                              })
+                            }}
+                            style={{
+                              padding: '9px 18px',
+                              background: '#0F766E',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: '600'
+                            }}
+                          >
+                            ✍️ تقديم عرض السعر الرسمي
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -568,6 +789,103 @@ export default function SupplierDashboard({ supplier, onLogout }) {
           <MarketAnalysis supplier={supplier} products={products} />
         )}
       </div>
+
+      {/* RFQ Reply Modal for Supplier */}
+      {selectedRfq && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.65)',
+            zIndex: 1200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '24px',
+              maxWidth: '480px',
+              width: '100%',
+              direction: 'rtl',
+              fontFamily: "'Cairo', sans-serif"
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>✍️ تقديم عرض سعر لـ {selectedRfq.buyerName}</h3>
+              <button onClick={() => setSelectedRfq(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer' }}>✕</button>
+            </div>
+
+            <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' }}>
+              <div>المنتج: <strong>{selectedRfq.productId?.name}</strong></div>
+              <div>الكمية المطلوبة: <strong>{selectedRfq.quantity} {selectedRfq.productId?.unit || 'قطعة'}</strong></div>
+              {selectedRfq.targetPrice && <div>السعر المستهدف من المشتري: <strong>{selectedRfq.targetPrice} درهم</strong></div>}
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '4px' }}>سعر الوحدة المعروض (درهم) *</label>
+              <input
+                type="number"
+                value={rfqReply.unitPrice}
+                onChange={e => setRfqReply({ ...rfqReply, unitPrice: e.target.value })}
+                placeholder="مثال: 45"
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', direction: 'rtl', boxSizing: 'border-box' }}
+              />
+              {rfqReply.unitPrice && (
+                <div style={{ fontSize: '12px', color: '#0F766E', marginTop: '4px', fontWeight: '600' }}>
+                  المجموع الكلي: {Number(rfqReply.unitPrice) * selectedRfq.quantity} درهم
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '4px' }}>مدة التجهيز والتوصيل (بالأيام)</label>
+              <input
+                type="number"
+                value={rfqReply.deliveryDays}
+                onChange={e => setRfqReply({ ...rfqReply, deliveryDays: e.target.value })}
+                placeholder="مثال: 3"
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', direction: 'rtl', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '4px' }}>شروط أو ملاحظات للمشتري</label>
+              <textarea
+                rows={3}
+                value={rfqReply.notes}
+                onChange={e => setRfqReply({ ...rfqReply, notes: e.target.value })}
+                placeholder="مثال: التوصيل متوفر لكازا، الدفع عند الاستلام..."
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl', boxSizing: 'border-box', outline: 'none' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => respondToRfq(selectedRfq._id, 'responded')}
+                style={{ flex: 2, padding: '11px', background: '#0F766E', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}
+              >
+                🚀 إرسال العرض للمشتري
+              </button>
+              <button
+                type="button"
+                onClick={() => respondToRfq(selectedRfq._id, 'rejected')}
+                style={{ flex: 1, padding: '11px', background: '#FAECE7', color: '#993C1D', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '13px' }}
+              >
+                رفض
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showImagePicker && (
         <ImagePicker

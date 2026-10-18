@@ -1,4 +1,8 @@
+import { useState } from 'react'
+import RFQModal from './RFQModal'
+
 export default function ProductCard({ product, onViewSupplier, onView }) {
+  const [showRFQ, setShowRFQ] = useState(false)
   const moqText = `${product.moq || 1} ${product.unit || 'قطعة'}`
   const whatsapp = `https://wa.me/${product.supplierPhone}?text=${encodeURIComponent(
     `السلام عليكم، شفت منتج "${product.name}" على Jomla.ma، بغيت نسول على ثمن الجملة (الحد الأدنى: ${moqText}). هل متوفر؟`
@@ -93,45 +97,77 @@ export default function ProductCard({ product, onViewSupplier, onView }) {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }} onClick={e => e.stopPropagation()}>
-        <a
-          href={whatsapp}
-          target="_blank"
-          rel="noreferrer"
+      <div style={{ marginTop: '14px' }} onClick={e => e.stopPropagation()}>
+        <button
+          onClick={() => setShowRFQ(true)}
           style={{
-            flex: 1,
-            padding: '8px',
-            background: '#25D366',
+            width: '100%',
+            padding: '9px',
+            background: '#0F766E',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
             cursor: 'pointer',
             fontSize: '13px',
-            fontWeight: '600',
-            textAlign: 'center',
-            textDecoration: 'none'
+            fontWeight: '700',
+            marginBottom: '8px',
+            fontFamily: "'Cairo', sans-serif",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px'
           }}
         >
-          💬 طلب بالجملة
-        </a>
-        <button
-          onClick={() => onViewSupplier(product.supplierId)}
-          style={{
-            flex: 1,
-            padding: '8px',
-            background: '#E6F1FB',
-            color: '#185FA5',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '13px',
-            fontWeight: '500',
-            fontFamily: "'Cairo', sans-serif"
-          }}
-        >
-          🏪 المتجر
+          📄 طلب عرض سعر رسمي (RFQ)
         </button>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <a
+            href={whatsapp}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              flex: 1,
+              padding: '8px',
+              background: '#25D366',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: '600',
+              textAlign: 'center',
+              textDecoration: 'none'
+            }}
+          >
+            💬 واتساب
+          </a>
+          <button
+            onClick={() => onViewSupplier(product.supplierId)}
+            style={{
+              flex: 1,
+              padding: '8px',
+              background: '#E6F1FB',
+              color: '#185FA5',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: '500',
+              fontFamily: "'Cairo', sans-serif"
+            }}
+          >
+            🏪 المتجر
+          </button>
+        </div>
       </div>
+
+      {showRFQ && (
+        <RFQModal
+          product={product}
+          onClose={() => setShowRFQ(false)}
+        />
+      )}
     </div>
   )
 }
