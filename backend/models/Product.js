@@ -18,11 +18,13 @@ const ProductSchema = new mongoose.Schema({
   city:          { type: String, trim: true },
   supplierId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
   supplierPhone: { type: String, trim: true },
-  views:         { type: Number, default: 0 },
-  description:   String,
-  images:        [String],
-  imageUrl:      String,
-  createdAt:     { type: Date, default: Date.now }
+  views:          { type: Number, default: 0 },
+  description:    String,
+  images:         [String],
+  imageUrl:       String,
+  hasImageRights: { type: Boolean, default: true }, // إقرار بملكية أو ترخيص استخدام الصورة
+  isDraft:        { type: Boolean, default: false }, // حالة المسودة قبل الاعتماد النهائي
+  createdAt:      { type: Date, default: Date.now }
 })
 
 ProductSchema.index({ name: 'text', category: 'text', city: 1 })

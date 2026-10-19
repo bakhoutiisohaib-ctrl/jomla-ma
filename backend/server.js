@@ -44,6 +44,11 @@ app.use(limiter)
 app.use(express.json({ limit: '100kb' }))
 app.use(express.urlencoded({ extended: true, limit: '100kb' }))
 
+// تقديم الملفات المرفوعة محلياً
+const path = require('path')
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
+
+
 // ملاحظة: اتصال قاعدة البيانات وتهيئة Redis تم نقلهما إلى `start.js`
 // ليصبح من السهل استيراد `app` في الاختبارات دون تشغيل السيرفر الكامل.
 

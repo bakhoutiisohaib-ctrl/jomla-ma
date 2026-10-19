@@ -29,6 +29,7 @@ export default function SupplierDashboard({ supplier, onLogout, onGoAdmin }) {
   })
   const [priceTiers, setPriceTiers] = useState([])
   const [tierInput, setTierInput] = useState({ minQty: '', maxQty: '', price: '' })
+  const [hasImageRights, setHasImageRights] = useState(true)
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [aiResult, setAiResult] = useState(null)
@@ -152,34 +153,48 @@ export default function SupplierDashboard({ supplier, onLogout, onGoAdmin }) {
     setMsg('✅ تم اختيار الصورة!')
   }
 
-  async function enhanceWithAI() {
-    if (!imageFile || !form.name) return setMsg('⚠️ أضف اسم المنتج وصورة أولاً')
+  async function enhanceWithAI(directFile = null) {
+    const fileToUse = directFile || imageFile
+    if (!fileToUse) return setMsg('⚠️ يرجى اختيار صورة للمنتج أولاً')
     setImgLoading(true)
+    setMsg('🧠 جاري تحليل صورة المنتج وتوليد مسودة الجملة بالذكاء الاصطناعي...')
+    const token = localStorage.getItem('supplierToken')
     const formData = new FormData()
-    formData.append('image', imageFile)
-    formData.append('productName', form.name)
-    formData.append('category', form.category || 'أخرى')
+    formData.append('image', fileToUse)
+    if (form.name) formData.append('productName', form.name)
+    if (form.category) formData.append('category', form.category)
 
     try {
-      const res = await fetch(`${API}/product-ai/enhance`, { method: 'POST', body: formData })
+      const res = await fetch(`${API}/product-ai/enhance`, {
+        method: 'POST',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: formData
+      })
       const data = await res.json()
-      if (data.aiData) {
+      const draft = data.draft || data.aiData
+      if (draft) {
         setAiResult(data)
+        const newImgUrl = data.imageUrl || data.enhancedImage
+        if (newImgUrl) setPreview(newImgUrl)
         setForm(prev => ({
           ...prev,
-          name: data.aiData.title || prev.name,
-          imageUrl: data.enhancedImage,
-          price: data.aiData.suggestedPrice || prev.price,
-          moq: data.aiData.suggestedMoq || prev.moq,
-          unit: data.aiData.suggestedUnit || prev.unit
+          name: draft.title || prev.name,
+          category: draft.category || prev.category || 'أخرى',
+          description: draft.description || prev.description || '',
+          price: draft.suggestedPrice || prev.price || '',
+          moq: draft.suggestedMoq || prev.moq || 1,
+          unit: draft.suggestedUnit || prev.unit || 'قطعة',
+          imageUrl: newImgUrl || prev.imageUrl
         }))
-        if (Array.isArray(data.aiData.suggestedPriceTiers) && data.aiData.suggestedPriceTiers.length > 0) {
-          setPriceTiers(data.aiData.suggestedPriceTiers)
+        if (Array.isArray(draft.suggestedPriceTiers) && draft.suggestedPriceTiers.length > 0) {
+          setPriceTiers(draft.suggestedPriceTiers)
         }
-        setMsg('✅ AI حسّن المنتج واقترح تسعير الجملة والحد الأدنى للطلب!')
+        setMsg('✨ تم استخراج مسودة المنتج وتسعير الجملة بنجاح! راجع البيانات واعتمد النشر.')
+      } else {
+        setMsg(data.message || '⚠️ لم يتم استخراج المسودة')
       }
     } catch {
-      setMsg('⚠️ خطأ في AI')
+      setMsg('⚠️ تعذر تحليل الصورة بالذكاء الاصطناعي')
     } finally {
       setImgLoading(false)
     }
@@ -202,8 +217,14 @@ export default function SupplierDashboard({ supplier, onLogout, onGoAdmin }) {
     setPriceTiers(priceTiers.filter((_, i) => i !== idx))
   }
 
-  async function addProduct() {
-    if (!form.name || !form.price || !form.category) return setMsg('⚠️ كمل جميع الخانات المطلوبة')
+  async function addProduct(isDraft = false) {
+    if (!form.name || !form.price || !form.category) {
+      return setMsg('⚠️ كمل جميع الخانات الإلزامية (اسم المنتج، الفئة، والسعر الأساسي)')
+    }
+    if (!hasImageRights) {
+      return setMsg('⚠️ يرجى الموافقة على إقرار حقوق استخدام الصورة والمنتج')
+    }
+
     setLoading(true)
     const token = localStorage.getItem('supplierToken')
     try {
@@ -221,20 +242,22 @@ export default function SupplierDashboard({ supplier, onLogout, onGoAdmin }) {
           priceTiers: priceTiers.filter(t => t.minQty && t.price),
           supplierId: supplier._id,
           supplierPhone: supplier.phone || '',
-          description: aiResult?.aiData?.description || form.description || '',
-          imageUrl: aiResult?.enhancedImage || form.imageUrl || ''
+          description: form.description || aiResult?.draft?.description || aiResult?.aiData?.description || '',
+          imageUrl: preview || aiResult?.imageUrl || aiResult?.enhancedImage || form.imageUrl || '',
+          hasImageRights: true,
+          isDraft: !!isDraft
         })
       })
       const data = await res.json()
-      setMsg(data.message)
-      setForm({ name: '', category: '', price: '', moq: 10, unit: 'قطعة', city: supplier.city || '' })
+      setMsg(data.message || (isDraft ? '💾 تم حفظ المنتج كمسودة' : '✅ تم نشر منتج الجملة في الكتالوج بنجاح'))
+      setForm({ name: '', category: '', price: '', moq: 10, unit: 'قطعة', city: supplier.city || '', description: '' })
       setPriceTiers([])
       setAiResult(null)
       setPreview(null)
       setImageFile(null)
       fetchMyProducts()
     } catch {
-      setMsg('❌ تعذر إضافة المنتج')
+      setMsg('❌ تعذر حفظ أو نشر المنتج')
     } finally {
       setLoading(false)
     }
@@ -709,161 +732,322 @@ export default function SupplierDashboard({ supplier, onLogout, onGoAdmin }) {
           </div>
         )}
 
-        {/* Add Product Tab (Wholesale Core) */}
+        {/* Add Product Tab (AI-First Wholesale Onboarding) */}
         {activeTab === 'add' && (
-          <div style={{ background: 'white', borderRadius: '16px', padding: '28px', maxWidth: '580px', margin: '0 auto', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', direction: 'rtl' }}>
-            <h2 style={{ margin: '0 0 8px', fontSize: '18px' }}>إضافة منتج جملة جديد</h2>
-            <p style={{ fontSize: '13px', color: '#666', margin: '0 0 20px' }}>
-              حدد السعر الأساسي، أقل كمية للطلب (MOQ)، وشرائح أسعار الكميات.
+          <div style={{ background: 'white', borderRadius: '16px', padding: '28px', maxWidth: '640px', margin: '0 auto', boxShadow: '0 2px 14px rgba(0,0,0,0.06)', direction: 'rtl' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+              <span style={{ fontSize: '26px' }}>✨</span>
+              <h2 style={{ margin: 0, fontSize: '19px', color: '#0F172A' }}>إضافة منتج جملة بالذكاء الاصطناعي</h2>
+            </div>
+            <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 20px', lineHeight: '1.5' }}>
+              ابدأ برفع صورة المنتج فقط — الذكاء الاصطناعي يستخرج العنوان، الفئة، الوصف، واقتراح تسعير الجملة والـ MOQ تلقائياً لتراجعها بضغطة زر.
             </p>
 
-            {inp('اسم المنتج *', 'name')}
-            {inp('الفئة (ملابس، أحذية، إلكترونيات...) *', 'category')}
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>السعر الأساسي (درهم) *</label>
-                {inp('السعر الأساسي *', 'price', 'number')}
+            {/* المرحلة 1: رفع وتحليل صورة المنتج */}
+            <div
+              style={{
+                background: preview ? '#F8FAFC' : 'linear-gradient(180deg, #F0FDF4 0%, #F8FAFC 100%)',
+                border: '2px dashed #0F766E',
+                borderRadius: '14px',
+                padding: '24px 16px',
+                textAlign: 'center',
+                marginBottom: '20px'
+              }}
+            >
+              {preview ? (
+                <div>
+                  <div style={{ position: 'relative', display: 'inline-block', maxWidth: '240px', maxHeight: '180px', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                    <img src={preview} alt="معاينة المنتج" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {aiResult && (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          bottom: '8px',
+                          left: '8px',
+                          background: 'rgba(15, 118, 110, 0.9)',
+                          color: 'white',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '11px',
+                          fontWeight: '700'
+                        }}
+                      >
+                        ✨ تم تحليل وتوليد المسودة
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '14px', flexWrap: 'wrap' }}>
+                    <label style={{ padding: '8px 14px', background: 'white', border: '1px solid #CBD5E1', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                      🔄 تغيير الصورة
+                      <input type="file" accept="image/*" onChange={e => { handleImageUpload(e); if (e.target.files[0]) enhanceWithAI(e.target.files[0]) }} style={{ display: 'none' }} />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => enhanceWithAI()}
+                      disabled={imgLoading}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#0F766E',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '700',
+                        fontFamily: "'Cairo', sans-serif"
+                      }}
+                    >
+                      {imgLoading ? '🧠 جاري استخراج مسودة الجملة...' : '⚡ إعادة توليد المسودة بالـ AI'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize: '38px', marginBottom: '8px' }}>📸</div>
+                  <div style={{ fontWeight: '700', fontSize: '15px', color: '#0F172A', marginBottom: '4px' }}>
+                    ارفع صورة منتجك بالجملة هنا
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 16px' }}>
+                    صورة واضحة للمنتج كافية لاستخراج كامل بيانات الكتالوج
+                  </p>
+
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <label style={{ padding: '10px 20px', background: '#0F766E', color: 'white', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}>
+                      📁 اختر صورة من جهازك
+                      <input type="file" accept="image/*" onChange={e => { handleImageUpload(e); if (e.target.files[0]) enhanceWithAI(e.target.files[0]) }} style={{ display: 'none' }} />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowImagePicker(true)}
+                      style={{ padding: '10px 16px', background: '#E6F1FB', color: '#185FA5', border: '1px solid #BFDBFE', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                    >
+                      🔍 صور تجارية جاهزة
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* تنبيه حالة AI الذكية */}
+            {aiResult && (
+              <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px', padding: '14px 16px', marginBottom: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#065F46', fontWeight: '700', fontSize: '13px', marginBottom: '4px' }}>
+                  <span>✨</span>
+                  <span>مسودة منتج الجملة جاهزة للمراجعة</span>
+                </div>
+                {aiResult.draft?.tips && (
+                  <div style={{ fontSize: '12px', color: '#047857', marginTop: '4px' }}>
+                    💡 <strong>نصيحة المبيعات:</strong> {aiResult.draft.tips}
+                  </div>
+                )}
+                {aiResult.draft?.features && aiResult.draft.features.length > 0 && (
+                  <div style={{ fontSize: '12px', color: '#047857', marginTop: '4px' }}>
+                    🏷️ <strong>المميزات المقترحة:</strong> {aiResult.draft.features.join(' • ')}
+                  </div>
+                )}
               </div>
+            )}
+
+            {/* المرحلة 2: مراجعة واعتماد بيانات الجملة */}
+            <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '18px' }}>
+              <div style={{ fontWeight: '700', fontSize: '15px', color: '#1E293B', marginBottom: '14px' }}>
+                📋 مراجعة وتعديل بيانات المنتج
+              </div>
+
               <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>وحدة البيع</label>
-                <select
-                  value={form.unit}
-                  onChange={e => setForm({ ...form, unit: e.target.value })}
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>اسم المنتج *</label>
+                {inp('اسم المنتج *', 'name')}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>الفئة *</label>
+                  {inp('الفئة (ملابس، أحذية، إلكترونيات...) *', 'category')}
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>مدينة التوريد</label>
+                  {inp('المدينة', 'city')}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>السعر الأساسي (درهم) *</label>
+                  {inp('السعر *', 'price', 'number')}
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>وحدة البيع</label>
+                  <select
+                    value={form.unit}
+                    onChange={e => setForm({ ...form, unit: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #ddd',
+                      fontSize: '14px',
+                      direction: 'rtl',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      marginBottom: '10px',
+                      fontFamily: "'Cairo', sans-serif",
+                      background: 'white'
+                    }}
+                  >
+                    <option value="قطعة">قطعة</option>
+                    <option value="درزينة (12 قطعة)">درزينة (12 قطعة)</option>
+                    <option value="كرتونة">كرتونة</option>
+                    <option value="طرد">طرد</option>
+                    <option value="حزمة">حزمة</option>
+                    <option value="كيلوغرام">كيلوغرام</option>
+                    <option value="متر">متر</option>
+                    <option value="أخرى">أخرى</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>الحد الأدنى (MOQ) *</label>
+                  {inp('أقل طلب', 'moq', 'number')}
+                </div>
+              </div>
+
+              {/* شرائح الأسعار (Tiered Pricing) */}
+              <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '10px', margin: '12px 0', border: '1px solid #E2E8F0' }}>
+                <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px', color: '#1E293B' }}>
+                  🏷️ أسعار الجملة حسب الكمية (Tiered Pricing)
+                </div>
+                <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 10px' }}>
+                  تخفيضات الكمية تشجع المشترين المهنيين على إرسال طلبات أكبر.
+                </p>
+
+                {priceTiers.map((tier, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '8px 12px', borderRadius: '6px', marginBottom: '6px', border: '1px solid #eee' }}>
+                    <span style={{ fontSize: '13px' }}>
+                      من <strong>{tier.minQty}</strong> {tier.maxQty ? `إلى ${tier.maxQty}` : 'فما فوق'} {form.unit}: <strong>{tier.price} درهم</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removePriceTier(idx)}
+                      style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '14px' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                  <input
+                    type="number"
+                    placeholder="من كمية"
+                    value={tierInput.minQty}
+                    onChange={e => setTierInput({ ...tierInput, minQty: e.target.value })}
+                    style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl' }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="إلى كمية (اختياري)"
+                    value={tierInput.maxQty}
+                    onChange={e => setTierInput({ ...tierInput, maxQty: e.target.value })}
+                    style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl' }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="السعر (درهم)"
+                    value={tierInput.price}
+                    onChange={e => setTierInput({ ...tierInput, price: e.target.value })}
+                    style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={addPriceTier}
+                    style={{ padding: '8px 14px', background: '#0F766E', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                  >
+                    + أضف
+                  </button>
+                </div>
+              </div>
+
+              {/* وصف المنتج */}
+              <div style={{ margin: '12px 0' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>
+                  وصف المنتج لتجار الجملة (استخرجه الذكاء الاصطناعي ويمكنك تعديله)
+                </label>
+                <textarea
+                  rows={3}
+                  value={form.description || ''}
+                  onChange={e => setForm({ ...form, description: e.target.value })}
+                  placeholder="مواصفات الخامة، المقاسات المتوفرة، طرق التوصيل..."
                   style={{
                     width: '100%',
                     padding: '10px 14px',
                     borderRadius: '8px',
                     border: '1px solid #ddd',
-                    fontSize: '14px',
+                    fontSize: '13px',
                     direction: 'rtl',
                     outline: 'none',
                     boxSizing: 'border-box',
-                    marginBottom: '10px',
-                    fontFamily: "'Cairo', sans-serif",
-                    background: 'white'
+                    fontFamily: "'Cairo', sans-serif"
+                  }}
+                />
+              </div>
+
+              {/* إقرار حقوق الصورة والمنتج (مطلوب حسب المخطط التأسيسي) */}
+              <div style={{ background: '#F1F5F9', padding: '12px 14px', borderRadius: '8px', margin: '14px 0', border: '1px solid #E2E8F0' }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontSize: '12px', color: '#334155', lineHeight: '1.5' }}>
+                  <input
+                    type="checkbox"
+                    checked={hasImageRights}
+                    onChange={e => setHasImageRights(e.target.checked)}
+                    style={{ marginTop: '2px' }}
+                  />
+                  <span>
+                    <strong>إقرار المورد:</strong> أقر بأنني أملك حق استخدام هذه الصورة وتوريد هذا المنتج، وبأن المواصفات والأسعار وموقع التوريد حقيقية ومطابقة للواقع (المورد يوافق صراحة على النشر).
+                  </span>
+                </label>
+              </div>
+
+              {/* أزرار النشر والحفظ */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                <button
+                  type="button"
+                  onClick={() => addProduct(false)}
+                  disabled={loading}
+                  style={{
+                    flex: 2,
+                    padding: '13px',
+                    background: '#C1272D',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    fontFamily: "'Cairo', sans-serif"
                   }}
                 >
-                  <option value="قطعة">قطعة</option>
-                  <option value="درزينة (12 قطعة)">درزينة (12 قطعة)</option>
-                  <option value="كرتونة">كرتونة</option>
-                  <option value="طرد">طرد</option>
-                  <option value="حزمة">حزمة</option>
-                  <option value="كيلوغرام">كيلوغرام</option>
-                  <option value="متر">متر</option>
-                  <option value="أخرى">أخرى</option>
-                </select>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>الحد الأدنى للطلب (MOQ) *</label>
-                {inp('أقل كمية للطلب', 'moq', 'number')}
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>المدينة</label>
-                {inp('المدينة', 'city')}
-              </div>
-            </div>
-
-            {/* شرائح الأسعار (Tiered Pricing) */}
-            <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '10px', margin: '12px 0', border: '1px solid #E2E8F0' }}>
-              <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '6px', color: '#1E293B' }}>
-                🏷️ أسعار الجملة للكميات الكبيرة (Tiered Pricing)
-              </div>
-              <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 10px' }}>
-                شجع المشترين على شراء كميات أكبر بتقديم تخفيض لكل شريحة.
-              </p>
-
-              {priceTiers.map((tier, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '8px 12px', borderRadius: '6px', marginBottom: '6px', border: '1px solid #eee' }}>
-                  <span style={{ fontSize: '13px' }}>
-                    من <strong>{tier.minQty}</strong> {tier.maxQty ? `إلى ${tier.maxQty}` : 'فما فوق'} {form.unit}: <strong>{tier.price} درهم</strong>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removePriceTier(idx)}
-                    style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '14px' }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-
-              <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                <input
-                  type="number"
-                  placeholder="من كمية"
-                  value={tierInput.minQty}
-                  onChange={e => setTierInput({ ...tierInput, minQty: e.target.value })}
-                  style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl' }}
-                />
-                <input
-                  type="number"
-                  placeholder="إلى كمية (اختياري)"
-                  value={tierInput.maxQty}
-                  onChange={e => setTierInput({ ...tierInput, maxQty: e.target.value })}
-                  style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl' }}
-                />
-                <input
-                  type="number"
-                  placeholder="السعر (درهم)"
-                  value={tierInput.price}
-                  onChange={e => setTierInput({ ...tierInput, price: e.target.value })}
-                  style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl' }}
-                />
+                  {loading ? 'جاري النشر...' : '🚀 اعتماد ونشر منتج الجملة الآن'}
+                </button>
                 <button
                   type="button"
-                  onClick={addPriceTier}
-                  style={{ padding: '8px 14px', background: '#0F766E', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                  onClick={() => addProduct(true)}
+                  disabled={loading}
+                  style={{
+                    flex: 1,
+                    padding: '13px',
+                    background: '#F1F5F9',
+                    color: '#475569',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    fontFamily: "'Cairo', sans-serif"
+                  }}
                 >
-                  + أضف
+                  💾 حفظ كمسودة
                 </button>
               </div>
             </div>
-
-            {/* صورة المنتج وتحسين AI */}
-            <div style={{ margin: '14px 0' }}>
-              <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '6px' }}>صورة المنتج:</label>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <label style={{ flex: 1, padding: '10px', background: '#f5f5f5', border: '1px dashed #ccc', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', fontSize: '13px' }}>
-                  📁 رفع صورة
-                  <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowImagePicker(true)}
-                  style={{ padding: '10px 14px', background: '#E6F1FB', color: '#185FA5', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
-                >
-                  🔍 صور AI
-                </button>
-              </div>
-            </div>
-
-            {preview && (
-              <div style={{ textAlign: 'center', margin: '14px 0' }}>
-                <img src={preview} alt="معاينة" style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px' }} />
-                {imageFile && (
-                  <button
-                    type="button"
-                    onClick={enhanceWithAI}
-                    disabled={imgLoading}
-                    style={{ display: 'block', width: '100%', marginTop: '8px', padding: '10px', background: '#25D366', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
-                  >
-                    {imgLoading ? '⏳ AI كيحسن الصورة والتسعير...' : '✨ تحسين بالذكاء الاصطناعي واقتراح أسعار الجملة'}
-                  </button>
-                )}
-              </div>
-            )}
-
-            <button
-              onClick={addProduct}
-              disabled={loading}
-              style={{ width: '100%', padding: '12px', background: '#C1272D', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginTop: '14px' }}
-            >
-              {loading ? 'جاري الإضافة...' : 'نشر منتج الجملة الآن'}
-            </button>
           </div>
         )}
 

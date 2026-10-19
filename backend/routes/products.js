@@ -181,6 +181,8 @@ router.put('/:id', authenticate, validateMongoId, validateProductUpdate, asyncHa
   if (unit !== undefined) product.unit = unit
   if (priceTiers !== undefined) product.priceTiers = priceTiers
   if (inStock !== undefined) product.inStock = inStock
+  if (req.body.hasImageRights !== undefined) product.hasImageRights = req.body.hasImageRights
+  if (req.body.isDraft !== undefined) product.isDraft = req.body.isDraft
 
   await product.save()
 
