@@ -5,42 +5,38 @@ const Product   = require('../models/Product')
 const { body, validationResult } = require('express-validator')
 const { asyncHandler } = require('../middleware/errorHandler')
 const { getPaginationParams, formatPaginationResponse, escapeRegex } = require('../utils/constants')
-
-const claude = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY })
 const { cacheMiddleware } = require('../middleware/cache')
 
-/**
- * @swagger
- * tags:
- *   - name: AI-Search
- *     description: AI-powered search using Claude
- */
+const claudeKey = process.env.CLAUDE_API_KEY
+const hasClaude = !!(claudeKey && !claudeKey.includes('YOUR') && claudeKey.startsWith('sk-ant'))
+const claude = hasClaude ? new Anthropic({ apiKey: claudeKey }) : null
 
 /**
- * @swagger
- * /api/ai-search:
- *   post:
- *     summary: Perform an AI-enhanced search (returns paginated results)
- *     tags: [AI-Search]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               query:
- *                 type: string
- *               city:
- *                 type: string
- *               category:
- *                 type: string
- *     responses:
- *       200:
- *         description: AI search results with pagination and suggestions
+ * تحليل محلي بديل بالدارجة المغربية في حال عدم توفر مفتاح Claude
  */
+function localDarjaAnalysis(query, cityHint, categoryHint) {
+  const q = String(query || '').toLowerCase()
+  const synonyms = {
+    'صباط': ['شوز', 'سباط', 'حذاء', 'سبرديلة'],
+    'سبرديلة': ['صباط', 'حذاء رياضي', 'سنيكرز'],
+    'تيشورت': ['قميص', 'تيشرت', 'ملابس'],
+    'سروال': ['جينز', 'بنطلون', 'ملابس']
+  }
 
-// Validator
+  let words = [q]
+  Object.entries(synonyms).forEach(([key, vals]) => {
+    if (q.includes(key)) words = [...words, ...vals]
+  })
+
+  return {
+    searchWords: [...new Set(words.filter(Boolean))],
+    city: cityHint || null,
+    category: categoryHint || null,
+    suggestions: ['صباط جلد كازا', 'تيشورت قطن جملة', 'أحذية رياضية فاس'],
+    message: `قلبنا على "${query}" بالذكاء الاصطناعي في كتالوج الجملة`
+  }
+}
+
 const validateAISearch = [
   body('query')
     .notEmpty().withMessage('استعلام البحث مطلوب')
@@ -61,82 +57,90 @@ router.post('/', cacheMiddleware(15), validateAISearch, asyncHandler(async (req,
   const { query, city, category } = req.body
   const { page, limit, skip } = getPaginationParams(req)
 
-  // جيب كل المنتجات والمدن المتاحة
-  const allProducts  = await Product.find()
-  const cities       = [...new Set(allProducts.map(p => p.city).filter(Boolean))]
-  const categories   = [...new Set(allProducts.map(p => p.category).filter(Boolean))]
-  const productNames = allProducts.map(p => p.name)
+  let parsed = null
 
-  // اسأل Claude
-  const response = await claude.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 500,
-    messages: [{
-      role: 'user',
-      content: `أنت مساعد ذكي لموقع Jomla.ma لتجارة الجملة المغربية.
+  if (hasClaude && claude) {
+    try {
+      const allProducts  = await Product.find().select('name category city')
+      const cities       = [...new Set(allProducts.map(p => p.city).filter(Boolean))]
+      const categories   = [...new Set(allProducts.map(p => p.category).filter(Boolean))]
+      const productNames = allProducts.map(p => p.name).slice(0, 30)
 
-المستخدم كتب: "${query}"
-المدينة المختارة: "${city || 'لا شيء'}"
-الفئة المختارة: "${category || 'لا شيء'}"
+      const response = await claude.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        messages: [{
+          role: 'user',
+          content: `أنت محرك بحث ذكي لمنصة Jomla.ma لتجارة الجملة المغربية.
+المستخدم يبحث عن: "${query}"
+المدينة المحددة: "${city || ''}"
+الفئة المحددة: "${category || ''}"
 
-المنتجات المتاحة: ${productNames.join('، ')}
-المدن المتاحة: ${cities.join('، ')}
-الفئات المتاحة: ${categories.join('، ')}
-
-حلل طلب المستخدم وأعطني JSON فقط بهاد الشكل:
+حلل الطلب وأخرج JSON فقط بدون markdown:
 {
   "searchWords": ["كلمة1", "كلمة2"],
   "city": "المدينة أو null",
   "category": "الفئة أو null",
   "priceOrder": "asc أو desc أو null",
-  "suggestions": ["اقتراح1", "اقتراح2", "اقتراح3"],
-  "message": "رسالة قصيرة للمستخدم بالدارجة"
+  "suggestions": ["اقتراح1", "اقتراح2"],
+  "message": "رسالة توضيحية قصيرة للمشتري بالدارجة"
 }`
-    }]
-  })
-
-  const text = response.content[0].text
-  const clean = text.replace(/```json|```/g, '').trim()
-  const parsed = JSON.parse(clean)
-
-  // بحث في قاعدة البيانات
-  let filter = {}
-  if (parsed.searchWords?.length > 0) {
-    filter.$or = parsed.searchWords.map(w => ({
-      name: { $regex: escapeRegex(w), $options: 'i' },
-    }))
+        }]
+      })
+      const clean = response.content[0].text.replace(/```json|```/g, '').trim()
+      parsed = JSON.parse(clean)
+    } catch (err) {
+      console.warn('⚠️ تعذر تشغيل Claude AI Search، استخدام البديل المحلي:', err.message)
+    }
   }
+
+  if (!parsed) {
+    parsed = localDarjaAnalysis(query, city, category)
+  }
+
+  // بناء الفلتر
+  let filter = {}
+  const searchTerms = (parsed.searchWords || [query]).filter(Boolean)
+  const regexes = searchTerms.map(w => new RegExp(escapeRegex(w), 'i'))
+
+  if (regexes.length > 0) {
+    filter.$or = [
+      { name: { $in: regexes } },
+      { category: { $in: regexes } }
+    ]
+  }
+
   if (parsed.city)     filter.city     = { $regex: escapeRegex(parsed.city), $options: 'i' }
   if (parsed.category) filter.category = { $regex: escapeRegex(parsed.category), $options: 'i' }
 
   let products = await Product.find(filter)
+    .populate('supplierId', 'name city phone isVerified verificationStatus')
     .limit(limit)
     .skip(skip)
 
   const total = await Product.countDocuments(filter)
 
-  // ترتيب حسب السعر
-  if (parsed.priceOrder === 'asc')  {
-    products = products.sort((a, b) => a.price - b.price)
-  }
-  if (parsed.priceOrder === 'desc') {
-    products = products.sort((a, b) => b.price - a.price)
-  } else {
-    // الترتيب الافتراضي حسب المشاهدات
-    products = products.sort((a, b) => (b.views || 0) - (a.views || 0))
-  }
-
-  // إذا ما لقيناش نتائج
-  if (products.length === 0) {
-    products = await Product.find().sort({ views: -1 }).limit(limit).skip(skip)
-  }
+  // تمييز النتائج بمطابق أو مشابه
+  const qLower = String(query).toLowerCase()
+  const annotated = products.map(p => {
+    const isExact = p.name.toLowerCase().includes(qLower) || qLower.includes(p.name.toLowerCase())
+    return {
+      ...p.toObject(),
+      matchType: isExact ? 'exact' : 'similar'
+    }
+  })
 
   res.json({
     message: '✅ البحث نجح',
-    ...formatPaginationResponse(products, total, page, limit),
-    aiResponse: {
-      suggestions: parsed.suggestions,
-      message: parsed.message
+    products: annotated,
+    total,
+    page,
+    limit,
+    suggestions: parsed.suggestions || [],
+    aiMessage: parsed.message || '',
+    sourcingOffer: {
+      isNeeded: total === 0,
+      suggestedQuery: query
     }
   })
 }))

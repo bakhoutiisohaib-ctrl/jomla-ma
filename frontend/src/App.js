@@ -5,6 +5,7 @@ import LoginPage from './components/auth/LoginPage'
 import SupplierPage from './components/suppliers/SupplierPage'
 import SupplierDashboard from './components/suppliers/SupplierDashboard'
 import AdminDashboard from './components/admin/AdminDashboard'
+import SourcingModal from './components/products/SourcingModal'
 import { API } from './api/config'
 
 export default function App() {
@@ -18,6 +19,10 @@ export default function App() {
   const [supplier, setSupplier] = useState(null)
   const [selectedSupplier, setSelectedSupplier] = useState(null)
   const [debounceTimer, setDebounceTimer] = useState(null)
+  const [showSourcing, setShowSourcing] = useState(false)
+  const [sourcingData, setSourcingData] = useState({})
+  const [searchMeta, setSearchMeta] = useState(null)
+  const [externalDiscovery, setExternalDiscovery] = useState(null)
   const [filterCity] = useState('')
   const [filterCategory] = useState('')
   const [filterPrice] = useState('')
@@ -96,6 +101,14 @@ export default function App() {
 
       if (data.suggestions?.length > 0) setSuggestions(data.suggestions)
       if (data.message) setAiMessage(data.message)
+      setSearchMeta({
+        type: 'text',
+        query: q,
+        count: results.length
+      })
+      if (results.length === 0) {
+        setSourcingData({ productName: q })
+      }
     } catch {
       // fallback للبحث العادي
       try {
@@ -135,14 +148,28 @@ export default function App() {
     const file = e.target.files[0]
     if (!file) return
     setImageLoading(true)
-    setImageMsg('')
+    setImageMsg('🧠 جاري فحص الصورة وتصنيف المنتجات المطابقة والمشابهة...')
+    setSearchMeta(null)
+    setExternalDiscovery(null)
     const formData = new FormData()
     formData.append('image', file)
     try {
       const res = await fetch(`${API}/image-search`, { method: 'POST', body: formData })
       const data = await res.json()
-      setProducts(Array.isArray(data.products) ? data.products : [])
+      const prods = Array.isArray(data.products) ? data.products : []
+      setProducts(prods)
       setImageMsg(data.message)
+      setSearchMeta({
+        type: 'image',
+        detected: data.detectedProduct,
+        category: data.detectedCategory,
+        exactCount: data.exactCount || 0,
+        similarCount: data.similarCount || 0
+      })
+      if (data.externalDiscovery) setExternalDiscovery(data.externalDiscovery)
+      if (data.sourcingOffer?.suggestedSourcing) {
+        setSourcingData(data.sourcingOffer.suggestedSourcing)
+      }
     } catch {
       setImageMsg('❌ تعذر إتمام البحث بالصورة')
     } finally {
@@ -163,6 +190,28 @@ export default function App() {
       <div style={{ background: '#C1272D', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ color: 'white', fontSize: '20px', fontWeight: '700' }}>🇲🇦 Jomla.ma</span>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            onClick={() => {
+              setSourcingData({ productName: query || '' })
+              setShowSourcing(true)
+            }}
+            style={{
+              background: '#E85D24',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '7px 12px',
+              fontSize: '12px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              fontFamily: "'Cairo', sans-serif",
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            📦 طلب توريد خاص
+          </button>
           <button
             onClick={() => setPage('admin')}
             style={{
@@ -405,6 +454,94 @@ export default function App() {
 
       {/* Products Grid */}
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '24px 16px' }}>
+        {searchMeta?.type === 'image' && (
+          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px 20px', marginBottom: '20px', direction: 'rtl' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <span style={{ fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>
+                  نتائج الفحص البصري الذكي: {searchMeta.detected ? `"${searchMeta.detected}"` : ''}
+                </span>
+                <span style={{ fontSize: '12px', color: '#64748B', marginRight: '8px' }}>
+                  ({searchMeta.category})
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <span style={{ background: '#DCFCE7', color: '#166534', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '700' }}>
+                  🎯 مطابق تماماً: {searchMeta.exactCount || 0}
+                </span>
+                <span style={{ background: '#E0F2FE', color: '#0369A1', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '700' }}>
+                  ✨ مشابه: {searchMeta.similarCount || 0}
+                </span>
+              </div>
+            </div>
+
+            {searchMeta.exactCount === 0 && (
+              <div style={{ marginTop: '12px', padding: '10px 14px', background: '#FEF3C7', borderRadius: '8px', borderRight: '4px solid #F59E0B', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ fontSize: '13px', color: '#92400E' }}>
+                  💡 لم نجد تطابقاً بنسبة 100% في الكتالوج الحالي. نعرض لك بدائل مشابهة، أو يمكنك طلب توفير المنتج مباشرة من المصانع:
+                </span>
+                <button
+                  onClick={() => {
+                    setSourcingData({ productName: searchMeta.detected || '', category: searchMeta.category || '' })
+                    setShowSourcing(true)
+                  }}
+                  style={{
+                    background: '#B45309',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    fontFamily: "'Cairo', sans-serif"
+                  }}
+                >
+                  📦 تقديم طلب توريد خاص
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {externalDiscovery && (
+          <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '12px', padding: '14px 18px', marginBottom: '20px', direction: 'rtl' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <span style={{ background: '#DBEAFE', color: '#1E40AF', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+                خارجي - تجريبي
+              </span>
+              <strong style={{ fontSize: '14px', color: '#1E3A8A' }}>
+                استكشاف مصادر خارجية مفتوحة للمنتج
+              </strong>
+            </div>
+            <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#3B82F6', lineHeight: '1.5' }}>
+              تنبيه: هذه الروابط مرجعية استكشافية من مصادر عامة ولا تمثل مخزوناً موثقاً أو ضماناً تجارياً من Jomla.ma.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {externalDiscovery.externalSources?.map((src, i) => (
+                <a
+                  key={i}
+                  href={src.searchUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    background: 'white',
+                    border: '1px solid #93C5FD',
+                    color: '#1D4ED8',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    textDecoration: 'none',
+                    fontWeight: '600'
+                  }}
+                >
+                  🔗 فحص في {src.sourceName}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', direction: 'rtl' }}>
           <h2 style={{ margin: '0', fontSize: '16px', color: '#333' }}>
             {loading ? 'جاري البحث...' : `${products.length} منتج`}
@@ -416,8 +553,31 @@ export default function App() {
           ))}
         </div>
         {products.length === 0 && !loading && (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#888', direction: 'rtl' }}>
-            ما كاين والو — جرب كلمة أخرى
+          <div style={{ textAlign: 'center', padding: '40px 20px', background: 'white', borderRadius: '12px', marginTop: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', direction: 'rtl' }}>
+            <div style={{ fontSize: '38px', marginBottom: '10px' }}>📦</div>
+            <h3 style={{ margin: '0 0 8px', fontSize: '18px', color: '#1E293B' }}>المنتج غير متوفر حالياً في الكتالوج</h3>
+            <p style={{ margin: '0 0 18px', fontSize: '14px', color: '#64748B' }}>
+              ما لقيتيش السلعة لي كتقلب عليها؟ اطرح طلب توريد خاص وسنربطك بالمصانع والموردين المغاربة مباشرة.
+            </p>
+            <button
+              onClick={() => {
+                setSourcingData({ productName: query || searchMeta?.detected || '' })
+                setShowSourcing(true)
+              }}
+              style={{
+                background: '#C1272D',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 22px',
+                fontSize: '14px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                fontFamily: "'Cairo', sans-serif"
+              }}
+            >
+              📦 تقديم طلب توريد خاص (Sourcing Request)
+            </button>
           </div>
         )}
       </div>
@@ -450,6 +610,14 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {showSourcing && (
+        <SourcingModal
+          initialData={sourcingData}
+          onClose={() => setShowSourcing(false)}
+          onSuccess={() => setShowSourcing(false)}
+        />
+      )}
     </div>
   )
 }

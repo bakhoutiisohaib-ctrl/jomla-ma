@@ -93,6 +93,11 @@ app.use('/api/rfq', rfqRoutes)
 const adminRoutes = require('./routes/admin')
 app.use('/api/admin', adminRoutes)
 
+// Sourcing route (طلبات التوريد للمنتجات غير المتوفرة)
+const sourcingRoutes = require('./routes/sourcing')
+app.use('/api/sourcing', sourcingRoutes)
+
+
 
 // Swagger UI
 try {

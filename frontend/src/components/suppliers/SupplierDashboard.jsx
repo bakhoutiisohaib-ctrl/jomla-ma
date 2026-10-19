@@ -37,6 +37,10 @@ export default function SupplierDashboard({ supplier, onLogout, onGoAdmin }) {
   const [imageFile, setImageFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [showImagePicker, setShowImagePicker] = useState(false)
+  const [sourcingRequests, setSourcingRequests] = useState([])
+  const [sourcingLoading, setSourcingLoading] = useState(false)
+  const [selectedSourcing, setSelectedSourcing] = useState(null)
+  const [sourcingQuote, setSourcingQuote] = useState({ unitPrice: '', deliveryDays: 3, notes: '' })
 
   const fetchMyProducts = useCallback(async () => {
     try {
@@ -100,12 +104,26 @@ export default function SupplierDashboard({ supplier, onLogout, onGoAdmin }) {
     }
   }, [])
 
+  const fetchSourcingRequests = useCallback(async () => {
+    setSourcingLoading(true)
+    try {
+      const res = await fetch(`${API}/sourcing?status=open`)
+      const data = await res.json()
+      setSourcingRequests(Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []))
+    } catch {
+      setSourcingRequests([])
+    } finally {
+      setSourcingLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     fetchMyProducts()
     fetchMyReviews()
     fetchMyRfqs()
     fetchMyProfile()
-  }, [fetchMyProducts, fetchMyReviews, fetchMyRfqs, fetchMyProfile])
+    fetchSourcingRequests()
+  }, [fetchMyProducts, fetchMyReviews, fetchMyRfqs, fetchMyProfile, fetchSourcingRequests])
 
   async function submitVerification(e) {
     if (e && e.preventDefault) e.preventDefault()
@@ -302,6 +320,41 @@ export default function SupplierDashboard({ supplier, onLogout, onGoAdmin }) {
     }
   }
 
+  async function submitSourcingQuote(sourcingId) {
+    if (!sourcingQuote.unitPrice) {
+      return setMsg('⚠️ يرجى إدخال سعر الوحدة المعروض')
+    }
+    const token = localStorage.getItem('supplierToken')
+    try {
+      const res = await fetch(`${API}/sourcing/${sourcingId}/quote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          unitPrice: Number(sourcingQuote.unitPrice),
+          deliveryDays: Number(sourcingQuote.deliveryDays) || 3,
+          notes: sourcingQuote.notes
+        })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setMsg(data.message)
+        setSelectedSourcing(null)
+        setSourcingQuote({ unitPrice: '', deliveryDays: 3, notes: '' })
+        fetchSourcingRequests()
+        if (data.buyerWhatsapp) {
+          window.open(data.buyerWhatsapp, '_blank')
+        }
+      } else {
+        setMsg(data.message || '⚠️ تعذر تقديم عرض التوريد')
+      }
+    } catch {
+      setMsg('❌ خطأ في الاتصال بالخادم')
+    }
+  }
+
   const inp = (ph, key, type = 'text') => (
     <input
       type={type}
@@ -326,6 +379,7 @@ export default function SupplierDashboard({ supplier, onLogout, onGoAdmin }) {
   const tabs = [
     { id: 'overview', label: '📊 نظرة عامة' },
     { id: 'rfq',      label: `📑 طلبات الأسعار RFQ (${rfqCounts.pending || 0})` },
+    { id: 'sourcing', label: `🎯 فرص التوريد بالسوق (${sourcingRequests.length})` },
     { id: 'verification', label: profile.isVerified ? '🛡️ توثيق المتجر (موثق)' : (profile.verificationStatus === 'pending' ? '⏳ توثيق المتجر (مراجعة)' : '🛡️ توثيق المتجر') },
     { id: 'products', label: '📦 منتجاتي' },
     { id: 'add',      label: '➕ إضافة منتج جملة' },
@@ -692,6 +746,205 @@ export default function SupplierDashboard({ supplier, onLogout, onGoAdmin }) {
                           </button>
                         )}
                       </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Market Sourcing Opportunities Tab */}
+        {activeTab === 'sourcing' && (
+          <div style={{ direction: 'rtl' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <h2 style={{ fontSize: '18px', margin: '0 0 4px' }}>🎯 فرص التوريد المفتوحة في السوق المغربي</h2>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>
+                  طلبيات جملة وبحث عن منتجات يطرحها مشترون وتجار تجزئة لم يجدوها بالكتالوج. قدّم عرضك واكسب زبائن جدد.
+                </p>
+              </div>
+              <button
+                onClick={fetchSourcingRequests}
+                style={{
+                  padding: '7px 14px',
+                  background: '#F1F5F9',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}
+              >
+                🔄 تحديث الفرص
+              </button>
+            </div>
+
+            {sourcingLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>جاري تحميل فرص التوريد...</div>
+            ) : sourcingRequests.length === 0 ? (
+              <div style={{ background: 'white', borderRadius: '16px', padding: '60px 20px', textAlign: 'center', color: '#888' }}>
+                <div style={{ fontSize: '40px', marginBottom: '10px' }}>📦</div>
+                <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>لا توجد طلبات توريد مفتوحة حالياً</div>
+                <div style={{ fontSize: '13px', marginTop: '4px' }}>عندما يطلب مشترٍ منتجاً غير متوفر، سيظهر هنا مباشرة لتزويده بعرضك</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {sourcingRequests.map(s => {
+                  const whatsappBuyer = `https://wa.me/${s.buyerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                    `السلام عليكم أخي ${s.buyerName}، معكم متجر ${supplier.name} من منصة Jomla.ma بخصوص طلب التوريد لمنتج "${s.productName}"...`
+                  )}`
+
+                  return (
+                    <div
+                      key={s._id}
+                      style={{
+                        background: 'white',
+                        borderRadius: '14px',
+                        padding: '20px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                        border: '1px solid #E2E8F0'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '16px', fontWeight: '700', color: '#0F172A' }}>{s.productName}</span>
+                            <span style={{ fontSize: '11px', background: '#E0F2FE', color: '#0369A1', padding: '2px 8px', borderRadius: '12px' }}>{s.category}</span>
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
+                            رقم الطلب: #{s._id.slice(-6)} | {new Date(s.createdAt).toLocaleDateString('ar-MA')} | عروض الموردين: {s.quotesCount || 0}
+                          </div>
+                        </div>
+
+                        <span
+                          style={{
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            background: s.status === 'open' ? '#FEF3C7' : '#E1F5EE',
+                            color: s.status === 'open' ? '#B45309' : '#0F766E'
+                          }}
+                        >
+                          {s.status === 'open' ? '🟢 مفتوح للعروض' : '🔵 تم تقديم عروض'}
+                        </span>
+                      </div>
+
+                      <div style={{ background: '#F8FAFC', padding: '12px 16px', borderRadius: '10px', marginBottom: '14px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', fontSize: '13px' }}>
+                        <div><strong>المشتري:</strong> {s.buyerName}</div>
+                        <div><strong>المدينة:</strong> {s.buyerCity || 'المغرب'}</div>
+                        <div><strong>الكمية المطلوبة:</strong> <span style={{ color: '#C1272D', fontWeight: '700' }}>{s.quantity} {s.unit || 'قطعة'}</span></div>
+                        {s.targetPrice ? (
+                          <div><strong>السعر المستهدف:</strong> {s.targetPrice} درهم / {s.unit || 'قطعة'}</div>
+                        ) : (
+                          <div><strong>السعر المستهدف:</strong> مفتوح لأفضل عرض</div>
+                        )}
+                      </div>
+
+                      {s.notes && (
+                        <div style={{ fontSize: '13px', color: '#334155', marginBottom: '14px', background: '#FFFBEB', padding: '10px 14px', borderRadius: '8px', borderRight: '4px solid #F59E0B' }}>
+                          <strong>مواصفات المشتري:</strong> {s.notes}
+                        </div>
+                      )}
+
+                      {/* Modal or expand form to quote */}
+                      {selectedSourcing === s._id ? (
+                        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '16px', borderRadius: '10px', marginBottom: '12px' }}>
+                          <h4 style={{ margin: '0 0 10px', fontSize: '14px', color: '#166534' }}>
+                            تقديم عرض توريد بالجملة لـ "{s.productName}"
+                          </h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                            <div>
+                              <label style={{ fontSize: '12px', color: '#166534', fontWeight: '600' }}>سعر الوحدة المعروض (درهم) *</label>
+                              <input
+                                type="number"
+                                placeholder={s.targetPrice ? `مثال: ${s.targetPrice}` : 'مثال: 45'}
+                                value={sourcingQuote.unitPrice}
+                                onChange={e => setSourcingQuote({ ...sourcingQuote, unitPrice: e.target.value })}
+                                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #86EFAC', fontSize: '13px', direction: 'rtl', boxSizing: 'border-box' }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: '12px', color: '#166534', fontWeight: '600' }}>مدة التجهيز والتسليم (أيام)</label>
+                              <input
+                                type="number"
+                                value={sourcingQuote.deliveryDays}
+                                onChange={e => setSourcingQuote({ ...sourcingQuote, deliveryDays: e.target.value })}
+                                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #86EFAC', fontSize: '13px', direction: 'rtl', boxSizing: 'border-box' }}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ marginBottom: '10px' }}>
+                            <label style={{ fontSize: '12px', color: '#166534', fontWeight: '600' }}>ملاحظات العرض / شروط الدفع</label>
+                            <input
+                              type="text"
+                              placeholder="مثال: جاهز للشحن فوراً مع فاتورة نظامية"
+                              value={sourcingQuote.notes}
+                              onChange={e => setSourcingQuote({ ...sourcingQuote, notes: e.target.value })}
+                              style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #86EFAC', fontSize: '13px', direction: 'rtl', boxSizing: 'border-box' }}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => submitSourcingQuote(s._id)}
+                              style={{ padding: '8px 16px', background: '#16A34A', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
+                            >
+                              🚀 إرسال العرض للمشتري
+                            </button>
+                            <button
+                              onClick={() => setSelectedSourcing(null)}
+                              style={{ padding: '8px 14px', background: '#E2E8F0', color: '#475569', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}
+                            >
+                              إلغاء
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              setSelectedSourcing(s._id)
+                              setSourcingQuote({
+                                unitPrice: s.targetPrice || '',
+                                deliveryDays: 3,
+                                notes: ''
+                              })
+                            }}
+                            style={{
+                              padding: '9px 18px',
+                              background: '#E85D24',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: '700'
+                            }}
+                          >
+                            💼 قدّم عرض سعر توريد
+                          </button>
+                          <a
+                            href={whatsappBuyer}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              padding: '9px 18px',
+                              background: '#25D366',
+                              color: 'white',
+                              borderRadius: '8px',
+                              textDecoration: 'none',
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            💬 تواصل مباشر عبر واتساب
+                          </a>
+                        </div>
+                      )}
                     </div>
                   )
                 })}

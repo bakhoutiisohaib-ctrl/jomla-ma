@@ -63,6 +63,38 @@ export default function ProductCard({ product, onViewSupplier, onView }) {
                 🛡️ موثق
               </span>
             )}
+            {product.matchType === 'exact' && (
+              <span
+                title="مطابق تماماً لما بحثت عنه"
+                style={{
+                  fontSize: '11px',
+                  color: '#15803D',
+                  background: '#DCFCE7',
+                  border: '1px solid #86EFAC',
+                  padding: '2px 7px',
+                  borderRadius: '20px',
+                  fontWeight: '700'
+                }}
+              >
+                🎯 مطابق
+              </span>
+            )}
+            {product.matchType === 'similar' && (
+              <span
+                title="منتج مشابه في نفس الفئة"
+                style={{
+                  fontSize: '11px',
+                  color: '#4338CA',
+                  background: '#EEF2FF',
+                  border: '1px solid #C7D2FE',
+                  padding: '2px 7px',
+                  borderRadius: '20px',
+                  fontWeight: '600'
+                }}
+              >
+                ✨ مشابه
+              </span>
+            )}
           </div>
           <span
             style={{
