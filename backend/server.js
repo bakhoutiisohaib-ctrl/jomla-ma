@@ -101,6 +101,10 @@ app.use('/api/sourcing', sourcingRoutes)
 const reportsRoutes = require('./routes/reports')
 app.use('/api/reports', reportsRoutes)
 
+// Independent Stores route (المتاجر التجارية المستقلة)
+const storesRoutes = require('./routes/stores')
+app.use('/api/stores', storesRoutes)
+
 
 
 // Swagger UI

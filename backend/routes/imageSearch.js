@@ -2,6 +2,7 @@ const express = require('express')
 const router  = express.Router()
 const multer  = require('multer')
 const Product = require('../models/Product')
+const ExternalDiscoveryResult = require('../models/ExternalDiscoveryResult')
 const Anthropic = require('@anthropic-ai/sdk')
 const { asyncHandler } = require('../middleware/errorHandler')
 const { getPaginationParams, formatPaginationResponse, escapeRegex } = require('../utils/constants')
@@ -210,7 +211,21 @@ router.post('/', upload.single('image'), asyncHandler(async (req, res) => {
     externalDiscovery: {
       enabled: exactMatches.length === 0,
       notice: 'روابط خارجية تجريبية للمقارنة والاستكشاف فقط',
-      searchUrl: `https://www.google.com/search?tbm=isch&q=${encodeURIComponent((analysis.exactName || '') + ' wholesale morocco')}`
+      searchUrl: `https://www.google.com/search?tbm=isch&q=${encodeURIComponent((analysis.exactName || '') + ' wholesale morocco')}`,
+      externalSources: [
+        {
+          sourceName: 'Google Shopping Reference',
+          sourceType: 'search_engine',
+          searchUrl: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent((analysis.exactName || '') + ' wholesale morocco')}`,
+          isVerified: false
+        },
+        {
+          sourceName: 'Google Images Web Reference',
+          sourceType: 'search_engine',
+          searchUrl: `https://www.google.com/search?tbm=isch&q=${encodeURIComponent((analysis.exactName || '') + ' wholesale morocco')}`,
+          isVerified: false
+        }
+      ]
     }
   })
 }))

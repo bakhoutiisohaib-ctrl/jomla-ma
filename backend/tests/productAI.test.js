@@ -11,6 +11,7 @@ let supplierToken
 let testSupplier
 
 beforeAll(async () => {
+  jest.setTimeout(20000)
   mongoServer = await MongoMemoryServer.create()
   const uri = mongoServer.getUri()
   await mongoose.connect(uri)

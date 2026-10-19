@@ -1,6 +1,8 @@
 const express = require('express')
 const router  = express.Router()
 const QuoteRequest = require('../models/QuoteRequest')
+const QuoteOffer = require('../models/QuoteOffer')
+const MessageThread = require('../models/MessageThread')
 const Product = require('../models/Product')
 const { authenticate } = require('../middleware/auth')
 const { body, validationResult } = require('express-validator')
@@ -54,9 +56,27 @@ router.post('/', validateRFQ, asyncHandler(async (req, res) => {
 
   await rfq.save()
 
+  // إنشاء قناة محادثة وتفاوض فورية للطلب (MessageThread)
+  const thread = new MessageThread({
+    rfqId: rfq._id,
+    productId,
+    supplierId: product.supplierId,
+    buyerName,
+    buyerPhone,
+    subject: `طلب عرض سعر #${String(rfq._id).slice(-6)} - ${product.name}`,
+    messages: [{
+      senderRole: 'buyer',
+      senderName: buyerName,
+      senderPhone: buyerPhone,
+      content: notes ? `الكمية المطلوبة: ${quantity} ${product.unit || 'قطعة'}. ملاحظات: ${notes}` : `الكمية المطلوبة: ${quantity} ${product.unit || 'قطعة'}`
+    }]
+  })
+  await thread.save()
+
   res.status(201).json({
     message: '✅ تم إرسال طلب عرض السعر (RFQ) بنجاح للمورد',
-    rfq
+    rfq,
+    threadId: thread._id
   })
 }))
 
@@ -108,6 +128,34 @@ router.put('/:id/respond', authenticate, asyncHandler(async (req, res) => {
       notes: notes || '',
       respondedAt: new Date()
     }
+
+    // حفظ عرض السعر المستقل (QuoteOffer) لدعم تاريخ العروض والتفاوض
+    const quoteOffer = new QuoteOffer({
+      rfqId: rfq._id,
+      supplierId: rfq.supplierId,
+      unitPrice: price,
+      totalPrice: price * rfq.quantity,
+      quantity: rfq.quantity,
+      deliveryDays: deliveryDays ? Number(deliveryDays) : 3,
+      notes: notes || '',
+      status: 'active'
+    })
+    await quoteOffer.save()
+
+    // تحديث وإشعار في قناة المحادثة (MessageThread)
+    await MessageThread.findOneAndUpdate(
+      { rfqId: rfq._id },
+      {
+        $push: {
+          messages: {
+            senderRole: 'supplier',
+            senderName: req.supplier.name || 'المورد',
+            content: `عرض السعر المقدم: ${price} درهم / وحدة (المجموع: ${price * rfq.quantity} درهم). التسليم خلال ${deliveryDays || 3} أيام. ${notes || ''}`
+          }
+        },
+        $set: { lastMessageAt: new Date() }
+      }
+    )
   }
 
   rfq.status = newStatus
@@ -151,6 +199,27 @@ router.put('/:id/action', asyncHandler(async (req, res) => {
   rfq.status = isAccepted ? 'accepted' : 'rejected'
   await rfq.save()
 
+  // تحديث حالة العرض المستقل
+  await QuoteOffer.findOneAndUpdate(
+    { rfqId: rfq._id, status: 'active' },
+    { status: isAccepted ? 'accepted' : 'rejected' }
+  )
+
+  // تسجيل القرار في المحادثة
+  await MessageThread.findOneAndUpdate(
+    { rfqId: rfq._id },
+    {
+      $push: {
+        messages: {
+          senderRole: 'buyer',
+          senderName: rfq.buyerName,
+          content: isAccepted ? '🎉 قبلت عرض السعر المقدم، جاهز لإتمام الصفقة!' : '❌ تم رفض عرض السعر الحالي.'
+        }
+      },
+      $set: { lastMessageAt: new Date() }
+    }
+  )
+
   const whatsappSupplier = isAccepted && rfq.supplierId?.phone
     ? `https://wa.me/${rfq.supplierId.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
         `السلام عليكم، أنا المشتري ${rfq.buyerName}. لقد قبلت عرض سعركم لطلب #${String(rfq._id).slice(-6)} لمنتج "${rfq.productId?.name}" بسعر ${rfq.offer?.unitPrice} درهم. يرجى التنسيق لبدء التجهيز والتوصيل.`
@@ -161,6 +230,44 @@ router.put('/:id/action', asyncHandler(async (req, res) => {
     message: isAccepted ? '🎉 مبروك! تم قبول عرض السعر بنجاح، يمكنك الآن التواصل مباشرة لإتمام الصفقة.' : 'تم رفض عرض السعر.',
     rfq,
     whatsappSupplier
+  })
+}))
+
+// 6. جلب سجل المحادثة الثنائية وعروض الأسعار المستقلة للطلب (MessageThread & QuoteOffers)
+router.get('/:id/thread', asyncHandler(async (req, res) => {
+  const thread = await MessageThread.findOne({ rfqId: req.params.id })
+  const offers = await QuoteOffer.find({ rfqId: req.params.id }).sort({ createdAt: -1 })
+
+  res.json({
+    thread,
+    offers
+  })
+}))
+
+// 7. إرسال رسالة جديدة في محادثة التفاوض الثنائية
+router.post('/:id/messages', asyncHandler(async (req, res) => {
+  const { content, senderRole, senderName, senderPhone } = req.body
+  if (!content) {
+    return res.status(400).json({ message: '⚠️ نص الرسالة مطلوب' })
+  }
+
+  let thread = await MessageThread.findOne({ rfqId: req.params.id })
+  if (!thread) {
+    return res.status(404).json({ message: '❌ محادثة الطلب غير موجودة' })
+  }
+
+  thread.messages.push({
+    senderRole: senderRole || 'buyer',
+    senderName: senderName || 'المشتري',
+    senderPhone: senderPhone || '',
+    content: String(content).trim()
+  })
+  thread.lastMessageAt = new Date()
+  await thread.save()
+
+  res.status(201).json({
+    message: '✅ تم إرسال الرسالة بنجاح',
+    thread
   })
 }))
 
