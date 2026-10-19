@@ -72,5 +72,22 @@ const requireAdmin = async (req, res, next) => {
   })
 }
 
-module.exports = { authenticate, generateToken, requireAdmin }
+// Middleware عام للتحقق من الأدوار (RBAC)
+const requireRole = (...roles) => {
+  return (req, res, next) => {
+    if (!req.supplier) {
+      return res.status(401).json({ message: '❌ غير مصرح - يرجى تسجيل الدخول' })
+    }
+    const allowed = Array.isArray(roles[0]) ? roles[0] : roles
+    if (allowed.includes(req.supplier.role)) {
+      return next()
+    }
+    return res.status(403).json({
+      message: `❌ هذه العملية تتطلب صلاحية: ${allowed.join(' أو ')}`
+    })
+  }
+}
+
+module.exports = { authenticate, generateToken, requireAdmin, requireRole }
+
 

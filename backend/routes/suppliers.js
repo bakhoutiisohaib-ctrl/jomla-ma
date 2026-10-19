@@ -100,9 +100,9 @@ router.get('/:id', validateMongoId, asyncHandler(async (req, res) => {
   res.json(supplier)
 }))
 
-// تسجيل مورد جديد
+// تسجيل حساب جديد (مورد، مشتري مهني، موظف مورد)
 router.post('/register', validateSupplierRegister, asyncHandler(async (req, res) => {
-  const { name, city, phone, description, email, password } = req.body
+  const { name, city, phone, description, email, password, role = 'supplier', organization = '', permissions } = req.body
 
   // التحقق من عدم وجود بريد مسجل مسبقاً
   const existing = await Supplier.findOne({ email })
@@ -113,7 +113,10 @@ router.post('/register', validateSupplierRegister, asyncHandler(async (req, res)
   // تشفير كلمة المرور
   const hashedPassword = await bcrypt.hash(password, 10)
 
-  // إنشاء المورد الجديد
+  // إنشاء الحساب الجديد
+  const validRoles = ['supplier', 'buyer', 'staff']
+  const accountRole = validRoles.includes(role) ? role : 'supplier'
+
   const supplier = new Supplier({
     name,
     city,
@@ -121,6 +124,9 @@ router.post('/register', validateSupplierRegister, asyncHandler(async (req, res)
     description: description || '',
     email,
     password: hashedPassword,
+    role: accountRole,
+    organization: organization || name,
+    permissions: permissions || (accountRole === 'supplier' ? ['all'] : accountRole === 'staff' ? ['manage_products', 'manage_rfq'] : ['browse', 'create_rfq']),
     products: []
   })
 
@@ -130,7 +136,7 @@ router.post('/register', validateSupplierRegister, asyncHandler(async (req, res)
   const token = generateToken(supplier)
 
   res.status(201).json({
-    message: '✅ تم تسجيل المورد بنجاح',
+    message: accountRole === 'buyer' ? '✅ تم تسجيل حساب المشتري المهني بنجاح' : (accountRole === 'staff' ? '✅ تم تسجيل حساب موظف المورد بنجاح' : '✅ تم تسجيل المورد بنجاح'),
     token,
     supplier: {
       id: supplier._id,
@@ -139,6 +145,8 @@ router.post('/register', validateSupplierRegister, asyncHandler(async (req, res)
       city: supplier.city,
       phone: supplier.phone,
       role: supplier.role,
+      organization: supplier.organization,
+      permissions: supplier.permissions,
       isVerified: supplier.isVerified,
       verificationStatus: supplier.verificationStatus
     }

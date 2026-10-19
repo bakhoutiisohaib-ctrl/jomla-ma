@@ -97,6 +97,10 @@ app.use('/api/admin', adminRoutes)
 const sourcingRoutes = require('./routes/sourcing')
 app.use('/api/sourcing', sourcingRoutes)
 
+// Moderation & Reports route (البلاغات والإشراف)
+const reportsRoutes = require('./routes/reports')
+app.use('/api/reports', reportsRoutes)
+
 
 
 // Swagger UI

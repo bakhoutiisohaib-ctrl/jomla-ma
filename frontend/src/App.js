@@ -6,9 +6,11 @@ import SupplierPage from './components/suppliers/SupplierPage'
 import SupplierDashboard from './components/suppliers/SupplierDashboard'
 import AdminDashboard from './components/admin/AdminDashboard'
 import SourcingModal from './components/products/SourcingModal'
+import { LanguageProvider, useTranslation } from './i18n/LanguageContext'
 import { API } from './api/config'
 
-export default function App() {
+function AppContent() {
+  const { lang, toggleLang, t } = useTranslation()
   const [page, setPage] = useState('home')
   const [query, setQuery] = useState('')
   const [products, setProducts] = useState([])
@@ -191,6 +193,23 @@ export default function App() {
         <span style={{ color: 'white', fontSize: '20px', fontWeight: '700' }}>🇲🇦 Jomla.ma</span>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button
+            onClick={toggleLang}
+            title={lang === 'ar' ? 'Passer en Français' : 'التحويل إلى العربية'}
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              color: 'white',
+              border: '1px solid rgba(255,255,255,0.4)',
+              borderRadius: '8px',
+              padding: '7px 11px',
+              fontSize: '12px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              fontFamily: "'Cairo', sans-serif"
+            }}
+          >
+            {lang === 'ar' ? '🇫🇷 FR' : '🇲🇦 AR'}
+          </button>
+          <button
             onClick={() => {
               setSourcingData({ productName: query || '' })
               setShowSourcing(true)
@@ -210,7 +229,7 @@ export default function App() {
               gap: '4px'
             }}
           >
-            📦 طلب توريد خاص
+            {t('sourcing_btn')}
           </button>
           <button
             onClick={() => setPage('admin')}
@@ -226,7 +245,7 @@ export default function App() {
               fontFamily: "'Cairo', sans-serif"
             }}
           >
-            🛡️ الإشراف
+            {t('admin_btn')}
           </button>
           <button
             onClick={() => setPage('login')}
@@ -242,7 +261,7 @@ export default function App() {
               fontFamily: "'Cairo', sans-serif"
             }}
           >
-            دخول المورد
+            {t('supplier_login')}
           </button>
           <button
             onClick={() => setPage('register')}
@@ -258,7 +277,7 @@ export default function App() {
               fontFamily: "'Cairo', sans-serif"
             }}
           >
-            سجل كمورد
+            {t('supplier_register')}
           </button>
         </div>
       </div>
@@ -266,10 +285,10 @@ export default function App() {
       {/* Hero Search Section */}
       <div style={{ background: 'linear-gradient(135deg,#C1272D,#8B1A1F)', padding: '40px 24px', textAlign: 'center' }}>
         <h1 style={{ color: 'white', margin: '0 0 8px', fontSize: '26px' }}>
-          قلب على أي منتج بالجملة
+          {t('hero_title')}
         </h1>
         <p style={{ color: 'rgba(255,255,255,0.8)', margin: '0 0 20px', fontSize: '14px' }}>
-          تواصل مع الموردين مباشرة عبر الواتساب
+          {t('hero_subtitle')}
         </p>
 
         <div style={{ position: 'relative', maxWidth: '500px', margin: '0 auto' }}>
@@ -278,7 +297,7 @@ export default function App() {
               value={query}
               onChange={e => handleInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              placeholder="ابحث: صباط، قميص، نظارات..."
+              placeholder={t('search_placeholder')}
               style={{
                 flex: 1,
                 padding: '12px 16px',
@@ -619,5 +638,13 @@ export default function App() {
         />
       )}
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <LanguageProvider>
+      <AppContent />
+    </LanguageProvider>
   )
 }

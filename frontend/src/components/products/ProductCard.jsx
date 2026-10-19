@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import RFQModal from './RFQModal'
+import ReportModal from '../common/ReportModal'
 
 export default function ProductCard({ product, onViewSupplier, onView }) {
   const [showRFQ, setShowRFQ] = useState(false)
+  const [showReport, setShowReport] = useState(false)
   const moqText = `${product.moq || 1} ${product.unit || 'قطعة'}`
   const isVerified = (product.supplierId && typeof product.supplierId === 'object' && product.supplierId.isVerified) || product.isSupplierVerified
   const supplierId = product.supplierId?._id || product.supplierId
@@ -215,6 +217,22 @@ export default function ProductCard({ product, onViewSupplier, onView }) {
           >
             🏪 المتجر
           </button>
+          <button
+            onClick={() => setShowReport(true)}
+            title="إبلاغ عن منتج مقلد أو مخالف"
+            style={{
+              padding: '8px 10px',
+              background: '#FEE2E2',
+              color: '#DC2626',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: '600'
+            }}
+          >
+            🚨
+          </button>
         </div>
       </div>
 
@@ -222,6 +240,15 @@ export default function ProductCard({ product, onViewSupplier, onView }) {
         <RFQModal
           product={product}
           onClose={() => setShowRFQ(false)}
+        />
+      )}
+
+      {showReport && (
+        <ReportModal
+          targetType="product"
+          targetId={product._id}
+          targetName={product.name}
+          onClose={() => setShowReport(false)}
         />
       )}
     </div>

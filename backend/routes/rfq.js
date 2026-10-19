@@ -132,4 +132,36 @@ router.get('/:id', asyncHandler(async (req, res) => {
   res.json(rfq)
 }))
 
+// 5. قبول أو رفض المشتري لعرض السعر المقدم من المورد (دورة RFQ المكتملة)
+router.put('/:id/action', asyncHandler(async (req, res) => {
+  const { action } = req.body // 'accept' أو 'reject'
+  const rfq = await QuoteRequest.findById(req.params.id)
+    .populate('productId', 'name')
+    .populate('supplierId', 'name phone')
+
+  if (!rfq) {
+    return res.status(404).json({ message: '❌ طلب عرض السعر غير موجود' })
+  }
+
+  if (rfq.status !== 'responded') {
+    return res.status(400).json({ message: '⚠️ لا يمكن اتخاذ إجراء إلا على العروض التي قدم المورد سعراً لها' })
+  }
+
+  const isAccepted = action === 'accept'
+  rfq.status = isAccepted ? 'accepted' : 'rejected'
+  await rfq.save()
+
+  const whatsappSupplier = isAccepted && rfq.supplierId?.phone
+    ? `https://wa.me/${rfq.supplierId.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+        `السلام عليكم، أنا المشتري ${rfq.buyerName}. لقد قبلت عرض سعركم لطلب #${String(rfq._id).slice(-6)} لمنتج "${rfq.productId?.name}" بسعر ${rfq.offer?.unitPrice} درهم. يرجى التنسيق لبدء التجهيز والتوصيل.`
+      )}`
+    : null
+
+  res.json({
+    message: isAccepted ? '🎉 مبروك! تم قبول عرض السعر بنجاح، يمكنك الآن التواصل مباشرة لإتمام الصفقة.' : 'تم رفض عرض السعر.',
+    rfq,
+    whatsappSupplier
+  })
+}))
+
 module.exports = router

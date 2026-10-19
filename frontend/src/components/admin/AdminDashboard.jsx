@@ -9,6 +9,8 @@ export default function AdminDashboard({ onBack, onLogout }) {
   const [filterStatus, setFilterStatus] = useState('pending')
   const [searchQuery, setSearchQuery] = useState('')
   const [auditLogs, setAuditLogs] = useState([])
+  const [reports, setReports] = useState([])
+  const [reportsFilter, setReportsFilter] = useState('pending')
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   
@@ -74,13 +76,47 @@ export default function AdminDashboard({ onBack, onLogout }) {
     }
   }, [token])
 
+  const fetchReports = useCallback(async () => {
+    if (!token) return
+    try {
+      const res = await fetch(`${API}/reports?status=${reportsFilter}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setReports(data.data || [])
+      }
+    } catch {
+      setReports([])
+    }
+  }, [token, reportsFilter])
+
   useEffect(() => {
     if (token) {
       fetchStats()
       fetchSuppliers()
       fetchAuditLogs()
+      fetchReports()
     }
-  }, [token, fetchStats, fetchSuppliers, fetchAuditLogs])
+  }, [token, fetchStats, fetchSuppliers, fetchAuditLogs, fetchReports])
+
+  async function handleResolveReport(id, action) {
+    try {
+      const res = await fetch(`${API}/reports/${id}/resolve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ action })
+      })
+      const data = await res.json()
+      setMsg(data.message)
+      fetchReports()
+    } catch {
+      setMsg('❌ خطأ في معالجة البلاغ')
+    }
+  }
 
   async function handleAdminLogin(e) {
     e.preventDefault()
@@ -299,6 +335,7 @@ export default function AdminDashboard({ onBack, onLogout }) {
         <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid #E2E8F0', marginBottom: '20px' }}>
           {[
             { id: 'verification', label: `🛡️ طابور التوثيق (${stats?.pendingVerifications || 0})` },
+            { id: 'reports',      label: `🚨 البلاغات والإشراف (${reports.filter(r => r.status === 'pending').length})` },
             { id: 'all_suppliers', label: '👥 جميع الموردين' },
             { id: 'audit',         label: '📜 سجل التدقيق الإداري' }
           ].map(t => (
@@ -579,6 +616,102 @@ export default function AdminDashboard({ onBack, onLogout }) {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Moderation & Reports */}
+        {activeTab === 'reports' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: '#64748B' }}>الحالة:</span>
+                {['all', 'pending', 'resolved', 'dismissed'].map(st => (
+                  <button
+                    key={st}
+                    onClick={() => setReportsFilter(st)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '20px',
+                      border: 'none',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      fontWeight: reportsFilter === st ? '700' : '500',
+                      background: reportsFilter === st ? '#DC2626' : '#E2E8F0',
+                      color: reportsFilter === st ? 'white' : '#475569',
+                      fontFamily: "'Cairo', sans-serif"
+                    }}
+                  >
+                    {st === 'all' && 'الكل'}
+                    {st === 'pending' && '⏳ قيد المراجعة'}
+                    {st === 'resolved' && '✅ تم الحل'}
+                    {st === 'dismissed' && '📁 تم الحفظ'}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={fetchReports}
+                style={{ padding: '6px 12px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+              >
+                🔄 تحديث
+              </button>
+            </div>
+
+            {reports.length === 0 ? (
+              <div style={{ background: 'white', borderRadius: '14px', padding: '50px 20px', textAlign: 'center', color: '#64748B' }}>
+                <div style={{ fontSize: '36px', marginBottom: '8px' }}>🛡️</div>
+                <div style={{ fontWeight: '600', fontSize: '15px' }}>لا توجد بلاغات في هذه الفئة حالياً</div>
+                <div style={{ fontSize: '12px', marginTop: '4px' }}>جميع السلع والموردين متوافقين مع معايير المنصة</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {reports.map(rep => (
+                  <div key={rep._id} style={{ background: 'white', borderRadius: '12px', padding: '16px', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                      <div>
+                        <span style={{ fontWeight: '700', fontSize: '15px', color: '#0F172A' }}>{rep.targetName}</span>
+                        <span style={{ fontSize: '11px', background: '#FEE2E2', color: '#991B1B', padding: '2px 8px', borderRadius: '12px', marginRight: '8px' }}>
+                          {rep.targetType === 'product' ? 'منتج' : 'مورد'}
+                        </span>
+                        <span style={{ fontSize: '12px', color: '#64748B', marginRight: '8px' }}>
+                          بواسطة: {rep.reporterName} ({rep.reporterPhone || 'بدون هاتف'})
+                        </span>
+                      </div>
+                      <span style={{
+                        padding: '3px 10px',
+                        borderRadius: '12px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        background: rep.status === 'pending' ? '#FEF3C7' : rep.status === 'resolved' ? '#DCFCE7' : '#F1F5F9',
+                        color: rep.status === 'pending' ? '#B45309' : rep.status === 'resolved' ? '#166534' : '#475569'
+                      }}>
+                        {rep.status === 'pending' ? '⏳ قيد التدقيق' : rep.status === 'resolved' ? '✅ تم الحل' : '📁 محفوظ'}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '13px', color: '#334155', background: '#F8FAFC', padding: '10px 14px', borderRadius: '8px', marginBottom: '10px' }}>
+                      <strong>السبب:</strong> {rep.reason} {rep.details && `— ${rep.details}`}
+                    </div>
+
+                    {rep.status === 'pending' && (
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => handleResolveReport(rep._id, 'resolved')}
+                          style={{ padding: '6px 14px', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                        >
+                          ✅ اتخاذ إجراء وحل البلاغ
+                        </button>
+                        <button
+                          onClick={() => handleResolveReport(rep._id, 'dismissed')}
+                          style={{ padding: '6px 14px', background: '#94A3B8', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                        >
+                          📁 حفظ بدون إجراء
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>

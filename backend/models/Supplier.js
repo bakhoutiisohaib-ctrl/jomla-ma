@@ -9,7 +9,10 @@ const SupplierSchema = new mongoose.Schema({
   products:           [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   email:              { type: String, unique: true, required: true },
   password:           { type: String, required: true },
-  role:               { type: String, enum: ['supplier', 'admin'], default: 'supplier' },
+  role:               { type: String, enum: ['supplier', 'admin', 'buyer', 'staff'], default: 'supplier' },
+  organization:       { type: String, default: '' }, // اسم الشركة أو المنظمة
+  permissions:        [{ type: String }],            // صلاحيات الموظف (manage_products, manage_rfq, etc.)
+  parentSupplierId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' }, // للموظف التابع لمنظمة مورد
   isVerified:         { type: Boolean, default: false },
   verificationStatus: { type: String, enum: ['unverified', 'pending', 'verified', 'rejected'], default: 'unverified' },
   iceNumber:          { type: String, default: '' }, // المعرف الموحد للمقاولة ICE
