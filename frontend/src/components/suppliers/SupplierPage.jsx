@@ -51,12 +51,38 @@ export default function SupplierPage({ supplierId, onBack }) {
             direction: 'rtl'
           }}
         >
-          <h1 style={{ color: 'white', margin: '0 0 6px', fontSize: '22px' }}>
-            🏪 {supplier.name}
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+            <h1 style={{ color: 'white', margin: 0, fontSize: '22px' }}>
+              🏪 {supplier.name}
+            </h1>
+            {supplier.isVerified && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  color: '#065F46',
+                  background: '#D1FAE5',
+                  border: '1px solid #A7F3D0',
+                  padding: '3px 10px',
+                  borderRadius: '20px',
+                  fontWeight: '700',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                🛡️ مورد موثوق رسمياً
+              </span>
+            )}
+          </div>
           <p style={{ color: 'rgba(255,255,255,0.85)', margin: '0 0 4px', fontSize: '14px' }}>
             📍 {supplier.city}
           </p>
+          {(supplier.iceNumber || supplier.tradeRegistry) && (
+            <div style={{ display: 'flex', gap: '14px', color: 'rgba(255,255,255,0.9)', fontSize: '12px', margin: '4px 0 8px' }}>
+              {supplier.iceNumber && <span>🏛️ المعرف الموحد ICE: <strong>{supplier.iceNumber}</strong></span>}
+              {supplier.tradeRegistry && <span>📋 السجل التجاري RC: <strong>{supplier.tradeRegistry}</strong></span>}
+            </div>
+          )}
           {supplier.description && (
             <p style={{ color: 'rgba(255,255,255,0.75)', margin: '0 0 16px', fontSize: '13px' }}>
               {supplier.description}

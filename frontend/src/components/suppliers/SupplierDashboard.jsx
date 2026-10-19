@@ -3,7 +3,8 @@ import ImagePicker from '../common/ImagePicker'
 import MarketAnalysis from './MarketAnalysis'
 import { API } from '../../api/config'
 
-export default function SupplierDashboard({ supplier, onLogout }) {
+export default function SupplierDashboard({ supplier, onLogout, onGoAdmin }) {
+  const [profile, setProfile] = useState(supplier)
   const [activeTab, setActiveTab] = useState('overview')
   const [products, setProducts] = useState([])
   const [reviews, setReviews] = useState([])
@@ -12,6 +13,12 @@ export default function SupplierDashboard({ supplier, onLogout }) {
   const [selectedRfq, setSelectedRfq] = useState(null)
   const [rfqReply, setRfqReply] = useState({ unitPrice: '', deliveryDays: 3, notes: '' })
   const [stats, setStats] = useState({ totalViews: 0, totalProducts: 0, avgRating: 0 })
+  const [verifyForm, setVerifyForm] = useState({
+    iceNumber: supplier.iceNumber || '',
+    tradeRegistry: supplier.tradeRegistry || '',
+    verificationDoc: supplier.verificationDoc || ''
+  })
+  const [verifyLoading, setVerifyLoading] = useState(false)
   const [form, setForm] = useState({
     name: '',
     category: '',
@@ -71,11 +78,63 @@ export default function SupplierDashboard({ supplier, onLogout }) {
     }
   }, [])
 
+  const fetchMyProfile = useCallback(async () => {
+    const token = localStorage.getItem('supplierToken')
+    if (!token) return
+    try {
+      const res = await fetch(`${API}/suppliers/me/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data && data._id) {
+        setProfile(data)
+        setVerifyForm({
+          iceNumber: data.iceNumber || '',
+          tradeRegistry: data.tradeRegistry || '',
+          verificationDoc: data.verificationDoc || ''
+        })
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
   useEffect(() => {
     fetchMyProducts()
     fetchMyReviews()
     fetchMyRfqs()
-  }, [fetchMyProducts, fetchMyReviews, fetchMyRfqs])
+    fetchMyProfile()
+  }, [fetchMyProducts, fetchMyReviews, fetchMyRfqs, fetchMyProfile])
+
+  async function submitVerification(e) {
+    if (e && e.preventDefault) e.preventDefault()
+    if (!verifyForm.iceNumber && !verifyForm.tradeRegistry) {
+      return setMsg('⚠️ يرجى إدخال رقم المعرف الموحد ICE أو رقم السجل التجاري RC')
+    }
+    setVerifyLoading(true)
+    const token = localStorage.getItem('supplierToken')
+    try {
+      const res = await fetch(`${API}/suppliers/me/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(verifyForm)
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setMsg(data.message)
+        setProfile(prev => ({ ...prev, ...data.supplier }))
+      } else {
+        setMsg(data.message || '⚠️ تعذر إرسال طلب التوثيق')
+      }
+    } catch {
+      setMsg('❌ خطأ في الاتصال بالسيرفر')
+    } finally {
+      setVerifyLoading(false)
+    }
+  }
 
   async function handleImageUpload(e) {
     const file = e.target.files[0]
@@ -244,6 +303,7 @@ export default function SupplierDashboard({ supplier, onLogout }) {
   const tabs = [
     { id: 'overview', label: '📊 نظرة عامة' },
     { id: 'rfq',      label: `📑 طلبات الأسعار RFQ (${rfqCounts.pending || 0})` },
+    { id: 'verification', label: profile.isVerified ? '🛡️ توثيق المتجر (موثق)' : (profile.verificationStatus === 'pending' ? '⏳ توثيق المتجر (مراجعة)' : '🛡️ توثيق المتجر') },
     { id: 'products', label: '📦 منتجاتي' },
     { id: 'add',      label: '➕ إضافة منتج جملة' },
     { id: 'reviews',  label: '⭐ التقييمات' },
@@ -254,7 +314,7 @@ export default function SupplierDashboard({ supplier, onLogout }) {
     <div style={{ minHeight: '100vh', background: '#f5f5f5', fontFamily: "'Cairo', sans-serif" }}>
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg,#C1272D,#8B1A1F)', padding: '0 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <label style={{ cursor: 'pointer' }}>
               <div
@@ -306,25 +366,62 @@ export default function SupplierDashboard({ supplier, onLogout }) {
               />
             </label>
             <div style={{ direction: 'rtl' }}>
-              <div style={{ color: 'white', fontSize: '18px', fontWeight: '700' }}>{supplier.name}</div>
-              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '12px' }}>📍 {supplier.city} | متجر جملة معتمد</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: 'white', fontSize: '18px', fontWeight: '700' }}>{profile.name || supplier.name}</span>
+                {profile.isVerified && (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: '#065F46',
+                      background: '#D1FAE5',
+                      border: '1px solid #A7F3D0',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      fontWeight: '700'
+                    }}
+                  >
+                    🛡️ مورد موثوق
+                  </span>
+                )}
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '12px' }}>📍 {profile.city || supplier.city} | متجر جملة معتمد</div>
             </div>
           </div>
-          <button
-            onClick={onLogout}
-            style={{
-              background: 'rgba(255,255,255,0.15)',
-              border: '1px solid rgba(255,255,255,0.3)',
-              color: 'white',
-              borderRadius: '8px',
-              padding: '8px 16px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontFamily: "'Cairo', sans-serif"
-            }}
-          >
-            خروج
-          </button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {profile.role === 'admin' && onGoAdmin && (
+              <button
+                onClick={onGoAdmin}
+                style={{
+                  background: '#F59E0B',
+                  border: 'none',
+                  color: 'white',
+                  borderRadius: '8px',
+                  padding: '8px 14px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  fontFamily: "'Cairo', sans-serif"
+                }}
+              >
+                ⚙️ لوحة المشرف
+              </button>
+            )}
+            <button
+              onClick={onLogout}
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                border: '1px solid rgba(255,255,255,0.3)',
+                color: 'white',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontFamily: "'Cairo', sans-serif"
+              }}
+            >
+              خروج
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -787,6 +884,168 @@ export default function SupplierDashboard({ supplier, onLogout }) {
         {/* Market Analysis Tab */}
         {activeTab === 'market' && (
           <MarketAnalysis supplier={supplier} products={products} />
+        )}
+
+        {/* Verification Tab (توثيق المتجر والحصول على شارة موثوق) */}
+        {activeTab === 'verification' && (
+          <div style={{ background: 'white', borderRadius: '16px', padding: '28px', direction: 'rtl', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '28px' }}>🛡️</span>
+              <h2 style={{ fontSize: '20px', margin: 0, color: '#1E293B' }}>
+                توثيق المتجر وشارة "مورد موثوق" (Verified Supplier)
+              </h2>
+            </div>
+            <p style={{ color: '#64748B', fontSize: '14px', lineHeight: '1.6', margin: '0 0 20px' }}>
+              توثيق متجرك بالمعرف الموحد للمقاولة (ICE) والسجل التجاري (RC) يمنحك شارة <strong>"🛡️ مورد موثوق"</strong> المعتمدة من Jomla.ma، مما يضاعف ثقة المشترين المهنيين في المغرب ويمنحك أولوية الظهور في نتائج البحث وتلقي طلبات عروض الأسعار (RFQ).
+            </p>
+
+            {/* حالة التوثيق الحالية */}
+            {profile.isVerified ? (
+              <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#065F46', fontWeight: '700', fontSize: '16px', marginBottom: '8px' }}>
+                  <span>✅</span>
+                  <span>متجرك موثق ومعتمد رسمياً على Jomla.ma</span>
+                </div>
+                <p style={{ color: '#047857', fontSize: '13px', margin: '0 0 14px' }}>
+                  تهانينا! حسابك يتمتع بكامل امتيازات المورد الموثوق وشارة الحماية والثقة.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', background: 'white', padding: '14px', borderRadius: '8px', border: '1px solid #D1FAE5' }}>
+                  <div>
+                    <span style={{ fontSize: '12px', color: '#64748B', display: 'block' }}>المعرف الموحد للمقاولة (ICE)</span>
+                    <strong style={{ fontSize: '14px', color: '#0F172A' }}>{profile.iceNumber || 'مسجل'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: '#64748B', display: 'block' }}>رقم السجل التجاري (RC)</span>
+                    <strong style={{ fontSize: '14px', color: '#0F172A' }}>{profile.tradeRegistry || 'مسجل'}</strong>
+                  </div>
+                  {profile.verifiedAt && (
+                    <div>
+                      <span style={{ fontSize: '12px', color: '#64748B', display: 'block' }}>تاريخ الاعتماد</span>
+                      <strong style={{ fontSize: '14px', color: '#0F172A' }}>{new Date(profile.verifiedAt).toLocaleDateString('ar-MA')}</strong>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : profile.verificationStatus === 'pending' ? (
+              <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#B45309', fontWeight: '700', fontSize: '16px', marginBottom: '8px' }}>
+                  <span>⏳</span>
+                  <span>طلب التوثيق قيد المراجعة والتدقيق</span>
+                </div>
+                <p style={{ color: '#92400E', fontSize: '13px', margin: '0 0 10px', lineHeight: '1.6' }}>
+                  لقد استلمنا بيانات التوثيق الخاصة بك (ICE: <strong>{profile.iceNumber}</strong> {profile.tradeRegistry ? `| RC: ${profile.tradeRegistry}` : ''}). فريق إدارة المنصة يقوم بمطابقة الوثائق وسيتم اعتماد متجرك قريباً.
+                </p>
+                <span style={{ fontSize: '12px', color: '#B45309', background: '#FEF3C7', padding: '4px 10px', borderRadius: '6px' }}>
+                  ⏱️ المدة التقديرية للمراجعة: أقل من 24 ساعة
+                </span>
+              </div>
+            ) : (
+              <div>
+                {profile.verificationStatus === 'rejected' && (
+                  <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '12px', padding: '16px', marginBottom: '20px', color: '#991B1B' }}>
+                    <div style={{ fontWeight: '700', fontSize: '14px', marginBottom: '4px' }}>⚠️ تم رفض طلب التوثيق السابق</div>
+                    <div style={{ fontSize: '13px' }}>سبب الرفض: {profile.rejectionReason || 'البيانات أو الوثائق غير مكتملة'}</div>
+                    <div style={{ fontSize: '12px', marginTop: '6px', color: '#7F1D1D' }}>يرجى تصحيح البيانات أدناه وإعادة إرسال الطلب للمراجعة.</div>
+                  </div>
+                )}
+
+                <form onSubmit={submitVerification} style={{ maxWidth: '520px' }}>
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                      المعرف الموحد للمقاولة (ICE - 15 رقماً) *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="مثال: 001234567890001"
+                      value={verifyForm.iceNumber}
+                      onChange={e => setVerifyForm({ ...verifyForm, iceNumber: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid #CBD5E1',
+                        fontSize: '14px',
+                        direction: 'ltr',
+                        textAlign: 'right',
+                        boxSizing: 'border-box',
+                        fontFamily: "'Cairo', sans-serif"
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                      رقم السجل التجاري (Registre de Commerce - RC)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="مثال: 12345 - كازا أو طنجة"
+                      value={verifyForm.tradeRegistry}
+                      onChange={e => setVerifyForm({ ...verifyForm, tradeRegistry: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid #CBD5E1',
+                        fontSize: '14px',
+                        direction: 'rtl',
+                        boxSizing: 'border-box',
+                        fontFamily: "'Cairo', sans-serif"
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                      رابط وثيقة الإثبات (PDF أو صورة السجل / بطاقة المقاول الذاتي)
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://example.com/rc-document.pdf"
+                      value={verifyForm.verificationDoc}
+                      onChange={e => setVerifyForm({ ...verifyForm, verificationDoc: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid #CBD5E1',
+                        fontSize: '14px',
+                        direction: 'ltr',
+                        boxSizing: 'border-box',
+                        fontFamily: "'Cairo', sans-serif"
+                      }}
+                    />
+                    <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginTop: '4px' }}>
+                      يمكنك وضع رابط مباشر لنسخة السجل التجاري أو شهادة التسجيل الضريبي أو بطاقة المقاول الذاتي
+                    </span>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={verifyLoading}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      background: '#0F766E',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '15px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      fontFamily: "'Cairo', sans-serif",
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    {verifyLoading ? 'جاري الإرسال...' : '🛡️ إرسال ملف التوثيق للمراجعة'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

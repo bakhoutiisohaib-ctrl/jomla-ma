@@ -137,7 +137,10 @@ router.post('/register', validateSupplierRegister, asyncHandler(async (req, res)
       name: supplier.name,
       email: supplier.email,
       city: supplier.city,
-      phone: supplier.phone
+      phone: supplier.phone,
+      role: supplier.role,
+      isVerified: supplier.isVerified,
+      verificationStatus: supplier.verificationStatus
     }
   })
 }))
@@ -169,7 +172,10 @@ router.post('/login', validateSupplierLogin, asyncHandler(async (req, res) => {
       name: supplier.name,
       email: supplier.email,
       city: supplier.city,
-      phone: supplier.phone
+      phone: supplier.phone,
+      role: supplier.role,
+      isVerified: supplier.isVerified,
+      verificationStatus: supplier.verificationStatus
     }
   })
 }))
@@ -193,6 +199,66 @@ router.get('/me/profile', authenticate, asyncHandler(async (req, res) => {
   if (!supplier) return res.status(404).json({ message: '❌ المورد غير موجود' })
   res.json(supplier)
 }))
+
+// تقديم طلب توثيق المورد (ICE والسجل التجاري)
+router.post('/me/verify', authenticate, asyncHandler(async (req, res) => {
+  const { iceNumber, tradeRegistry, verificationDoc } = req.body
+  const AuditLog = require('../models/AuditLog')
+
+  if (!iceNumber && !tradeRegistry) {
+    return res.status(400).json({ message: '⚠️ يرجى إدخال رقم المعرف الموحد للمقاولة (ICE) أو رقم السجل التجاري (RC)' })
+  }
+
+  const supplier = await Supplier.findById(req.supplier.id)
+  if (!supplier) {
+    return res.status(404).json({ message: '❌ المورد غير موجود' })
+  }
+
+  supplier.iceNumber = iceNumber ? String(iceNumber).trim() : supplier.iceNumber
+  supplier.tradeRegistry = tradeRegistry ? String(tradeRegistry).trim() : supplier.tradeRegistry
+  if (verificationDoc) {
+    supplier.verificationDoc = String(verificationDoc).trim()
+  }
+  supplier.verificationStatus = 'pending'
+  supplier.rejectionReason = ''
+  await supplier.save()
+
+  // تسجيل العملية في سجل التدقيق
+  await AuditLog.create({
+    action: 'SUPPLIER_VERIFICATION_SUBMITTED',
+    targetType: 'Supplier',
+    targetId: supplier._id,
+    performedBy: {
+      id: supplier._id,
+      name: supplier.name,
+      email: supplier.email,
+      role: supplier.role
+    },
+    details: {
+      iceNumber: supplier.iceNumber,
+      tradeRegistry: supplier.tradeRegistry,
+      verificationDoc: supplier.verificationDoc
+    }
+  })
+
+  res.json({
+    message: '✅ تم إرسال ملف التوثيق بنجاح! طلبك الآن قيد المراجعة لدى فريق Jomla.ma.',
+    supplier: {
+      id: supplier._id,
+      name: supplier.name,
+      email: supplier.email,
+      city: supplier.city,
+      phone: supplier.phone,
+      isVerified: supplier.isVerified,
+      verificationStatus: supplier.verificationStatus,
+      iceNumber: supplier.iceNumber,
+      tradeRegistry: supplier.tradeRegistry,
+      verificationDoc: supplier.verificationDoc,
+      role: supplier.role
+    }
+  })
+}))
+
 
 // إضافة منتج جديد مع رفع صور - يتطلب توكن
 const upload = require('../middleware/upload')

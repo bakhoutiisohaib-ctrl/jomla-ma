@@ -84,6 +84,11 @@ app.use('/api/analytics', analyticsRoutes)
 const rfqRoutes = require('./routes/rfq')
 app.use('/api/rfq', rfqRoutes)
 
+// Admin & Verification route (لوحة المشرف وتوثيق الموردين)
+const adminRoutes = require('./routes/admin')
+app.use('/api/admin', adminRoutes)
+
+
 // Swagger UI
 try {
   const swaggerUi = require('swagger-ui-express')

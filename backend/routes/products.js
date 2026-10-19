@@ -69,6 +69,7 @@ router.get('/', cacheMiddleware(20), asyncHandler(async (req, res) => {
 
   const products = await Product.find()
     .select('name price city category supplierId supplierPhone views moq unit priceTiers inStock imageUrl description createdAt')
+    .populate('supplierId', 'name city phone isVerified verificationStatus')
     .sort({ views: -1 })
     .limit(limit)
     .skip(skip)
@@ -283,6 +284,7 @@ router.get('/search', asyncHandler(async (req, res) => {
 
   let results = await Product.find(filter)
     .select('name price city category supplierId supplierPhone views moq unit priceTiers inStock imageUrl description createdAt')
+    .populate('supplierId', 'name city phone isVerified verificationStatus')
     .sort({ views: -1 })
     .limit(limit)
     .skip(skip)

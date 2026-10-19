@@ -4,6 +4,9 @@ import RFQModal from './RFQModal'
 export default function ProductCard({ product, onViewSupplier, onView }) {
   const [showRFQ, setShowRFQ] = useState(false)
   const moqText = `${product.moq || 1} ${product.unit || 'قطعة'}`
+  const isVerified = (product.supplierId && typeof product.supplierId === 'object' && product.supplierId.isVerified) || product.isSupplierVerified
+  const supplierId = product.supplierId?._id || product.supplierId
+
   const whatsapp = `https://wa.me/${product.supplierPhone}?text=${encodeURIComponent(
     `السلام عليكم، شفت منتج "${product.name}" على Jomla.ma، بغيت نسول على ثمن الجملة (الحد الأدنى: ${moqText}). هل متوفر؟`
   )}`
@@ -27,19 +30,40 @@ export default function ProductCard({ product, onViewSupplier, onView }) {
       }}
     >
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span
-            style={{
-              fontSize: '11px',
-              color: '#1D9E75',
-              fontWeight: '600',
-              background: '#E1F5EE',
-              padding: '2px 8px',
-              borderRadius: '20px'
-            }}
-          >
-            {product.category}
-          </span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '4px' }}>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <span
+              style={{
+                fontSize: '11px',
+                color: '#1D9E75',
+                fontWeight: '600',
+                background: '#E1F5EE',
+                padding: '2px 8px',
+                borderRadius: '20px'
+              }}
+            >
+              {product.category}
+            </span>
+            {isVerified && (
+              <span
+                title="مورد موثق رسمياً برقم السجل التجاري والـ ICE"
+                style={{
+                  fontSize: '11px',
+                  color: '#065F46',
+                  background: '#D1FAE5',
+                  border: '1px solid #A7F3D0',
+                  padding: '2px 7px',
+                  borderRadius: '20px',
+                  fontWeight: '700',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px'
+                }}
+              >
+                🛡️ موثق
+              </span>
+            )}
+          </div>
           <span
             style={{
               fontSize: '11px',
@@ -143,7 +167,7 @@ export default function ProductCard({ product, onViewSupplier, onView }) {
             💬 واتساب
           </a>
           <button
-            onClick={() => onViewSupplier(product.supplierId)}
+            onClick={() => onViewSupplier(supplierId)}
             style={{
               flex: 1,
               padding: '8px',

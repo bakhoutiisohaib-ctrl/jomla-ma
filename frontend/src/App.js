@@ -4,6 +4,7 @@ import RegisterPage from './components/auth/RegisterPage'
 import LoginPage from './components/auth/LoginPage'
 import SupplierPage from './components/suppliers/SupplierPage'
 import SupplierDashboard from './components/suppliers/SupplierDashboard'
+import AdminDashboard from './components/admin/AdminDashboard'
 import { API } from './api/config'
 
 export default function App() {
@@ -149,17 +150,35 @@ export default function App() {
     }
   }
 
+  if (page === 'admin') return <AdminDashboard onBack={() => setPage('home')} onLogout={() => { setSupplier(null); setPage('home') }} />
   if (page === 'register') return <RegisterPage onBack={() => setPage('home')} />
-  if (supplier) return <SupplierDashboard supplier={supplier} onLogout={() => setSupplier(null)} />
-  if (page === 'login') return <LoginPage onLogin={s => { setSupplier(s); setPage('home') }} onBack={() => setPage('home')} />
+  if (supplier) return <SupplierDashboard supplier={supplier} onLogout={() => setSupplier(null)} onGoAdmin={() => setPage('admin')} />
+  if (page === 'login') return <LoginPage onLogin={s => { setSupplier(s); if (s.role === 'admin') setPage('admin'); else setPage('home'); }} onBack={() => setPage('home')} />
   if (selectedSupplier) return <SupplierPage supplierId={selectedSupplier} onBack={() => setSelectedSupplier(null)} />
+
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5', fontFamily: "'Cairo', sans-serif" }}>
       {/* Header */}
       <div style={{ background: '#C1272D', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ color: 'white', fontSize: '20px', fontWeight: '700' }}>🇲🇦 Jomla.ma</span>
-        <div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            onClick={() => setPage('admin')}
+            style={{
+              background: 'rgba(0,0,0,0.2)',
+              color: 'white',
+              border: '1px solid rgba(255,255,255,0.4)',
+              borderRadius: '8px',
+              padding: '7px 12px',
+              fontSize: '12px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              fontFamily: "'Cairo', sans-serif"
+            }}
+          >
+            🛡️ الإشراف
+          </button>
           <button
             onClick={() => setPage('login')}
             style={{
@@ -171,7 +190,6 @@ export default function App() {
               fontSize: '13px',
               fontWeight: '600',
               cursor: 'pointer',
-              marginLeft: '8px',
               fontFamily: "'Cairo', sans-serif"
             }}
           >
@@ -403,6 +421,35 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* Moroccan B2B Footer */}
+      <footer style={{ background: '#0F172A', color: '#94A3B8', padding: '24px 16px', marginTop: '48px', direction: 'rtl', fontSize: '13px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+          <div>
+            <span style={{ color: 'white', fontWeight: '700', fontSize: '15px' }}>🇲🇦 Jomla.ma</span>
+            <span style={{ marginRight: '8px' }}>— منصة تجارة الجملة المغربية الذكية</span>
+          </div>
+          <div style={{ display: 'flex', gap: '18px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span>🏛️ توثيق بالـ ICE والسجل التجاري</span>
+            <span>📑 طلبات عروض أسعار (RFQ)</span>
+            <button
+              onClick={() => setPage('admin')}
+              style={{
+                background: '#1E293B',
+                border: '1px solid #334155',
+                color: '#38BDF8',
+                borderRadius: '6px',
+                padding: '4px 10px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                fontFamily: "'Cairo', sans-serif"
+              }}
+            >
+              🛡️ لوحة الإشراف
+            </button>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
