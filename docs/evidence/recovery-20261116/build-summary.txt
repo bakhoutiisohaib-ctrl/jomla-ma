@@ -1,0 +1,5 @@
+Historical build, 2026-11-16; not rerun during handoff.
+Compiled successfully.
+  166.87 kB  build-recovery-20261116/static/js/main.cd54ed6f.js
+  16.16 kB   build-recovery-20261116/static/css/main.66850185.css
+  1.72 kB    build-recovery-20261116/static/js/206.f7e8db09.chunk.js

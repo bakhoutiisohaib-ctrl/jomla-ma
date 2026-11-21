@@ -1,0 +1,122 @@
+{
+  "success": true,
+  "numTotalTests": 22,
+  "numPassedTests": 22,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTotalTestSuites": 3,
+  "numPassedTestSuites": 3,
+  "numFailedTestSuites": 0,
+  "startTime": 1794827180805,
+  "sourceDate": "2026-11-16",
+  "extractedDate": "2026-11-21",
+  "rerun": false,
+  "suites": [
+    {
+      "file": "backend/tests/accountRecovery.test.js",
+      "status": "passed",
+      "tests": [
+        {
+          "title": "known, unknown, disabled and admin addresses return identical responses; only eligible user receives a private message",
+          "status": "passed"
+        },
+        {
+          "title": "reset changes the password, revokes old sessions and cannot be replayed",
+          "status": "passed"
+        },
+        {
+          "title": "simultaneous redemption has exactly one winner",
+          "status": "passed"
+        },
+        {
+          "title": "expired token is rejected without changing the password",
+          "status": "passed"
+        },
+        {
+          "title": "revoked token is rejected without changing the password",
+          "status": "passed"
+        },
+        {
+          "title": "disabled token is rejected without changing the password",
+          "status": "passed"
+        },
+        {
+          "title": "invalid input and oversized UTF-8 password never consume a valid token",
+          "status": "passed"
+        },
+        {
+          "title": "unconfigured or production transport fails closed for all email addresses",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "backend/tests/backup.test.js",
+      "status": "passed",
+      "tests": [
+        {
+          "title": "lossless BSON, collection validators, indexes, media, and counts survive a new-database restore",
+          "status": "passed"
+        },
+        {
+          "title": "backup output collision is rejected without modifying the existing archive",
+          "status": "passed"
+        },
+        {
+          "title": "explicit database names are parsed for standalone, SRV, and replica-set URIs without exposing credentials",
+          "status": "passed"
+        },
+        {
+          "title": "streaming batches restore more than one batch and a deliberate database-only archive",
+          "status": "passed"
+        },
+        {
+          "title": "source, application, system databases, and missing exact confirmation are rejected",
+          "status": "passed"
+        },
+        {
+          "title": "existing target collections and media directories remain untouched",
+          "status": "passed"
+        },
+        {
+          "title": "corrupted BSON archive fails before creating any target collection or media",
+          "status": "passed"
+        },
+        {
+          "title": "BSON structural validation detects invalid content even after a file hash is recomputed",
+          "status": "passed"
+        },
+        {
+          "title": "unsafe archive paths, manifest corruption, and unexpected files are rejected",
+          "status": "passed"
+        },
+        {
+          "title": "symlinks or Windows junctions in backup input and archive are rejected",
+          "status": "passed"
+        },
+        {
+          "title": "a restore write failure removes only resources created in that attempt and records the outcome",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "backend/tests/pilot_journey.test.js",
+      "status": "passed",
+      "tests": [
+        {
+          "title": "pilot supplier: registration, company, pending store, manual fallback, private draft, explicit approval and publication",
+          "status": "passed"
+        },
+        {
+          "title": "pilot buyer: bilingual text data, quantity tiers, comparison data, exact/similar visual results and private-product exclusion",
+          "status": "passed"
+        },
+        {
+          "title": "pilot RFQ: correct parties, persisted revised offers, explicit current-offer acceptance, notifications and closed conversation",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

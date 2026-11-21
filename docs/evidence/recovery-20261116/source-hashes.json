@@ -1,0 +1,18 @@
+[
+  {
+    "source": "recovery-backend-20261116.json",
+    "sha256": "f682a24ad5dfdb04b6c0d6b01d996fa1fa44cb26ac2c6c04602a25deafc14e8e"
+  },
+  {
+    "source": "recovery-frontend-20261116.json",
+    "sha256": "21c538c42660bc098efd4dbe4959be388604cde46ce90393af4e60bc7533ce7e"
+  },
+  {
+    "source": "supplier-published.jpg",
+    "sha256": "f3537d64534d5c820687bda44d0d00328927b7216e25e36944238cc8ca2c0d47"
+  },
+  {
+    "source": "recovery-build-20261116.log",
+    "sha256": "3540f2bb7e1a02cecae71f4d8e717dd1119e122edf478c2add305be1c0c34826"
+  }
+]

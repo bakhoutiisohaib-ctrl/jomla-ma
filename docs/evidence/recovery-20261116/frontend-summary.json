@@ -1,0 +1,236 @@
+{
+  "success": true,
+  "numTotalTests": 46,
+  "numPassedTests": 46,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTotalTestSuites": 6,
+  "numPassedTestSuites": 6,
+  "numFailedTestSuites": 0,
+  "startTime": 1794827220606,
+  "sourceDate": "2026-11-16",
+  "extractedDate": "2026-11-21",
+  "rerun": false,
+  "suites": [
+    {
+      "file": "frontend/src/RecoveryPage.test.jsx",
+      "status": "passed",
+      "tests": [
+        {
+          "title": "request form is localized in ar and does not claim an account exists",
+          "status": "passed"
+        },
+        {
+          "title": "request form is localized in fr and does not claim an account exists",
+          "status": "passed"
+        },
+        {
+          "title": "request form is localized in en and does not claim an account exists",
+          "status": "passed"
+        },
+        {
+          "title": "reset removes token fragment, prevents mismatched confirmation, sends no old session and clears session after success",
+          "status": "passed"
+        },
+        {
+          "title": "expired link and unavailable delivery are actionable without exposing server internals",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "frontend/src/LocalReviewJourneys.test.jsx",
+      "status": "passed",
+      "tests": [
+        {
+          "title": "login action إنشاء حساب selects the intended registration role and preserves returnTo",
+          "status": "passed"
+        },
+        {
+          "title": "login action ابدأ البيع selects the intended registration role and preserves returnTo",
+          "status": "passed"
+        },
+        {
+          "title": "invalid registration role defaults to buyer and does not offer an admin role",
+          "status": "passed"
+        },
+        {
+          "title": "preview loads public details and closes with Escape without navigating the product link",
+          "status": "passed"
+        },
+        {
+          "title": "a withdrawn preview never falls back to stale card metadata",
+          "status": "passed"
+        },
+        {
+          "title": "compact cards keep detail links and move comparison and reporting into the live preview",
+          "status": "passed"
+        },
+        {
+          "title": "French preview actions remain accessible and card RFQ preserves the detail return route",
+          "status": "passed"
+        },
+        {
+          "title": "cart survives reload, transfers guest choices on login and reuses the same RFQ attempt after an uncertain response",
+          "status": "passed"
+        },
+        {
+          "title": "account selections are isolated and do not persist contact data or tokens",
+          "status": "passed"
+        },
+        {
+          "title": "a withdrawn cart product stays selected for review but cannot be sent",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "frontend/src/RoutingPages.test.jsx",
+      "status": "passed",
+      "tests": [
+        {
+          "title": "direct anonymous product route survives a remount and displays real public fields and both managed images",
+          "status": "passed"
+        },
+        {
+          "title": "product → store → browser Back → Forward renders the route selected by browser history",
+          "status": "passed"
+        },
+        {
+          "title": "store search and pagination persist in the URL and direct remount",
+          "status": "passed"
+        },
+        {
+          "title": "share links are canonical, copyable, open a native new tab and contain no session or RFQ query",
+          "status": "passed"
+        },
+        {
+          "title": "guest RFQ login return survives remount; successful buyer authentication opens the existing form and submits once",
+          "status": "passed"
+        },
+        {
+          "title": "a malformed/unknown link is explicit and a withdrawn product never displays its previous details",
+          "status": "passed"
+        },
+        {
+          "title": "a late prior-product response cannot populate a different unavailable direct link",
+          "status": "passed"
+        },
+        {
+          "title": "French direct pages use LTR and public store/product links without invented verification",
+          "status": "passed"
+        },
+        {
+          "title": "an unauthenticated workspace URL returns to the requested allowed workspace after login",
+          "status": "passed"
+        },
+        {
+          "title": "a supplier session stays on the public product but cannot use its buyer RFQ action",
+          "status": "passed"
+        },
+        {
+          "title": "withdrawal revalidation clears previously loaded details, metadata and image blobs",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "frontend/src/LocalAcceptance.test.jsx",
+      "status": "passed",
+      "tests": [
+        {
+          "title": "buyer A and B keep different selections through remount and cross-tab session events",
+          "status": "passed"
+        },
+        {
+          "title": "two guest products merge once with an existing selection and never migrate to buyer B",
+          "status": "passed"
+        },
+        {
+          "title": "two supplier groups open the matching product and MOQ, sending only the selected product",
+          "status": "passed"
+        },
+        {
+          "title": "withdrawal after cart load removes the send action when the page is revalidated",
+          "status": "passed"
+        },
+        {
+          "title": "logout during submission discards the late response and all private form data",
+          "status": "passed"
+        },
+        {
+          "title": "session expiry closes the private cart form without storing its contact fields",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "frontend/src/components/products/RFQModal.test.jsx",
+      "status": "passed",
+      "tests": [
+        {
+          "title": "requires login before exposing a submission form",
+          "status": "passed"
+        },
+        {
+          "title": "keeps entered fields after a failed submission and never announces success",
+          "status": "passed"
+        },
+        {
+          "title": "lost acknowledgement keeps one secure key and the exact original body for explicit recovery",
+          "status": "passed"
+        },
+        {
+          "title": "202 never announces success, keeps the original attempt, and closes safely when an RFQ id is known",
+          "status": "passed"
+        },
+        {
+          "title": "double submit and repeated recovery clicks issue one request at a time",
+          "status": "passed"
+        },
+        {
+          "title": "an unknown result blocks Escape and close until the original attempt is reconciled",
+          "status": "passed"
+        },
+        {
+          "title": "switching accounts aborts a late response and clears the previous request data",
+          "status": "passed"
+        },
+        {
+          "title": "a stale profile cannot prefill the replacement account while it is loading",
+          "status": "passed"
+        },
+        {
+          "title": "validation rejection allows a corrected new attempt while409 preserves the unresolved key",
+          "status": "passed"
+        },
+        {
+          "title": "French recovery preserves the202 distinction and never automatically posts on mount",
+          "status": "passed"
+        },
+        {
+          "title": "without secure randomness no unkeyed request is sent",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "frontend/src/i18n/Language.test.jsx",
+      "status": "passed",
+      "tests": [
+        {
+          "title": "all three languages persist, restore and set the correct reading direction",
+          "status": "passed"
+        },
+        {
+          "title": "English covers dynamic status and notification labels and grouped form copy",
+          "status": "passed"
+        },
+        {
+          "title": "English catalog, navigation, cart and sign-in remain reachable without changing a cart selection",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}
