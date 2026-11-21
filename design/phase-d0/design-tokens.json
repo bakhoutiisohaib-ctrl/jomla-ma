@@ -1,0 +1,14 @@
+{
+  "status": "D0 proposal; not connected to the application",
+  "recommended": "atlas",
+  "spacingPx": [4, 8, 12, 16, 24, 32, 48, 64],
+  "typeGuidance": {"bodyPx": [15, 16], "fieldMobilePx": 16, "secondaryMinimumPx": 12, "headingDesktopPx": [28, 34, 43], "headingMobilePx": [24, 26, 31]},
+  "themes": {
+    "atlas": {"nameAr": "أطلس", "primary": "#1B5142", "ink": "#18342D", "muted": "#53675F", "background": "#F7F7F2", "surface": "#FFFFFF", "accent": "#9E422F", "soft": "#EDF1E9", "radiusPx": 14, "cardGapPx": 22, "maxWidthPx": 1240, "proposedArabicFont": "Noto Sans Arabic", "proposedLatinFont": "Manrope", "layout": "Balanced search-first market; four desktop columns, two on phone; compact mobile hero"},
+    "medina": {"nameAr": "المدينة", "primary": "#913D2B", "ink": "#402B22", "muted": "#735D4E", "background": "#FCF7EF", "surface": "#FFFCF7", "accent": "#865F20", "soft": "#F2E7D5", "radiusPx": 5, "cardGapPx": 26, "maxWidthPx": 1240, "proposedArabicHeadingFont": "Noto Naskh Arabic", "proposedArabicBodyFont": "Noto Sans Arabic", "proposedLatinHeadingFont": "Fraunces", "layout": "Editorial product-led composition, arched media, open cards, larger image area"},
+    "horizon": {"nameAr": "أفق", "primary": "#2349AC", "ink": "#172B49", "muted": "#56667C", "background": "#F1F5FA", "surface": "#FFFFFF", "accent": "#2349AC", "soft": "#EAF0FA", "radiusPx": 8, "cardGapPx": 16, "maxWidthPx": 1320, "proposedArabicFont": "IBM Plex Sans Arabic", "proposedLatinFont": "IBM Plex Sans", "layout": "Dense operational market, dark navigation, desktop request panel, strong workspace rail"}
+  },
+  "prototypeFontDisclosure": "Screens use system Segoe UI/Tahoma/Arial, with Georgia for Medina Latin headings. Proposed brand fonts are not downloaded, installed or claimed in the screenshots.",
+  "semanticStates": {"published": {"ink": "#275D42", "surface": "#E8F1E6"}, "privateDraft": {"ink": "#75591E", "surface": "#F7EFDC"}, "verification": "Only show verified badge when both existing isVerified and verificationStatus match the approved verified state. No badges on the synthetic public storefront."},
+  "interactionGuidance": {"primaryTouchTargetPx": 44, "focusOutlinePx": 3, "modal": "Labelled title, local Tab cycle, Escape, restored trigger focus", "motion": "Respect prefers-reduced-motion", "images": "Preserve Phase A/C1 ProtectedImage and revocation behavior at implementation"}
+}

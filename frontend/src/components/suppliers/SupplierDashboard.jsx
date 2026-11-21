@@ -1,1596 +1,326 @@
-import { useState, useEffect, useCallback } from 'react'
-import ImagePicker from '../common/ImagePicker'
-import MarketAnalysis from './MarketAnalysis'
-import { API } from '../../api/config'
-
-export default function SupplierDashboard({ supplier, onLogout, onGoAdmin }) {
-  const [profile, setProfile] = useState(supplier)
-  const [activeTab, setActiveTab] = useState('overview')
-  const [products, setProducts] = useState([])
-  const [reviews, setReviews] = useState([])
-  const [rfqs, setRfqs] = useState([])
-  const [rfqCounts, setRfqCounts] = useState({ total: 0, pending: 0, responded: 0 })
-  const [selectedRfq, setSelectedRfq] = useState(null)
-  const [rfqReply, setRfqReply] = useState({ unitPrice: '', deliveryDays: 3, notes: '' })
-  const [stats, setStats] = useState({ totalViews: 0, totalProducts: 0, avgRating: 0 })
-  const [verifyForm, setVerifyForm] = useState({
-    iceNumber: supplier.iceNumber || '',
-    tradeRegistry: supplier.tradeRegistry || '',
-    verificationDoc: supplier.verificationDoc || ''
-  })
-  const [verifyLoading, setVerifyLoading] = useState(false)
-  const [form, setForm] = useState({
-    name: '',
-    category: '',
-    price: '',
-    moq: 10,
-    unit: 'قطعة',
-    city: supplier.city || ''
-  })
-  const [priceTiers, setPriceTiers] = useState([])
-  const [tierInput, setTierInput] = useState({ minQty: '', maxQty: '', price: '' })
-  const [hasImageRights, setHasImageRights] = useState(true)
-  const [msg, setMsg] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [aiResult, setAiResult] = useState(null)
-  const [imgLoading, setImgLoading] = useState(false)
-  const [imageFile, setImageFile] = useState(null)
-  const [preview, setPreview] = useState(null)
-  const [showImagePicker, setShowImagePicker] = useState(false)
-  const [sourcingRequests, setSourcingRequests] = useState([])
-  const [sourcingLoading, setSourcingLoading] = useState(false)
-  const [selectedSourcing, setSelectedSourcing] = useState(null)
-  const [sourcingQuote, setSourcingQuote] = useState({ unitPrice: '', deliveryDays: 3, notes: '' })
-
-  const fetchMyProducts = useCallback(async () => {
-    try {
-      const res = await fetch(`${API}/products`)
-      const data = await res.json()
-      const list = Array.isArray(data) ? data : data.data || []
-      const mine = list.filter(p => p.supplierId === supplier._id)
-      setProducts(mine)
-      const totalViews = mine.reduce((s, p) => s + (p.views || 0), 0)
-      setStats(prev => ({ ...prev, totalViews, totalProducts: mine.length }))
-    } catch {
-      setProducts([])
-    }
-  }, [supplier._id])
-
-  const fetchMyReviews = useCallback(async () => {
-    try {
-      const res = await fetch(`${API}/reviews/${supplier._id}`)
-      const data = await res.json()
-      setReviews(Array.isArray(data.reviews) ? data.reviews : [])
-      setStats(prev => ({ ...prev, avgRating: data.avg || 0 }))
-    } catch {
-      setReviews([])
-    }
-  }, [supplier._id])
-
-  const fetchMyRfqs = useCallback(async () => {
-    const token = localStorage.getItem('supplierToken')
-    try {
-      const res = await fetch(`${API}/rfq/supplier`, {
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
-      })
-      const data = await res.json()
-      if (data.data) {
-        setRfqs(data.data)
-        setRfqCounts(data.counts || { total: 0, pending: 0, responded: 0 })
-      }
-    } catch {
-      setRfqs([])
-    }
-  }, [])
-
-  const fetchMyProfile = useCallback(async () => {
-    const token = localStorage.getItem('supplierToken')
-    if (!token) return
-    try {
-      const res = await fetch(`${API}/suppliers/me/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const data = await res.json()
-      if (data && data._id) {
-        setProfile(data)
-        setVerifyForm({
-          iceNumber: data.iceNumber || '',
-          tradeRegistry: data.tradeRegistry || '',
-          verificationDoc: data.verificationDoc || ''
-        })
-      }
-    } catch {
-      // ignore
-    }
-  }, [])
-
-  const fetchSourcingRequests = useCallback(async () => {
-    setSourcingLoading(true)
-    try {
-      const res = await fetch(`${API}/sourcing?status=open`)
-      const data = await res.json()
-      setSourcingRequests(Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []))
-    } catch {
-      setSourcingRequests([])
-    } finally {
-      setSourcingLoading(false)
-    }
-  }, [])
-
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { apiRequest } from '../../api/config';
+import ProtectedImage from '../common/ProtectedImage';
+import CommercialAgreement, { agreedProduct } from '../common/CommercialAgreement';
+import AtlasDialog from '../common/AtlasDialog';
+import { NegotiationMessages, OfferHistory } from '../common/NegotiationUI';
+import { useLabels, formatMoney, statusLabel, notificationLabel } from '../../i18n/useLabels';
+import { useTranslation } from '../../i18n/LanguageContext';
+import { Field, Notice } from '../common/WorkspaceUI';
+import OrganizationPanel from './OrganizationPanel';
+import StoresPanel from './StoresPanel';
+import ProductEditor from './ProductEditor';
+import WholesaleWorkspace from '../wholesale/WholesaleWorkspace';
+import JobsPanel from './JobsPanel';
+import { SupplierHeader, SupplierSidebar } from './SupplierWorkspace';
+import SupplierSetupGuide from './SupplierSetupGuide';
+import SupplierOfferForm from './SupplierOfferForm';
+import SourcingOfferForm from './SourcingOfferForm';
+import SourcingQuoteTerms from '../common/SourcingQuoteTerms';
+import useSupplierRejection from './useSupplierRejection';
+import { getSessionToken, useSessionToken } from '../../api/session';
+export default function SupplierDashboard({
+  supplier,
+  onLogout,
+  onBack,
+  onGoAdmin
+}) {
+  const l = useLabels(),
+    {
+      lang
+    } = useTranslation();
+  const [profile, setProfile] = useState(supplier),
+    [tab, setTab] = useState('overview'),
+    [revision, setRevision] = useState(0);
+  const [products, setProducts] = useState([]),
+    [stores, setStores] = useState([]),
+    [rfqs, setRfqs] = useState([]),
+    [sourcing, setSourcing] = useState([]),
+    [reviews, setReviews] = useState([]);
+  const [notifications, setNotifications] = useState([]),
+    [analytics, setAnalytics] = useState(null);
+  const [page, setPage] = useState(1),
+    [pages, setPages] = useState(1),
+    [total, setTotal] = useState(0),
+    [editing, setEditing] = useState(null);
+  const [error, setError] = useState(''),
+    [message, setMessage] = useState(''),
+    [busy, setBusy] = useState(false);
+  const [recoveredDraft, setRecoveredDraft] = useState(null);
+  const [pendingTab, setPendingTab] = useState(null);
+  const [offerCloseBlocked, setOfferCloseBlocked] = useState(false);
+  const [drafts, setDrafts] = useState([]), [draftLoading, setDraftLoading] = useState(false), [failedJobs, setFailedJobs] = useState(null);
+  const [selected, setSelected] = useState(null),
+    [thread, setThread] = useState(null),
+    [text, setText] = useState('');
+  const [quoteRecord, setQuoteTarget] = useState(null);
+  const [sourcingSession, setSourcingSession] = useState('');
+  const liveSession = useSessionToken();
+  const quoteTarget = sourcingSession === liveSession ? quoteRecord : null;
+  const [sourcingCloseBlocked, setSourcingCloseBlocked] = useState(false);
+  const sourcingContext = useRef({ active: true, generation: 0, controller: null });
+  useEffect(() => { const context = sourcingContext.current; context.active = true; return () => { context.active = false; context.generation++; context.controller?.abort(); } }, []);
+  const [verify, setVerify] = useState({
+    iceNumber: '',
+    tradeRegistry: '',
+    verificationDoc: ''
+  });
+  const can = useCallback(permission => ['supplier', 'admin'].includes(profile.role) || profile.permissions?.includes(permission), [profile.role, profile.permissions]);
+  const conversationRevision = useRef(0);
+  const rejection = useSupplierRejection({ rfqId: selected?._id, progress: thread?.rejection, status: selected?.status,
+    onUpdated: result => {
+      conversationRevision.current += 1;
+      setSelected(current => current?._id === result.rfq?._id ? { ...current, status: result.rfq.status, revision: result.rfq.revision } : current);
+      setThread(current => current ? { ...current, rejection: result.rejection } : current);
+      refresh();
+    } });
+  const refreshConversation = useCallback(async id => {
+    const revision = ++conversationRevision.current;
+    const token = getSessionToken();
+    const result = await apiRequest('/rfq/' + id + '/thread', { token }).catch(error => {
+      if (revision === conversationRevision.current && token === getSessionToken()) throw error;
+      return null;
+    });
+    if (!result || revision !== conversationRevision.current || token !== getSessionToken()) return;
+    setThread(result);
+    if (result.rfq) setSelected(current => current?._id === id ? {
+      ...current, status: result.rfq.status, decision: result.rfq.decision, currentOfferId: result.rfq.currentOfferId,
+      offer: result.rfq.offer, revision: result.rfq.revision
+    } : current);
+  }, []);
   useEffect(() => {
-    fetchMyProducts()
-    fetchMyReviews()
-    fetchMyRfqs()
-    fetchMyProfile()
-    fetchSourcingRequests()
-  }, [fetchMyProducts, fetchMyReviews, fetchMyRfqs, fetchMyProfile, fetchSourcingRequests])
-
-  async function submitVerification(e) {
-    if (e && e.preventDefault) e.preventDefault()
-    if (!verifyForm.iceNumber && !verifyForm.tradeRegistry) {
-      return setMsg('⚠️ يرجى إدخال رقم المعرف الموحد ICE أو رقم السجل التجاري RC')
-    }
-    setVerifyLoading(true)
-    const token = localStorage.getItem('supplierToken')
-    try {
-      const res = await fetch(`${API}/suppliers/me/verify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(verifyForm)
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setMsg(data.message)
-        setProfile(prev => ({ ...prev, ...data.supplier }))
-      } else {
-        setMsg(data.message || '⚠️ تعذر إرسال طلب التوثيق')
+    const id = selected?._id;
+    if (!id) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') refreshConversation(id).catch(e => setError(e.message));
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [selected?._id, refreshConversation]);
+  const refresh = () => setRevision(n => n + 1);
+  useEffect(() => {
+    let active = true;
+    apiRequest('/suppliers/me/profile').then(d => {
+      if (active) {
+        setProfile(d);
+        setVerify({
+          iceNumber: d.iceNumber || '',
+          tradeRegistry: d.tradeRegistry || '',
+          verificationDoc: d.verificationDoc || ''
+        });
       }
-    } catch {
-      setMsg('❌ خطأ في الاتصال بالسيرفر')
+    }).catch(e => {
+      if (active) setError(e.message);
+    });
+    return () => {
+      active = false;
+    };
+  }, [revision]);
+  useEffect(() => {
+    let active = true;
+    setError('');
+    const tasks = [];
+    const fetchInto = (path, setter) => tasks.push(apiRequest(path).then(data => {
+      if (active) setter(data);
+    }));
+    if (can('manage_store') || can('manage_products')) fetchInto('/stores/mine?limit=100', d => setStores(d.data || []));
+    if (can('manage_products') && tab !== 'drafts') fetchInto('/products/mine?page=' + page + '&limit=12', d => {
+      setProducts(d.data || []);
+      setPages(d.pagination?.pages || 1);
+      setTotal(d.pagination?.total || 0);
+    });
+    if (tab === 'overview' && can('manage_products')) fetchInto('/jobs/mine?status=failed&limit=1', d => setFailedJobs(d.pagination?.total ?? null));
+    if (can('manage_rfq')) {
+      fetchInto('/rfq/supplier', d => setRfqs(d.data || []));
+      fetchInto('/sourcing?status=open', d => setSourcing(d.data || []));
+    }
+    fetchInto('/notifications?limit=50', d => setNotifications(d.data || []));
+    if (['overview', 'reviews'].includes(tab) && profile.role === 'supplier') fetchInto('/suppliers/me/reviews', d => setReviews(d.data || []));
+    if (tab === 'overview' && can('manage_products')) fetchInto('/suppliers/me/analytics', setAnalytics);
+    Promise.allSettled(tasks).then(results => {
+      if (active) {
+        const fail = results.find(r => r.status === 'rejected');
+        if (fail) setError(fail.reason.message);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [can, page, tab, revision, profile.role]);
+  useEffect(() => {
+    if (tab !== 'notifications') return;
+    const timer = setInterval(() => apiRequest('/notifications?limit=50').then(d => setNotifications(d.data || [])).catch(e => setError(e.message)), 30000);
+    return () => clearInterval(timer);
+  }, [tab]);
+  useEffect(() => {
+    if (tab !== 'drafts' || !can('manage_products')) return;
+    const controller = new AbortController(); let active = true;
+    setDraftLoading(true); setDrafts([]);
+    async function load() {
+      const collected = []; let number = 1, count = 1;
+      do {
+        const result = await apiRequest('/products/mine?page=' + number + '&limit=100', { signal: controller.signal });
+        if (!active || controller.signal.aborted) return;
+        collected.push(...(result.data || []).filter(p => p.isDraft));
+        count = result.pagination?.pages || 1; number++;
+      } while (number <= count);
+      if (active) setDrafts([...new Map(collected.map(p => [p._id, p])).values()]);
+    }
+    load().catch(e => { if (active && e.name !== 'AbortError') setError(e.message); }).finally(() => { if (active) setDraftLoading(false); });
+    return () => { active = false; controller.abort(); };
+  }, [tab, revision, can]);
+  async function action(fn, success) {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      await fn();
+      if (success) setMessage(success);
+      refresh();
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
     } finally {
-      setVerifyLoading(false)
+      setBusy(false);
     }
   }
-
-  async function handleImageUpload(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    setImageFile(file)
-    setPreview(URL.createObjectURL(file))
-    setAiResult(null)
-  }
-
-  function handleImageSelect(url) {
-    setPreview(url)
-    setForm(prev => ({ ...prev, imageUrl: url }))
-    setShowImagePicker(false)
-    setAiResult(null)
-    setMsg('✅ تم اختيار الصورة!')
-  }
-
-  async function enhanceWithAI(directFile = null) {
-    const fileToUse = directFile || imageFile
-    if (!fileToUse) return setMsg('⚠️ يرجى اختيار صورة للمنتج أولاً')
-    setImgLoading(true)
-    setMsg('🧠 جاري تحليل صورة المنتج وتوليد مسودة الجملة بالذكاء الاصطناعي...')
-    const token = localStorage.getItem('supplierToken')
-    const formData = new FormData()
-    formData.append('image', fileToUse)
-    if (form.name) formData.append('productName', form.name)
-    if (form.category) formData.append('category', form.category)
-
+  async function openThread(rfq) {
+    setSelected(rfq);
+    setThread(null);
+    setText('');
     try {
-      const res = await fetch(`${API}/product-ai/enhance`, {
+      await refreshConversation(rfq._id);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+  async function openSourcing(id) {
+    const context = sourcingContext.current, revision = ++context.generation, token = getSessionToken();
+    context.controller?.abort(); context.controller = new AbortController();
+    const valid = () => context.active && revision === context.generation && token === getSessionToken();
+    try { const data = await apiRequest('/sourcing/'+id, { token, signal: context.controller.signal, cache: 'no-store' });
+      if (valid()) { setSourcingSession(token); setQuoteTarget({ ...data, _id: data._id || id }); setTab('sourcing'); setError(''); setMessage(''); }
+    } catch(e) { if (valid() && e.name !== 'AbortError') setError(e.message); }
+  }
+  async function sendMessage(e) {
+    e.preventDefault();
+    const id = selected._id;
+    const revision = conversationRevision.current;
+    await action(async () => {
+      await apiRequest('/rfq/' + id + '/messages', {
         method: 'POST',
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: formData
-      })
-      const data = await res.json()
-      const draft = data.draft || data.aiData
-      if (draft) {
-        setAiResult(data)
-        const newImgUrl = data.imageUrl || data.enhancedImage
-        if (newImgUrl) setPreview(newImgUrl)
-        setForm(prev => ({
-          ...prev,
-          name: draft.title || prev.name,
-          category: draft.category || prev.category || 'أخرى',
-          description: draft.description || prev.description || '',
-          price: draft.suggestedPrice || prev.price || '',
-          moq: draft.suggestedMoq || prev.moq || 1,
-          unit: draft.suggestedUnit || prev.unit || 'قطعة',
-          imageUrl: newImgUrl || prev.imageUrl
-        }))
-        if (Array.isArray(draft.suggestedPriceTiers) && draft.suggestedPriceTiers.length > 0) {
-          setPriceTiers(draft.suggestedPriceTiers)
+        body: {
+          content: text
         }
-        setMsg('✨ تم استخراج مسودة المنتج وتسعير الجملة بنجاح! راجع البيانات واعتمد النشر.')
-      } else {
-        setMsg(data.message || '⚠️ لم يتم استخراج المسودة')
-      }
-    } catch {
-      setMsg('⚠️ تعذر تحليل الصورة بالذكاء الاصطناعي')
-    } finally {
-      setImgLoading(false)
-    }
+      });
+      if (revision === conversationRevision.current) setText('');
+      const result = await apiRequest('/rfq/' + id + '/thread');
+      if (revision === conversationRevision.current) setThread(result);
+    });
   }
-
-  function addPriceTier() {
-    if (!tierInput.minQty || !tierInput.price) {
-      return setMsg('⚠️ أدخل أقل كمية والسعر للشريحة')
-    }
-    const newTier = {
-      minQty: Number(tierInput.minQty),
-      maxQty: tierInput.maxQty ? Number(tierInput.maxQty) : null,
-      price: Number(tierInput.price)
-    }
-    setPriceTiers([...priceTiers, newTier])
-    setTierInput({ minQty: '', maxQty: '', price: '' })
+  const unread = notifications.filter(n => !n.readAt).length;
+  const wholesaleTab = ['wholesale', l('فرص الجملة', 'Opportunités de gros'), can('manage_products')];
+  const tabs = [['overview', l('نظرة عامة', 'Vue d’ensemble'), true], ['organization', l('الشركة والفريق', 'Entreprise et équipe'), true], ['stores', l('متاجري', 'Mes boutiques'), can('manage_store')], ['products', l('منتجاتي', 'Mes produits'), can('manage_products')], ['drafts', l('المسودات', 'Brouillons'), can('manage_products')], ['add', l('إضافة منتج', 'Ajouter un produit'), can('manage_products')], ['jobs', l('مهام الصور', 'Tâches des images'), can('manage_products')], ['rfq', l('طلبات الأسعار', 'Demandes de devis'), can('manage_rfq')], ['sourcing', l('فرص التوريد', 'Opportunités de sourcing'), can('manage_rfq')], ['verification', l('توثيق المورد', 'Vérification'), profile.role === 'supplier'], ['reviews', l('التقييمات', 'Avis'), profile.role === 'supplier'], ['notifications', l('الإشعارات', 'Notifications') + ' (' + unread + ')', true]];
+  tabs.splice(tabs.findIndex(([key]) => key === 'drafts'), 0, wholesaleTab);
+  function moveTab(key) {
+    setPendingTab(null);
+    if (key === 'market') { onBack?.(); return; }
+    setTab(key); setPage(1); setError(''); setMessage('');
+    if (key === 'add') { setEditing(null); setRecoveredDraft(null); }
   }
-
-  function removePriceTier(idx) {
-    setPriceTiers(priceTiers.filter((_, i) => i !== idx))
+  function chooseTab(key) {
+    if (key === tab) return;
+    if (tab === 'add') { setPendingTab(key); return; }
+    moveTab(key);
   }
+  const listProducts = tab === 'drafts' ? drafts.slice((page - 1) * 12, page * 12) : products;
+  const listPages = tab === 'drafts' ? Math.ceil(drafts.length / 12) : pages;
+  return <div className="atlas-supplier"><SupplierHeader profile={profile} unread={unread} onNotifications={() => chooseTab('notifications')} onBack={() => chooseTab('market')} onLogout={onLogout}>{profile.role === 'admin' && <button onClick={onGoAdmin}>{l('الإشراف', 'Administration')}</button>}</SupplierHeader>
+    <div className="supplier-shell"><SupplierSidebar tabs={tabs} tab={tab} onTab={chooseTab} /><main id="supplier-main" tabIndex="-1" className="supplier-content">
+    <div className="supplier-page-heading"><div><p className="supplier-eyebrow">{l('Jomla.ma · مساحة عملك', 'Jomla.ma · Votre espace')}</p><h1>{tabs.find(([key])=>key===tab)?.[1]}</h1></div><div className="actions">{tab!=='add' && <button disabled={busy} onClick={refresh}>{l('تحديث مساحة العمل','Actualiser l’espace')}</button>}{can('manage_products') && tab !== 'add' && <button className="primary" onClick={()=>chooseTab('add')}>{l('إضافة منتج جديد','Créer un produit')}</button>}</div></div>
+    {pendingTab && <section className="supplier-leave-warning" role="alert"><strong>{l('احفظ مسودتك قبل المغادرة','Enregistrez votre brouillon avant de quitter')}</strong><p>{l('ستفقد المدخلات غير المحفوظة إذا غادرت المحرر. يمكنك البقاء وحفظ مسودة، أو المغادرة دون حفظ.', 'Les saisies non enregistrées seront perdues. Restez pour enregistrer un brouillon, ou quittez sans enregistrer.')}</p><div className="actions"><button onClick={()=>setPendingTab(null)}>{l('البقاء في المحرر','Rester dans l’éditeur')}</button><button onClick={()=>moveTab(pendingTab)}>{l('مغادرة دون حفظ','Quitter sans enregistrer')}</button></div></section>}
+    <Notice error>{error}</Notice><Notice>{message}</Notice>
+    {tab === 'wholesale' && can('manage_products') && <><h2>{wholesaleTab[1]}</h2><WholesaleWorkspace /></>}
+    {tab === 'overview' && <section className="supplier-attention panel"><div><p className="supplier-eyebrow">{l('ابدأ بالأهم','Vos priorités')}</p><h2>{l('ما يحتاج متابعتك','À suivre')}</h2><p className="muted">{l('راجع الطلبات والمسودات ومهام الصور قبل النشر. لا يُنشر أي منتج تلقائياً.', 'Suivez les demandes, les brouillons et les images. Aucun produit n’est publié automatiquement.')}</p></div><div className="supplier-priorities">{can('manage_rfq') && <button onClick={()=>chooseTab('rfq')}><strong>{rfqs.filter(r=>['pending','responded','offering'].includes(r.status)).length}</strong>{l('طلبات أسعار مفتوحة','Demandes de devis ouvertes')}</button>}{can('manage_products') && <><button onClick={()=>chooseTab('drafts')}><strong>↗</strong>{l('مراجعة المسودات','Vérifier les brouillons')}</button><button onClick={()=>chooseTab('jobs')}><strong>{failedJobs ?? '—'}</strong>{l('مهام صور فاشلة','Tâches d’images en échec')}</button><button onClick={()=>chooseTab('products')}><strong>↗</strong>{l('مراجعة حالة المنتجات','Vérifier les produits')}</button></>}</div><p className="supplier-help">{l('اعتماد المتجر الإداري يتيح النشر. توثيق المورد اختياري ولا يضمن جودة المنتج أو الاتفاق.', 'L’approbation administrative de la boutique permet la publication. La vérification du fournisseur reste facultative et ne garantit ni produit ni accord.')}</p></section>}
+    {tab === 'overview' && <section className="panel"><h2>{l('مساحة المورد', 'Espace fournisseur')}</h2><p className="muted">{l('الخطوات: ملف الشركة ← متجر ومراجعة الإدارة ← صورة وبيانات المنتج ← اعتماد النشر.', 'Parcours : entreprise → boutique et approbation → image et données produit → publication confirmée.')}</p><div className="stat-grid"><div className="stat">{l('منتجاتي', 'Mes produits')}<strong>{total}</strong></div><div className="stat">{l('طلبات الأسعار', 'Demandes de devis')}<strong>{rfqs.length}</strong></div><div className="stat">{l('المتاجر', 'Boutiques')}<strong>{stores.length}</strong></div></div><p>{l('التوثيق التجاري الاختياري', 'Vérification commerciale facultative')}: {statusLabel(profile.verificationStatus, lang)}</p>{profile.role === 'staff' && !profile.organizationId && <Notice>{l('حساب الموظف يحتاج قبول دعوة من مالك الشركة قبل إدارة المنتجات أو العروض.', 'Acceptez une invitation du propriétaire avant de gérer produits et devis.')}</Notice>}{analytics?.categoryStats?.length > 0 && <details><summary>{l('إحصاءات الكتالوج حسب الفئة', 'Statistiques du catalogue par catégorie')}</summary>{analytics.categoryStats.map(s => <p key={s._id}>{s._id || l('بدون فئة','Sans catégorie')}: {s.count} · {l('متوسط السعر', 'Prix moyen')}: {s.avgPrice == null ? '—' : Number(s.avgPrice).toFixed(2)}</p>)}</details>}</section>}
+    {tab === 'overview' && <SupplierSetupGuide can={can} onTab={chooseTab} />}
+    {tab === 'organization'  && <OrganizationPanel profile={profile} onChanged={refresh} />}
+    {tab === 'stores' && can('manage_store') && <StoresPanel stores={stores} city={profile.city} onChanged={refresh} />}
+    {tab === 'jobs' && can('manage_products') && <JobsPanel onReview={draft => { setEditing(null); setRecoveredDraft(draft); setTab('add'); }} />}
+    {tab === 'add' && can('manage_products') && <ProductEditor key={editing?._id || recoveredDraft?.jobId || 'new'} product={editing} initialDraft={recoveredDraft} stores={stores} city={profile.city} onCancel={() => chooseTab('products')} onSaved={draft => {
+        setPendingTab(null);
+        setMessage(draft ? l('حفظت المسودة الخاصة', 'Brouillon privé enregistré') : l('نشر المنتج بعد اعتمادك', 'Produit publié après confirmation'));
+        setTab('products');
+        refresh();
+      }} />}
+    {['products','drafts'].includes(tab) && can('manage_products') && <section className="panel"><h2>{tab==='drafts'?l('مسوداتك الخاصة','Vos brouillons privés'):l('منتجاتي المنشورة والمسودات', 'Mes produits publiés et brouillons')}</h2>{draftLoading && tab==='drafts' && <p role="status">{l('جارٍ جمع مسوداتك الخاصة…','Chargement de vos brouillons privés…')}</p>}<div className="product-grid">{listProducts.map(p => <article key={p._id} className="product-card"><ProtectedImage value={p.imageUrl} alt={p.name} /><div className="product-body"><h3>{p.name || l('مسودة بلا عنوان', 'Brouillon sans titre')}</h3><p><span className="badge">{p.isDraft ? l('مسودة خاصة', 'Brouillon privé') : l('منشور', 'Publié')}</span> {p.moderationStatus === 'hidden' && <span className="badge amber">{l('محجوب إشرافياً', 'Masqué par la modération')}</span>}</p><p>{p.pricingMode === 'on_request' ? l('السعر عند الطلب', 'Prix sur demande') : formatMoney(p.price, p.currency, lang)}</p><p>MOQ: {p.moq} {p.unit}</p><div className="actions"><button onClick={() => {
+                  setEditing(p);
+                  setTab('add');
+                }}>{l('تعديل ومراجعة', 'Modifier et vérifier')}</button><button className="danger" disabled={busy} onClick={() => {
+                  if (window.confirm(l('حذف هذا المنتج؟', 'Supprimer ce produit ?'))) action(() => apiRequest('/products/' + p._id, {
+                    method: 'DELETE'
+                  }));
+                }}>{l('حذف', 'Supprimer')}</button></div></div></article>)}</div>{!listProducts.length && !draftLoading && <p className="empty">{tab==='drafts'?l('لا توجد مسودات محفوظة.','Aucun brouillon enregistré.'):l('لا توجد منتجات بعد. أنشئ متجرك ثم أضف المنتج.', 'Aucun produit. Créez une boutique puis ajoutez votre produit.')}</p>}<div className="pager"><button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>{l('السابق', 'Précédent')}</button><span>{page}/{Math.max(1, listPages)}</span><button disabled={page >= listPages} onClick={() => setPage(p => p + 1)}>{l('التالي', 'Suivant')}</button></div></section>}
+    {tab === 'rfq' && can('manage_rfq') && <section className="panel"><div className="actions"><h2>{l('طلبات الأسعار الواردة', 'Demandes de devis reçues')}</h2><button onClick={refresh}>{l('تحديث', 'Actualiser')}</button></div>{rfqs.map(r => <article className="panel" key={r._id}><h3>{agreedProduct(r)?.name}</h3><p>{r.buyerName} · {r.decision?.agreement?.quantity ?? r.quantity} {agreedProduct(r)?.unit}</p><span className="badge">{statusLabel(r.status, lang)}</span>{r.offer && <p>{formatMoney(r.decision?.agreement?.unitPrice ?? r.offer.unitPrice, r.decision?.agreement?.currency || r.currency || 'MAD', lang)} × {r.decision?.agreement?.quantity ?? r.quantity}</p>}<button onClick={() => openThread(r)}>{l('تفاصيل ومحادثة', 'Détails et conversation')}</button></article>)}{!rfqs.length && <p className="empty">{l('لا توجد طلبات', 'Aucune demande')}</p>}</section>}
+    {tab === 'sourcing' && can('manage_rfq') && <section className="panel"><h2>{l('طلبات توريد مفتوحة', 'Demandes de sourcing ouvertes')}</h2>{sourcing.map(s => <article className="panel" key={s._id}><h3>{s.productName}</h3><p>{s.quantity} {s.unit} · {s.buyerCity}</p><p>{s.notes}</p><p>{l('عدد العروض', 'Nombre d’offres')}: {s.quotesCount}</p><button onClick={() => openSourcing(s._id)}>{s.offerRecovery ? l('استكمال العرض المحفوظ', 'Reprendre l’offre enregistrée') : l('تقديم عرض محفوظ', 'Soumettre une offre')}</button></article>)}</section>}
+    {tab === 'verification' && <form className="panel" onSubmit={e => {
+        e.preventDefault();
+        action(() => apiRequest('/suppliers/me/verify', {
+          method: 'POST',
+          body: verify
+        }), l('أرسل ملفك للمراجعة', 'Dossier envoyé pour examen'));
+      }}><h2>{l('طلب مراجعة وتوثيق المورد', 'Demande de vérification')}</h2><p>{statusLabel(profile.verificationStatus, lang)}</p><p className="supplier-help">{l('هذا التوثيق التجاري اختياري، وهو منفصل عن اعتماد المتجر الإداري. لا يشترط لفتح متجر أو نشر منتج ولا يمثل ضماناً تجارياً.', 'Cette vérification commerciale est facultative et distincte de l’approbation administrative de la boutique. Elle n’est requise ni pour ouvrir une boutique ni pour publier, et ne constitue pas une garantie commerciale.')}</p>{profile.rejectionReason && <Notice error>{profile.rejectionReason}</Notice>}<div className="form-grid">{[['iceNumber', 'ICE'], ['tradeRegistry', l('السجل التجاري', 'Registre de commerce')], ['verificationDoc', l('رابط وثيقة التوثيق (HTTPS)', 'Lien du justificatif (HTTPS)')]].map(([key, label]) => <Field key={key} label={label} value={verify[key]} onChange={e => setVerify({
+            ...verify,
+            [key]: e.target.value
+          })} />)}</div><button disabled={busy} className="primary" style={{
+          marginTop: 12
+        }}>{l('إرسال للمراجعة', 'Envoyer pour examen')}</button></form>}
+    {tab === 'reviews' && <section className="panel"><h2>{l('تقييمات العملاء', 'Avis clients')}</h2>{reviews.map(r => <article className="panel" key={r._id}><strong>{r.userName || r.buyerName || r.name}</strong><p>{'★'.repeat(r.stars || 0)} {r.comment}</p>{r.reply?.text && <p className="notice">{r.reply.text}</p>}<form className="actions" onSubmit={e => {
+            e.preventDefault();
+            const input = e.currentTarget.elements.reply;
+            action(() => apiRequest('/suppliers/me/reviews/' + r._id + '/reply', {
+              method: 'POST',
+              body: {
+                text: input.value
+              }
+            }));
+          }}><input aria-label={l('رد على التقييم', 'Réponse à l’avis')} name="reply" required /><button disabled={busy}>{l('رد', 'Répondre')}</button></form></article>)}{!reviews.length && <p>{l('لا توجد تقييمات', 'Aucun avis')}</p>}</section>}
+    {tab === 'notifications' && <section className="panel"><div className="actions"><h2>{l('الإشعارات', 'Notifications')}</h2><button onClick={() => action(() => apiRequest('/notifications/read-all', {
+            method: 'PUT'
+          }))}>{l('تحديد الكل كمقروء', 'Tout marquer comme lu')}</button><button onClick={refresh}>{l('تحديث', 'Actualiser')}</button></div>{notifications.map(n => <article className="message" key={n._id}><p>{lang === 'en' ? n.titleEn || notificationLabel(n.type, lang) : lang === 'fr' ? n.titleFr || n.title || notificationLabel(n.type, lang) : n.titleAr || n.title || notificationLabel(n.type, lang)}</p><p>{lang === 'en' ? n.bodyEn : lang === 'fr' ? n.bodyFr || n.body || n.message : n.bodyAr || n.body || n.message}</p><button onClick={() => {
+            if (n.resourceType === 'rfq') {
+              const rfq = rfqs.find(r => r._id === n.resourceId);
+              if (rfq) {
+                setTab('rfq');
+                openThread(rfq);
+              }
+            } else openSourcing(n.resourceId);
+          }}>{l('فتح الطلب', 'Ouvrir la demande')}</button>{!n.readAt && <button onClick={() => action(() => apiRequest('/notifications/' + n._id + '/read', {
+            method: 'PUT'
+          }))}>{l('قرأت', 'Marquer comme lu')}</button>}</article>)}</section>}
+    </main></div>
+    {(selected || quoteTarget) && <AtlasDialog title={selected ? agreedProduct(selected)?.name : quoteTarget.productName} label={l('تفاصيل التفاوض', 'Détails de négociation')} busy={busy || offerCloseBlocked || rejection.loading || sourcingCloseBlocked} onClose={() => {
+              conversationRevision.current += 1;
+              setSelected(null);
+              setQuoteTarget(null);
+            }}><Notice error>{error}</Notice>
+      {selected && rejection.phase !== 'idle' && <section className="trade-uncertain">
+        <p role="status">{rejection.phase === 'completed' ? l('اكتمل رفض الطلب وحفظ آثاره.', 'Refus finalisé et effets enregistrés.')
+          : rejection.phase === 'pending' ? l('نية الرفض محفوظة وقيد الاستكمال؛ الرفض ليس نهائياً بعد.', 'Refus enregistré, finalisation en cours ; il n’est pas encore définitif.')
+          : l('نتيجة الرفض غير محسومة. استكمل الطلب نفسه للتحقق.', 'Résultat du refus incertain. Reprenez la même demande pour vérifier.')}</p>
+        {rejection.error && <p role="alert">{rejection.error}</p>}
+        {rejection.phase !== 'completed' && <button type="button" disabled={rejection.loading || rejection.waiting} onClick={rejection.submit}>{l('استكمال رفض الطلب', 'Reprendre le refus')}</button>}
+      </section>}
+      {selected && thread && <div className="trade-negotiation-grid"><aside className="trade-pane"><CommercialAgreement rfq={selected} /><OfferHistory rfq={selected} offers={thread.offers || []}/></aside><section className="trade-pane"><NegotiationMessages messages={thread.thread?.messages || []} offers={thread.offers || []} role="supplier"/>{['pending', 'responded'].includes(selected.status) && <form className="trade-compose" onSubmit={sendMessage}><Field label={l('رسالتك', 'Votre message')} value={text} required maxLength={4000} onChange={e => setText(e.target.value)} /><button disabled={busy || !text.trim()}>{l('إرسال', 'Envoyer')}</button></form>}</section></div>}
+      {selected && !thread && <p role="status">{l('تحميل تفاصيل الطلب…','Chargement de la demande…')}</p>}
+      {selected && thread && (['pending', 'responded', 'offering'].includes(selected.status) || thread.offerSubmission) && <SupplierOfferForm rfq={selected} progress={thread.offerSubmission} onBlockClose={setOfferCloseBlocked} disabled={busy || rejection.blocked} onReject={rejection.submit} onUpdated={() => { refresh(); refreshConversation(selected._id).catch(e => setError(e.message)); }}/>}
+      {quoteTarget && <section><p>{statusLabel(quoteTarget.status,lang)}</p>{quoteTarget.quotes?.map(q=><section key={q._id}><p>{statusLabel(q.status,lang)}</p><SourcingQuoteTerms quote={q} sourcing={quoteTarget}/></section>)}</section>}
+      {quoteTarget && <SourcingOfferForm sourcing={quoteTarget} supplier={profile} sessionToken={sourcingSession} onBlockClose={setSourcingCloseBlocked} onUpdated={result => {
+        refresh();
+        if (result.processing) setQuoteTarget(result.sourcing);
+        else { setQuoteTarget(null); setMessage(l('تم حفظ عرض التوريد', 'Offre enregistrée')); }
+      }}/>}
 
-  async function addProduct(isDraft = false) {
-    if (!form.name || !form.price || !form.category) {
-      return setMsg('⚠️ كمل جميع الخانات الإلزامية (اسم المنتج، الفئة، والسعر الأساسي)')
-    }
-    if (!hasImageRights) {
-      return setMsg('⚠️ يرجى الموافقة على إقرار حقوق استخدام الصورة والمنتج')
-    }
-
-    setLoading(true)
-    const token = localStorage.getItem('supplierToken')
-    try {
-      const res = await fetch(`${API}/products`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          ...form,
-          price: Number(form.price),
-          moq: Number(form.moq) || 1,
-          unit: form.unit || 'قطعة',
-          priceTiers: priceTiers.filter(t => t.minQty && t.price),
-          supplierId: supplier._id,
-          supplierPhone: supplier.phone || '',
-          description: form.description || aiResult?.draft?.description || aiResult?.aiData?.description || '',
-          imageUrl: preview || aiResult?.imageUrl || aiResult?.enhancedImage || form.imageUrl || '',
-          hasImageRights: true,
-          isDraft: !!isDraft
-        })
-      })
-      const data = await res.json()
-      setMsg(data.message || (isDraft ? '💾 تم حفظ المنتج كمسودة' : '✅ تم نشر منتج الجملة في الكتالوج بنجاح'))
-      setForm({ name: '', category: '', price: '', moq: 10, unit: 'قطعة', city: supplier.city || '', description: '' })
-      setPriceTiers([])
-      setAiResult(null)
-      setPreview(null)
-      setImageFile(null)
-      fetchMyProducts()
-    } catch {
-      setMsg('❌ تعذر حفظ أو نشر المنتج')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function deleteProduct(id) {
-    const token = localStorage.getItem('supplierToken')
-    try {
-      await fetch(`${API}/products/${id}`, {
-        method: 'DELETE',
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
-      })
-      fetchMyProducts()
-    } catch {
-      setMsg('❌ تعذر حذف المنتج')
-    }
-  }
-
-  async function respondToRfq(rfqId, status = 'responded') {
-    const token = localStorage.getItem('supplierToken')
-    try {
-      const res = await fetch(`${API}/rfq/${rfqId}/respond`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          unitPrice: Number(rfqReply.unitPrice),
-          deliveryDays: Number(rfqReply.deliveryDays) || 3,
-          notes: rfqReply.notes,
-          status
-        })
-      })
-      const data = await res.json()
-      setMsg(data.message)
-      setSelectedRfq(null)
-      setRfqReply({ unitPrice: '', deliveryDays: 3, notes: '' })
-      fetchMyRfqs()
-    } catch {
-      setMsg('❌ تعذر إرسال الرد على طلب عرض السعر')
-    }
-  }
-
-  async function submitSourcingQuote(sourcingId) {
-    if (!sourcingQuote.unitPrice) {
-      return setMsg('⚠️ يرجى إدخال سعر الوحدة المعروض')
-    }
-    const token = localStorage.getItem('supplierToken')
-    try {
-      const res = await fetch(`${API}/sourcing/${sourcingId}/quote`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          unitPrice: Number(sourcingQuote.unitPrice),
-          deliveryDays: Number(sourcingQuote.deliveryDays) || 3,
-          notes: sourcingQuote.notes
-        })
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setMsg(data.message)
-        setSelectedSourcing(null)
-        setSourcingQuote({ unitPrice: '', deliveryDays: 3, notes: '' })
-        fetchSourcingRequests()
-        if (data.buyerWhatsapp) {
-          window.open(data.buyerWhatsapp, '_blank')
-        }
-      } else {
-        setMsg(data.message || '⚠️ تعذر تقديم عرض التوريد')
-      }
-    } catch {
-      setMsg('❌ خطأ في الاتصال بالخادم')
-    }
-  }
-
-  const inp = (ph, key, type = 'text') => (
-    <input
-      type={type}
-      placeholder={ph}
-      value={form[key]}
-      onChange={e => setForm({ ...form, [key]: e.target.value })}
-      style={{
-        width: '100%',
-        padding: '10px 14px',
-        borderRadius: '8px',
-        border: '1px solid #ddd',
-        fontSize: '14px',
-        direction: 'rtl',
-        outline: 'none',
-        boxSizing: 'border-box',
-        marginBottom: '10px',
-        fontFamily: "'Cairo', sans-serif"
-      }}
-    />
-  )
-
-  const tabs = [
-    { id: 'overview', label: '📊 نظرة عامة' },
-    { id: 'rfq',      label: `📑 طلبات الأسعار RFQ (${rfqCounts.pending || 0})` },
-    { id: 'sourcing', label: `🎯 فرص التوريد بالسوق (${sourcingRequests.length})` },
-    { id: 'verification', label: profile.isVerified ? '🛡️ توثيق المتجر (موثق)' : (profile.verificationStatus === 'pending' ? '⏳ توثيق المتجر (مراجعة)' : '🛡️ توثيق المتجر') },
-    { id: 'products', label: '📦 منتجاتي' },
-    { id: 'add',      label: '➕ إضافة منتج جملة' },
-    { id: 'reviews',  label: '⭐ التقييمات' },
-    { id: 'market',   label: '📈 تحليل السوق' },
-  ]
-
-  return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5', fontFamily: "'Cairo', sans-serif" }}>
-      {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg,#C1272D,#8B1A1F)', padding: '0 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <label style={{ cursor: 'pointer' }}>
-              <div
-                style={{
-                  width: '52px',
-                  height: '52px',
-                  borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.2)',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '2px solid rgba(255,255,255,0.4)'
-                }}
-              >
-                {supplier.avatar ? (
-                  <img src={supplier.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <span style={{ fontSize: '24px' }}>🏪</span>
-                )}
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={async (e) => {
-                  const file = e.target.files[0]
-                  if (!file) return
-                  const formData = new FormData()
-                  formData.append('image', file)
-                  formData.append('productName', 'avatar')
-                  formData.append('category', 'profile')
-                  try {
-                    const res = await fetch(`${API}/product-ai/enhance`, { method: 'POST', body: formData })
-                    const data = await res.json()
-                    if (data.enhancedImage) {
-                      await fetch(`${API}/suppliers/${supplier._id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ avatar: data.enhancedImage })
-                      })
-                      supplier.avatar = data.enhancedImage
-                      setMsg('✅ تم تحديث صورة البروفيل!')
-                    }
-                  } catch {
-                    setMsg('⚠️ تعذر تحديث الصورة')
-                  }
-                }}
-              />
-            </label>
-            <div style={{ direction: 'rtl' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: 'white', fontSize: '18px', fontWeight: '700' }}>{profile.name || supplier.name}</span>
-                {profile.isVerified && (
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      color: '#065F46',
-                      background: '#D1FAE5',
-                      border: '1px solid #A7F3D0',
-                      padding: '2px 8px',
-                      borderRadius: '12px',
-                      fontWeight: '700'
-                    }}
-                  >
-                    🛡️ مورد موثوق
-                  </span>
-                )}
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '12px' }}>📍 {profile.city || supplier.city} | متجر جملة معتمد</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {profile.role === 'admin' && onGoAdmin && (
-              <button
-                onClick={onGoAdmin}
-                style={{
-                  background: '#F59E0B',
-                  border: 'none',
-                  color: 'white',
-                  borderRadius: '8px',
-                  padding: '8px 14px',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  fontFamily: "'Cairo', sans-serif"
-                }}
-              >
-                ⚙️ لوحة المشرف
-              </button>
-            )}
-            <button
-              onClick={onLogout}
-              style={{
-                background: 'rgba(255,255,255,0.15)',
-                border: '1px solid rgba(255,255,255,0.3)',
-                color: 'white',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontFamily: "'Cairo', sans-serif"
-              }}
-            >
-              خروج
-            </button>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '0' }}>
-          {tabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              style={{
-                padding: '10px 16px',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontFamily: "'Cairo', sans-serif",
-                whiteSpace: 'nowrap',
-                fontWeight: '600',
-                background: activeTab === t.id ? 'white' : 'transparent',
-                color: activeTab === t.id ? '#C1272D' : 'rgba(255,255,255,0.85)',
-                borderRadius: '8px 8px 0 0'
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ maxWidth: '960px', margin: '24px auto', padding: '0 16px' }}>
-        {msg && (
-          <div
-            style={{
-              padding: '12px 16px',
-              borderRadius: '8px',
-              marginBottom: '16px',
-              background: msg.includes('✅') ? '#E1F5EE' : '#FAECE7',
-              color: msg.includes('✅') ? '#0F6E56' : '#993C1D',
-              direction: 'rtl',
-              fontSize: '14px'
-            }}
-          >
-            {msg}
-          </div>
-        )}
-
-        {/* Overview Tab */}
-        {activeTab === 'overview' && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '20px' }}>
-              {[
-                { icon: '📦', label: 'المنتجات', value: stats.totalProducts },
-                { icon: '📑', label: 'طلبات RFQ جديدة', value: rfqCounts.pending },
-                { icon: '👁️', label: 'المشاهدات', value: stats.totalViews },
-                { icon: '⭐', label: 'التقييم', value: stats.avgRating > 0 ? `${stats.avgRating}/5` : 'لا يوجد' },
-              ].map((s, i) => (
-                <div
-                  key={i}
-                  style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    padding: '20px',
-                    textAlign: 'center',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-                  }}
-                >
-                  <div style={{ fontSize: '26px', marginBottom: '6px' }}>{s.icon}</div>
-                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#1a1a1a' }}>{s.value}</div>
-                  <div style={{ fontSize: '12px', color: '#888' }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', direction: 'rtl' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px' }}>آخر طلبات عروض الأسعار (RFQ)</h3>
-                <button
-                  onClick={() => setActiveTab('rfq')}
-                  style={{ background: 'none', border: 'none', color: '#0F766E', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
-                >
-                  عرض الكل ({rfqCounts.total}) ←
-                </button>
-              </div>
-              {rfqs.length === 0 ? (
-                <div style={{ color: '#888', fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>
-                  لا توجد طلبات عروض أسعار حتى الآن
-                </div>
-              ) : (
-                rfqs.slice(0, 3).map(r => (
-                  <div key={r._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #eee' }}>
-                    <div>
-                      <div style={{ fontWeight: '700', fontSize: '14px' }}>{r.productId?.name || 'منتج محذوف'}</div>
-                      <div style={{ fontSize: '12px', color: '#666' }}>المشتري: {r.buyerName} ({r.quantity} {r.productId?.unit || 'قطعة'})</div>
-                    </div>
-                    <span
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: '20px',
-                        fontSize: '11px',
-                        fontWeight: '600',
-                        background: r.status === 'pending' ? '#FEF3C7' : '#E1F5EE',
-                        color: r.status === 'pending' ? '#B45309' : '#0F766E'
-                      }}
-                    >
-                      {r.status === 'pending' ? 'قيد المراجعة' : 'تم الرد'}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* RFQ Management Tab (B2B Request For Quotation) */}
-        {activeTab === 'rfq' && (
-          <div style={{ direction: 'rtl' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ fontSize: '18px', margin: 0 }}>طلبات عروض الأسعار الرسمية (RFQ)</h2>
-              <span style={{ fontSize: '13px', color: '#64748B' }}>
-                المجموع: {rfqs.length} طلب | {rfqCounts.pending} بانتظار ردك
-              </span>
-            </div>
-
-            {rfqs.length === 0 ? (
-              <div style={{ background: 'white', borderRadius: '16px', padding: '60px 20px', textAlign: 'center', color: '#888' }}>
-                <div style={{ fontSize: '40px', marginBottom: '10px' }}>📭</div>
-                <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>لا توجد طلبات عروض أسعار حتى الآن</div>
-                <div style={{ fontSize: '13px', marginTop: '4px' }}>ستظهر هنا طلبات الشراء بالجملة التي يرسلها التجار لمنتجاتك</div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {rfqs.map(r => {
-                  const whatsappBuyer = `https://wa.me/${r.buyerPhone}?text=${encodeURIComponent(
-                    `السلام عليكم أخي ${r.buyerName}، معكم متجر ${supplier.name} من منصة Jomla.ma بخصوص طلب عرض السعر رقم #${r._id.slice(-6)} لمنتج "${r.productId?.name}"...`
-                  )}`
-
-                  return (
-                    <div
-                      key={r._id}
-                      style={{
-                        background: 'white',
-                        borderRadius: '14px',
-                        padding: '20px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                        border: '1px solid #E2E8F0'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                          {r.productId?.imageUrl && (
-                            <img src={r.productId.imageUrl} alt="" style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '8px' }} />
-                          )}
-                          <div>
-                            <div style={{ fontWeight: '700', fontSize: '15px' }}>{r.productId?.name}</div>
-                            <div style={{ fontSize: '12px', color: '#64748B' }}>
-                              رقم الطلب: #{r._id.slice(-6)} | {new Date(r.createdAt).toLocaleDateString('ar-MA')}
-                            </div>
-                          </div>
-                        </div>
-
-                        <span
-                          style={{
-                            padding: '4px 12px',
-                            borderRadius: '20px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            background:
-                              r.status === 'pending' ? '#FEF3C7' : r.status === 'responded' ? '#E1F5EE' : '#F1F5F9',
-                            color:
-                              r.status === 'pending' ? '#B45309' : r.status === 'responded' ? '#0F766E' : '#475569'
-                          }}
-                        >
-                          {r.status === 'pending' ? '⏳ بانتظار عرضك' : r.status === 'responded' ? '✅ تم إرسال عرض السعر' : 'مرفوض'}
-                        </span>
-                      </div>
-
-                      <div style={{ background: '#F8FAFC', padding: '12px 16px', borderRadius: '10px', marginBottom: '14px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', fontSize: '13px' }}>
-                        <div><strong>المشتري:</strong> {r.buyerName}</div>
-                        <div><strong>الهاتف:</strong> {r.buyerPhone}</div>
-                        <div><strong>مدينة التوصيل:</strong> {r.buyerCity || 'غير محددة'}</div>
-                        <div><strong>الكمية المطلوبة:</strong> <span style={{ color: '#B45309', fontWeight: '700' }}>{r.quantity} {r.productId?.unit || 'قطعة'}</span></div>
-                        {r.targetPrice && <div><strong>السعر المستهدف:</strong> {r.targetPrice} درهم / قطعة</div>}
-                      </div>
-
-                      {r.notes && (
-                        <div style={{ fontSize: '13px', color: '#334155', marginBottom: '14px', background: '#FFFBEB', padding: '10px 14px', borderRadius: '8px', borderRight: '4px solid #F59E0B' }}>
-                          <strong>ملاحظات المشتري:</strong> {r.notes}
-                        </div>
-                      )}
-
-                      {/* إذا كان قد تم الرد مسبقاً */}
-                      {r.status === 'responded' && r.offer && (
-                        <div style={{ background: '#F0FDF4', padding: '12px 16px', borderRadius: '10px', border: '1px solid #BBF7D0', marginBottom: '12px', fontSize: '13px' }}>
-                          <div style={{ fontWeight: '700', color: '#166534', marginBottom: '4px' }}>📋 عرض السعر الذي أرسلته للمشتري:</div>
-                          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                            <div>سعر الوحدة: <strong>{r.offer.unitPrice} درهم</strong></div>
-                            <div>المجموع الكلي: <strong>{r.offer.totalPrice} درهم</strong></div>
-                            <div>مدة التجهيز والتوصيل: <strong>{r.offer.deliveryDays} أيام</strong></div>
-                          </div>
-                          {r.offer.notes && <div style={{ marginTop: '4px', color: '#15803D' }}>ملاحظاتك: {r.offer.notes}</div>}
-                        </div>
-                      )}
-
-                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        <a
-                          href={whatsappBuyer}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{
-                            padding: '9px 18px',
-                            background: '#25D366',
-                            color: 'white',
-                            borderRadius: '8px',
-                            textDecoration: 'none',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}
-                        >
-                          💬 محادثة المشتري عبر واتساب
-                        </a>
-
-                        {r.status === 'pending' && (
-                          <button
-                            onClick={() => {
-                              setSelectedRfq(r)
-                              setRfqReply({
-                                unitPrice: r.targetPrice || r.productId?.price || '',
-                                deliveryDays: 3,
-                                notes: ''
-                              })
-                            }}
-                            style={{
-                              padding: '9px 18px',
-                              background: '#0F766E',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              fontSize: '13px',
-                              fontWeight: '600'
-                            }}
-                          >
-                            ✍️ تقديم عرض السعر الرسمي
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Market Sourcing Opportunities Tab */}
-        {activeTab === 'sourcing' && (
-          <div style={{ direction: 'rtl' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-              <div>
-                <h2 style={{ fontSize: '18px', margin: '0 0 4px' }}>🎯 فرص التوريد المفتوحة في السوق المغربي</h2>
-                <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>
-                  طلبيات جملة وبحث عن منتجات يطرحها مشترون وتجار تجزئة لم يجدوها بالكتالوج. قدّم عرضك واكسب زبائن جدد.
-                </p>
-              </div>
-              <button
-                onClick={fetchSourcingRequests}
-                style={{
-                  padding: '7px 14px',
-                  background: '#F1F5F9',
-                  border: '1px solid #CBD5E1',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}
-              >
-                🔄 تحديث الفرص
-              </button>
-            </div>
-
-            {sourcingLoading ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>جاري تحميل فرص التوريد...</div>
-            ) : sourcingRequests.length === 0 ? (
-              <div style={{ background: 'white', borderRadius: '16px', padding: '60px 20px', textAlign: 'center', color: '#888' }}>
-                <div style={{ fontSize: '40px', marginBottom: '10px' }}>📦</div>
-                <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>لا توجد طلبات توريد مفتوحة حالياً</div>
-                <div style={{ fontSize: '13px', marginTop: '4px' }}>عندما يطلب مشترٍ منتجاً غير متوفر، سيظهر هنا مباشرة لتزويده بعرضك</div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {sourcingRequests.map(s => {
-                  const whatsappBuyer = `https://wa.me/${s.buyerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                    `السلام عليكم أخي ${s.buyerName}، معكم متجر ${supplier.name} من منصة Jomla.ma بخصوص طلب التوريد لمنتج "${s.productName}"...`
-                  )}`
-
-                  return (
-                    <div
-                      key={s._id}
-                      style={{
-                        background: 'white',
-                        borderRadius: '14px',
-                        padding: '20px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                        border: '1px solid #E2E8F0'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '16px', fontWeight: '700', color: '#0F172A' }}>{s.productName}</span>
-                            <span style={{ fontSize: '11px', background: '#E0F2FE', color: '#0369A1', padding: '2px 8px', borderRadius: '12px' }}>{s.category}</span>
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
-                            رقم الطلب: #{s._id.slice(-6)} | {new Date(s.createdAt).toLocaleDateString('ar-MA')} | عروض الموردين: {s.quotesCount || 0}
-                          </div>
-                        </div>
-
-                        <span
-                          style={{
-                            padding: '4px 12px',
-                            borderRadius: '20px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            background: s.status === 'open' ? '#FEF3C7' : '#E1F5EE',
-                            color: s.status === 'open' ? '#B45309' : '#0F766E'
-                          }}
-                        >
-                          {s.status === 'open' ? '🟢 مفتوح للعروض' : '🔵 تم تقديم عروض'}
-                        </span>
-                      </div>
-
-                      <div style={{ background: '#F8FAFC', padding: '12px 16px', borderRadius: '10px', marginBottom: '14px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', fontSize: '13px' }}>
-                        <div><strong>المشتري:</strong> {s.buyerName}</div>
-                        <div><strong>المدينة:</strong> {s.buyerCity || 'المغرب'}</div>
-                        <div><strong>الكمية المطلوبة:</strong> <span style={{ color: '#C1272D', fontWeight: '700' }}>{s.quantity} {s.unit || 'قطعة'}</span></div>
-                        {s.targetPrice ? (
-                          <div><strong>السعر المستهدف:</strong> {s.targetPrice} درهم / {s.unit || 'قطعة'}</div>
-                        ) : (
-                          <div><strong>السعر المستهدف:</strong> مفتوح لأفضل عرض</div>
-                        )}
-                      </div>
-
-                      {s.notes && (
-                        <div style={{ fontSize: '13px', color: '#334155', marginBottom: '14px', background: '#FFFBEB', padding: '10px 14px', borderRadius: '8px', borderRight: '4px solid #F59E0B' }}>
-                          <strong>مواصفات المشتري:</strong> {s.notes}
-                        </div>
-                      )}
-
-                      {/* Modal or expand form to quote */}
-                      {selectedSourcing === s._id ? (
-                        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '16px', borderRadius: '10px', marginBottom: '12px' }}>
-                          <h4 style={{ margin: '0 0 10px', fontSize: '14px', color: '#166534' }}>
-                            تقديم عرض توريد بالجملة لـ "{s.productName}"
-                          </h4>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                            <div>
-                              <label style={{ fontSize: '12px', color: '#166534', fontWeight: '600' }}>سعر الوحدة المعروض (درهم) *</label>
-                              <input
-                                type="number"
-                                placeholder={s.targetPrice ? `مثال: ${s.targetPrice}` : 'مثال: 45'}
-                                value={sourcingQuote.unitPrice}
-                                onChange={e => setSourcingQuote({ ...sourcingQuote, unitPrice: e.target.value })}
-                                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #86EFAC', fontSize: '13px', direction: 'rtl', boxSizing: 'border-box' }}
-                              />
-                            </div>
-                            <div>
-                              <label style={{ fontSize: '12px', color: '#166534', fontWeight: '600' }}>مدة التجهيز والتسليم (أيام)</label>
-                              <input
-                                type="number"
-                                value={sourcingQuote.deliveryDays}
-                                onChange={e => setSourcingQuote({ ...sourcingQuote, deliveryDays: e.target.value })}
-                                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #86EFAC', fontSize: '13px', direction: 'rtl', boxSizing: 'border-box' }}
-                              />
-                            </div>
-                          </div>
-                          <div style={{ marginBottom: '10px' }}>
-                            <label style={{ fontSize: '12px', color: '#166534', fontWeight: '600' }}>ملاحظات العرض / شروط الدفع</label>
-                            <input
-                              type="text"
-                              placeholder="مثال: جاهز للشحن فوراً مع فاتورة نظامية"
-                              value={sourcingQuote.notes}
-                              onChange={e => setSourcingQuote({ ...sourcingQuote, notes: e.target.value })}
-                              style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #86EFAC', fontSize: '13px', direction: 'rtl', boxSizing: 'border-box' }}
-                            />
-                          </div>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                              onClick={() => submitSourcingQuote(s._id)}
-                              style={{ padding: '8px 16px', background: '#16A34A', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
-                            >
-                              🚀 إرسال العرض للمشتري
-                            </button>
-                            <button
-                              onClick={() => setSelectedSourcing(null)}
-                              style={{ padding: '8px 14px', background: '#E2E8F0', color: '#475569', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}
-                            >
-                              إلغاء
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => {
-                              setSelectedSourcing(s._id)
-                              setSourcingQuote({
-                                unitPrice: s.targetPrice || '',
-                                deliveryDays: 3,
-                                notes: ''
-                              })
-                            }}
-                            style={{
-                              padding: '9px 18px',
-                              background: '#E85D24',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              fontSize: '13px',
-                              fontWeight: '700'
-                            }}
-                          >
-                            💼 قدّم عرض سعر توريد
-                          </button>
-                          <a
-                            href={whatsappBuyer}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                              padding: '9px 18px',
-                              background: '#25D366',
-                              color: 'white',
-                              borderRadius: '8px',
-                              textDecoration: 'none',
-                              fontSize: '13px',
-                              fontWeight: '600',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px'
-                            }}
-                          >
-                            💬 تواصل مباشر عبر واتساب
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Products Tab */}
-        {activeTab === 'products' && (
-          <div style={{ direction: 'rtl' }}>
-            <h2 style={{ fontSize: '18px', marginBottom: '16px' }}>قائمة منتجات الجملة ({products.length})</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
-              {products.map(p => (
-                <div key={p._id} style={{ background: 'white', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                  {p.imageUrl && <img src={p.imageUrl} alt="" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} />}
-                  <h4 style={{ margin: '0 0 4px', fontSize: '15px' }}>{p.name}</h4>
-                  <div style={{ color: '#E85D24', fontWeight: '700', fontSize: '16px', marginBottom: '4px' }}>
-                    {p.price} درهم / {p.unit || 'قطعة'}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#B45309', background: '#FEF3C7', padding: '2px 8px', borderRadius: '12px', display: 'inline-block', marginBottom: '8px' }}>
-                    📦 أقل طلب (MOQ): {p.moq || 1} {p.unit || 'قطعة'}
-                  </div>
-                  {p.priceTiers && p.priceTiers.length > 0 && (
-                    <div style={{ fontSize: '11px', color: '#0F766E', marginBottom: '10px' }}>
-                      🏷️ {p.priceTiers.length} شرائح أسعار حسب الكمية
-                    </div>
-                  )}
-                  <button
-                    onClick={() => deleteProduct(p._id)}
-                    style={{ width: '100%', padding: '8px', background: '#FAECE7', color: '#993C1D', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
-                  >
-                    🗑️ حذف المنتج
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Add Product Tab (AI-First Wholesale Onboarding) */}
-        {activeTab === 'add' && (
-          <div style={{ background: 'white', borderRadius: '16px', padding: '28px', maxWidth: '640px', margin: '0 auto', boxShadow: '0 2px 14px rgba(0,0,0,0.06)', direction: 'rtl' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-              <span style={{ fontSize: '26px' }}>✨</span>
-              <h2 style={{ margin: 0, fontSize: '19px', color: '#0F172A' }}>إضافة منتج جملة بالذكاء الاصطناعي</h2>
-            </div>
-            <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 20px', lineHeight: '1.5' }}>
-              ابدأ برفع صورة المنتج فقط — الذكاء الاصطناعي يستخرج العنوان، الفئة، الوصف، واقتراح تسعير الجملة والـ MOQ تلقائياً لتراجعها بضغطة زر.
-            </p>
-
-            {/* المرحلة 1: رفع وتحليل صورة المنتج */}
-            <div
-              style={{
-                background: preview ? '#F8FAFC' : 'linear-gradient(180deg, #F0FDF4 0%, #F8FAFC 100%)',
-                border: '2px dashed #0F766E',
-                borderRadius: '14px',
-                padding: '24px 16px',
-                textAlign: 'center',
-                marginBottom: '20px'
-              }}
-            >
-              {preview ? (
-                <div>
-                  <div style={{ position: 'relative', display: 'inline-block', maxWidth: '240px', maxHeight: '180px', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                    <img src={preview} alt="معاينة المنتج" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    {aiResult && (
-                      <span
-                        style={{
-                          position: 'absolute',
-                          bottom: '8px',
-                          left: '8px',
-                          background: 'rgba(15, 118, 110, 0.9)',
-                          color: 'white',
-                          padding: '2px 8px',
-                          borderRadius: '12px',
-                          fontSize: '11px',
-                          fontWeight: '700'
-                        }}
-                      >
-                        ✨ تم تحليل وتوليد المسودة
-                      </span>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '14px', flexWrap: 'wrap' }}>
-                    <label style={{ padding: '8px 14px', background: 'white', border: '1px solid #CBD5E1', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
-                      🔄 تغيير الصورة
-                      <input type="file" accept="image/*" onChange={e => { handleImageUpload(e); if (e.target.files[0]) enhanceWithAI(e.target.files[0]) }} style={{ display: 'none' }} />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => enhanceWithAI()}
-                      disabled={imgLoading}
-                      style={{
-                        padding: '8px 16px',
-                        background: '#0F766E',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: '700',
-                        fontFamily: "'Cairo', sans-serif"
-                      }}
-                    >
-                      {imgLoading ? '🧠 جاري استخراج مسودة الجملة...' : '⚡ إعادة توليد المسودة بالـ AI'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ fontSize: '38px', marginBottom: '8px' }}>📸</div>
-                  <div style={{ fontWeight: '700', fontSize: '15px', color: '#0F172A', marginBottom: '4px' }}>
-                    ارفع صورة منتجك بالجملة هنا
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 16px' }}>
-                    صورة واضحة للمنتج كافية لاستخراج كامل بيانات الكتالوج
-                  </p>
-
-                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <label style={{ padding: '10px 20px', background: '#0F766E', color: 'white', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}>
-                      📁 اختر صورة من جهازك
-                      <input type="file" accept="image/*" onChange={e => { handleImageUpload(e); if (e.target.files[0]) enhanceWithAI(e.target.files[0]) }} style={{ display: 'none' }} />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowImagePicker(true)}
-                      style={{ padding: '10px 16px', background: '#E6F1FB', color: '#185FA5', border: '1px solid #BFDBFE', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
-                    >
-                      🔍 صور تجارية جاهزة
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* تنبيه حالة AI الذكية */}
-            {aiResult && (
-              <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px', padding: '14px 16px', marginBottom: '18px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#065F46', fontWeight: '700', fontSize: '13px', marginBottom: '4px' }}>
-                  <span>✨</span>
-                  <span>مسودة منتج الجملة جاهزة للمراجعة</span>
-                </div>
-                {aiResult.draft?.tips && (
-                  <div style={{ fontSize: '12px', color: '#047857', marginTop: '4px' }}>
-                    💡 <strong>نصيحة المبيعات:</strong> {aiResult.draft.tips}
-                  </div>
-                )}
-                {aiResult.draft?.features && aiResult.draft.features.length > 0 && (
-                  <div style={{ fontSize: '12px', color: '#047857', marginTop: '4px' }}>
-                    🏷️ <strong>المميزات المقترحة:</strong> {aiResult.draft.features.join(' • ')}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* المرحلة 2: مراجعة واعتماد بيانات الجملة */}
-            <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '18px' }}>
-              <div style={{ fontWeight: '700', fontSize: '15px', color: '#1E293B', marginBottom: '14px' }}>
-                📋 مراجعة وتعديل بيانات المنتج
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>اسم المنتج *</label>
-                {inp('اسم المنتج *', 'name')}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>الفئة *</label>
-                  {inp('الفئة (ملابس، أحذية، إلكترونيات...) *', 'category')}
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>مدينة التوريد</label>
-                  {inp('المدينة', 'city')}
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>السعر الأساسي (درهم) *</label>
-                  {inp('السعر *', 'price', 'number')}
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>وحدة البيع</label>
-                  <select
-                    value={form.unit}
-                    onChange={e => setForm({ ...form, unit: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      border: '1px solid #ddd',
-                      fontSize: '14px',
-                      direction: 'rtl',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                      marginBottom: '10px',
-                      fontFamily: "'Cairo', sans-serif",
-                      background: 'white'
-                    }}
-                  >
-                    <option value="قطعة">قطعة</option>
-                    <option value="درزينة (12 قطعة)">درزينة (12 قطعة)</option>
-                    <option value="كرتونة">كرتونة</option>
-                    <option value="طرد">طرد</option>
-                    <option value="حزمة">حزمة</option>
-                    <option value="كيلوغرام">كيلوغرام</option>
-                    <option value="متر">متر</option>
-                    <option value="أخرى">أخرى</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>الحد الأدنى (MOQ) *</label>
-                  {inp('أقل طلب', 'moq', 'number')}
-                </div>
-              </div>
-
-              {/* شرائح الأسعار (Tiered Pricing) */}
-              <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '10px', margin: '12px 0', border: '1px solid #E2E8F0' }}>
-                <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px', color: '#1E293B' }}>
-                  🏷️ أسعار الجملة حسب الكمية (Tiered Pricing)
-                </div>
-                <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 10px' }}>
-                  تخفيضات الكمية تشجع المشترين المهنيين على إرسال طلبات أكبر.
-                </p>
-
-                {priceTiers.map((tier, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '8px 12px', borderRadius: '6px', marginBottom: '6px', border: '1px solid #eee' }}>
-                    <span style={{ fontSize: '13px' }}>
-                      من <strong>{tier.minQty}</strong> {tier.maxQty ? `إلى ${tier.maxQty}` : 'فما فوق'} {form.unit}: <strong>{tier.price} درهم</strong>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removePriceTier(idx)}
-                      style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '14px' }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-
-                <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                  <input
-                    type="number"
-                    placeholder="من كمية"
-                    value={tierInput.minQty}
-                    onChange={e => setTierInput({ ...tierInput, minQty: e.target.value })}
-                    style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl' }}
-                  />
-                  <input
-                    type="number"
-                    placeholder="إلى كمية (اختياري)"
-                    value={tierInput.maxQty}
-                    onChange={e => setTierInput({ ...tierInput, maxQty: e.target.value })}
-                    style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl' }}
-                  />
-                  <input
-                    type="number"
-                    placeholder="السعر (درهم)"
-                    value={tierInput.price}
-                    onChange={e => setTierInput({ ...tierInput, price: e.target.value })}
-                    style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={addPriceTier}
-                    style={{ padding: '8px 14px', background: '#0F766E', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
-                  >
-                    + أضف
-                  </button>
-                </div>
-              </div>
-
-              {/* وصف المنتج */}
-              <div style={{ margin: '12px 0' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>
-                  وصف المنتج لتجار الجملة (استخرجه الذكاء الاصطناعي ويمكنك تعديله)
-                </label>
-                <textarea
-                  rows={3}
-                  value={form.description || ''}
-                  onChange={e => setForm({ ...form, description: e.target.value })}
-                  placeholder="مواصفات الخامة، المقاسات المتوفرة، طرق التوصيل..."
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #ddd',
-                    fontSize: '13px',
-                    direction: 'rtl',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    fontFamily: "'Cairo', sans-serif"
-                  }}
-                />
-              </div>
-
-              {/* إقرار حقوق الصورة والمنتج (مطلوب حسب المخطط التأسيسي) */}
-              <div style={{ background: '#F1F5F9', padding: '12px 14px', borderRadius: '8px', margin: '14px 0', border: '1px solid #E2E8F0' }}>
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontSize: '12px', color: '#334155', lineHeight: '1.5' }}>
-                  <input
-                    type="checkbox"
-                    checked={hasImageRights}
-                    onChange={e => setHasImageRights(e.target.checked)}
-                    style={{ marginTop: '2px' }}
-                  />
-                  <span>
-                    <strong>إقرار المورد:</strong> أقر بأنني أملك حق استخدام هذه الصورة وتوريد هذا المنتج، وبأن المواصفات والأسعار وموقع التوريد حقيقية ومطابقة للواقع (المورد يوافق صراحة على النشر).
-                  </span>
-                </label>
-              </div>
-
-              {/* أزرار النشر والحفظ */}
-              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-                <button
-                  type="button"
-                  onClick={() => addProduct(false)}
-                  disabled={loading}
-                  style={{
-                    flex: 2,
-                    padding: '13px',
-                    background: '#C1272D',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '15px',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    fontFamily: "'Cairo', sans-serif"
-                  }}
-                >
-                  {loading ? 'جاري النشر...' : '🚀 اعتماد ونشر منتج الجملة الآن'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addProduct(true)}
-                  disabled={loading}
-                  style={{
-                    flex: 1,
-                    padding: '13px',
-                    background: '#F1F5F9',
-                    color: '#475569',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    fontFamily: "'Cairo', sans-serif"
-                  }}
-                >
-                  💾 حفظ كمسودة
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Reviews Tab */}
-        {activeTab === 'reviews' && (
-          <div style={{ background: 'white', borderRadius: '16px', padding: '24px', direction: 'rtl' }}>
-            <h2 style={{ fontSize: '18px', marginBottom: '16px' }}>تقييمات التجار ({reviews.length})</h2>
-            {reviews.map((r, i) => (
-              <div key={i} style={{ padding: '12px 0', borderBottom: '1px solid #eee' }}>
-                <div style={{ color: '#EF9F27', fontSize: '16px' }}>{'★'.repeat(r.stars)}</div>
-                <p style={{ margin: '6px 0', color: '#444' }}>{r.comment}</p>
-                <span style={{ fontSize: '11px', color: '#888' }}>{new Date(r.date || r.createdAt).toLocaleDateString('ar-MA')}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Market Analysis Tab */}
-        {activeTab === 'market' && (
-          <MarketAnalysis supplier={supplier} products={products} />
-        )}
-
-        {/* Verification Tab (توثيق المتجر والحصول على شارة موثوق) */}
-        {activeTab === 'verification' && (
-          <div style={{ background: 'white', borderRadius: '16px', padding: '28px', direction: 'rtl', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <span style={{ fontSize: '28px' }}>🛡️</span>
-              <h2 style={{ fontSize: '20px', margin: 0, color: '#1E293B' }}>
-                توثيق المتجر وشارة "مورد موثوق" (Verified Supplier)
-              </h2>
-            </div>
-            <p style={{ color: '#64748B', fontSize: '14px', lineHeight: '1.6', margin: '0 0 20px' }}>
-              توثيق متجرك بالمعرف الموحد للمقاولة (ICE) والسجل التجاري (RC) يمنحك شارة <strong>"🛡️ مورد موثوق"</strong> المعتمدة من Jomla.ma، مما يضاعف ثقة المشترين المهنيين في المغرب ويمنحك أولوية الظهور في نتائج البحث وتلقي طلبات عروض الأسعار (RFQ).
-            </p>
-
-            {/* حالة التوثيق الحالية */}
-            {profile.isVerified ? (
-              <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#065F46', fontWeight: '700', fontSize: '16px', marginBottom: '8px' }}>
-                  <span>✅</span>
-                  <span>متجرك موثق ومعتمد رسمياً على Jomla.ma</span>
-                </div>
-                <p style={{ color: '#047857', fontSize: '13px', margin: '0 0 14px' }}>
-                  تهانينا! حسابك يتمتع بكامل امتيازات المورد الموثوق وشارة الحماية والثقة.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', background: 'white', padding: '14px', borderRadius: '8px', border: '1px solid #D1FAE5' }}>
-                  <div>
-                    <span style={{ fontSize: '12px', color: '#64748B', display: 'block' }}>المعرف الموحد للمقاولة (ICE)</span>
-                    <strong style={{ fontSize: '14px', color: '#0F172A' }}>{profile.iceNumber || 'مسجل'}</strong>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '12px', color: '#64748B', display: 'block' }}>رقم السجل التجاري (RC)</span>
-                    <strong style={{ fontSize: '14px', color: '#0F172A' }}>{profile.tradeRegistry || 'مسجل'}</strong>
-                  </div>
-                  {profile.verifiedAt && (
-                    <div>
-                      <span style={{ fontSize: '12px', color: '#64748B', display: 'block' }}>تاريخ الاعتماد</span>
-                      <strong style={{ fontSize: '14px', color: '#0F172A' }}>{new Date(profile.verifiedAt).toLocaleDateString('ar-MA')}</strong>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : profile.verificationStatus === 'pending' ? (
-              <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#B45309', fontWeight: '700', fontSize: '16px', marginBottom: '8px' }}>
-                  <span>⏳</span>
-                  <span>طلب التوثيق قيد المراجعة والتدقيق</span>
-                </div>
-                <p style={{ color: '#92400E', fontSize: '13px', margin: '0 0 10px', lineHeight: '1.6' }}>
-                  لقد استلمنا بيانات التوثيق الخاصة بك (ICE: <strong>{profile.iceNumber}</strong> {profile.tradeRegistry ? `| RC: ${profile.tradeRegistry}` : ''}). فريق إدارة المنصة يقوم بمطابقة الوثائق وسيتم اعتماد متجرك قريباً.
-                </p>
-                <span style={{ fontSize: '12px', color: '#B45309', background: '#FEF3C7', padding: '4px 10px', borderRadius: '6px' }}>
-                  ⏱️ المدة التقديرية للمراجعة: أقل من 24 ساعة
-                </span>
-              </div>
-            ) : (
-              <div>
-                {profile.verificationStatus === 'rejected' && (
-                  <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '12px', padding: '16px', marginBottom: '20px', color: '#991B1B' }}>
-                    <div style={{ fontWeight: '700', fontSize: '14px', marginBottom: '4px' }}>⚠️ تم رفض طلب التوثيق السابق</div>
-                    <div style={{ fontSize: '13px' }}>سبب الرفض: {profile.rejectionReason || 'البيانات أو الوثائق غير مكتملة'}</div>
-                    <div style={{ fontSize: '12px', marginTop: '6px', color: '#7F1D1D' }}>يرجى تصحيح البيانات أدناه وإعادة إرسال الطلب للمراجعة.</div>
-                  </div>
-                )}
-
-                <form onSubmit={submitVerification} style={{ maxWidth: '520px' }}>
-                  <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
-                      المعرف الموحد للمقاولة (ICE - 15 رقماً) *
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="مثال: 001234567890001"
-                      value={verifyForm.iceNumber}
-                      onChange={e => setVerifyForm({ ...verifyForm, iceNumber: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        borderRadius: '8px',
-                        border: '1px solid #CBD5E1',
-                        fontSize: '14px',
-                        direction: 'ltr',
-                        textAlign: 'right',
-                        boxSizing: 'border-box',
-                        fontFamily: "'Cairo', sans-serif"
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
-                      رقم السجل التجاري (Registre de Commerce - RC)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="مثال: 12345 - كازا أو طنجة"
-                      value={verifyForm.tradeRegistry}
-                      onChange={e => setVerifyForm({ ...verifyForm, tradeRegistry: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        borderRadius: '8px',
-                        border: '1px solid #CBD5E1',
-                        fontSize: '14px',
-                        direction: 'rtl',
-                        boxSizing: 'border-box',
-                        fontFamily: "'Cairo', sans-serif"
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
-                      رابط وثيقة الإثبات (PDF أو صورة السجل / بطاقة المقاول الذاتي)
-                    </label>
-                    <input
-                      type="url"
-                      placeholder="https://example.com/rc-document.pdf"
-                      value={verifyForm.verificationDoc}
-                      onChange={e => setVerifyForm({ ...verifyForm, verificationDoc: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        borderRadius: '8px',
-                        border: '1px solid #CBD5E1',
-                        fontSize: '14px',
-                        direction: 'ltr',
-                        boxSizing: 'border-box',
-                        fontFamily: "'Cairo', sans-serif"
-                      }}
-                    />
-                    <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginTop: '4px' }}>
-                      يمكنك وضع رابط مباشر لنسخة السجل التجاري أو شهادة التسجيل الضريبي أو بطاقة المقاول الذاتي
-                    </span>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={verifyLoading}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      background: '#0F766E',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '15px',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      fontFamily: "'Cairo', sans-serif",
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    {verifyLoading ? 'جاري الإرسال...' : '🛡️ إرسال ملف التوثيق للمراجعة'}
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* RFQ Reply Modal for Supplier */}
-      {selectedRfq && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.65)',
-            zIndex: 1200,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px'
-          }}
-        >
-          <div
-            style={{
-              background: 'white',
-              borderRadius: '16px',
-              padding: '24px',
-              maxWidth: '480px',
-              width: '100%',
-              direction: 'rtl',
-              fontFamily: "'Cairo', sans-serif"
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px' }}>✍️ تقديم عرض سعر لـ {selectedRfq.buyerName}</h3>
-              <button onClick={() => setSelectedRfq(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer' }}>✕</button>
-            </div>
-
-            <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' }}>
-              <div>المنتج: <strong>{selectedRfq.productId?.name}</strong></div>
-              <div>الكمية المطلوبة: <strong>{selectedRfq.quantity} {selectedRfq.productId?.unit || 'قطعة'}</strong></div>
-              {selectedRfq.targetPrice && <div>السعر المستهدف من المشتري: <strong>{selectedRfq.targetPrice} درهم</strong></div>}
-            </div>
-
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '4px' }}>سعر الوحدة المعروض (درهم) *</label>
-              <input
-                type="number"
-                value={rfqReply.unitPrice}
-                onChange={e => setRfqReply({ ...rfqReply, unitPrice: e.target.value })}
-                placeholder="مثال: 45"
-                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', direction: 'rtl', boxSizing: 'border-box' }}
-              />
-              {rfqReply.unitPrice && (
-                <div style={{ fontSize: '12px', color: '#0F766E', marginTop: '4px', fontWeight: '600' }}>
-                  المجموع الكلي: {Number(rfqReply.unitPrice) * selectedRfq.quantity} درهم
-                </div>
-              )}
-            </div>
-
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '4px' }}>مدة التجهيز والتوصيل (بالأيام)</label>
-              <input
-                type="number"
-                value={rfqReply.deliveryDays}
-                onChange={e => setRfqReply({ ...rfqReply, deliveryDays: e.target.value })}
-                placeholder="مثال: 3"
-                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', direction: 'rtl', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '4px' }}>شروط أو ملاحظات للمشتري</label>
-              <textarea
-                rows={3}
-                value={rfqReply.notes}
-                onChange={e => setRfqReply({ ...rfqReply, notes: e.target.value })}
-                placeholder="مثال: التوصيل متوفر لكازا، الدفع عند الاستلام..."
-                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '13px', direction: 'rtl', boxSizing: 'border-box', outline: 'none' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={() => respondToRfq(selectedRfq._id, 'responded')}
-                style={{ flex: 2, padding: '11px', background: '#0F766E', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}
-              >
-                🚀 إرسال العرض للمشتري
-              </button>
-              <button
-                type="button"
-                onClick={() => respondToRfq(selectedRfq._id, 'rejected')}
-                style={{ flex: 1, padding: '11px', background: '#FAECE7', color: '#993C1D', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '13px' }}
-              >
-                رفض
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showImagePicker && (
-        <ImagePicker
-          productName={form.name}
-          category={form.category}
-          onSelect={handleImageSelect}
-          onClose={() => setShowImagePicker(false)}
-        />
-      )}
-    </div>
-  )
+    </AtlasDialog>}
+  </div>;
 }

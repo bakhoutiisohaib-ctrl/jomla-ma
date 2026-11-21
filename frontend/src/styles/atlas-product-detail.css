@@ -1,0 +1,85 @@
+.atlas-public .atlas-detail-page { padding-bottom: 40px; }
+.atlas-detail-layout { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); gap: 36px; align-items: start; }
+.atlas-detail-layout>* { min-width: 0; }
+.atlas-detail-page .atlas-breadcrumbs { font-size: 13px; flex-wrap: wrap; }
+.atlas-detail-gallery { min-width: 0; }
+.atlas-public .atlas-gallery-main { width: 100%; height: 480px; position: relative; display: grid; place-items: center; overflow: hidden; padding: 0; border: 1px solid #dfe4d6; border-radius: 18px; background: #f1f2e9; cursor: zoom-in; }
+.atlas-public .atlas-gallery-main img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.atlas-gallery-expand { position: absolute; bottom: 16px; inset-inline-end: 16px; background: #fffffff0; padding: 8px 14px; border-radius: 30px; color: #2b4d35; font-size: 13px; box-shadow: 0 3px 14px #22372812; }
+.atlas-gallery-controls { display: flex; justify-content: center; align-items: center; gap: 14px; margin-block: 12px; font-size: 13px; }
+.atlas-gallery-controls button { min-width: 64px; min-height: 44px; }
+.atlas-gallery-thumbnails { display: flex; gap: 10px; overflow-x: auto; padding: 4px 3px 12px; }
+.atlas-public .atlas-gallery-thumbnails button { position: relative; flex: 0 0 78px; height: 78px; padding: 4px; background: #f1f2e9; border: 2px solid transparent; border-radius: 10px; overflow: hidden; }
+.atlas-public .atlas-gallery-thumbnails button[aria-pressed=true] { border-color: #506b39; background: white; }
+.atlas-gallery-thumbnails img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.atlas-gallery-thumbnails button>span { position: absolute; inset-inline-end: 3px; bottom: 2px; font-size: 10px; background: white; border-radius: 4px; padding-inline: 4px; }
+.atlas-gallery-empty { min-height: 280px; display: grid; place-items: center; background: #eef0e5; border-radius: 18px; }
+.atlas-detail-summary h1 { font-size: clamp(24px,2.4vw,34px); line-height: 1.5; margin: 7px 0 16px; overflow-wrap: anywhere; }
+.atlas-detail-stock { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 13px; color: #617050; }
+.atlas-detail-pricing { background: #edf1e5; border: 1px solid #dfe5d5; border-radius: 14px; padding: 20px; margin-block: 22px; }
+.atlas-detail-muted { color: #5d6d52; font-size: 13px; line-height: 1.6; }
+.atlas-detail-pricing>p { margin-block: 0 8px; }
+.atlas-detail-price { font-size: clamp(25px,2.5vw,34px); line-height: 1.5; color: #263f2b; font-weight: 750; overflow-wrap: anywhere; }
+.atlas-detail-price small { font-size: 14px; font-weight: 400; white-space: nowrap; }
+.atlas-detail-moq { font-size: 14px; }
+.atlas-public .atlas-detail-tiers { margin-top: 17px; background: #fffffff0; border-radius: 10px; }
+.atlas-public .table-wrap.atlas-detail-tiers table { min-width: 0; width: 100%; table-layout: fixed; font-size: 13px; }
+.atlas-detail-tiers caption { padding: 10px 12px; text-align: start; font-size: 13px; font-weight: 600; }
+.atlas-detail-tiers th,.atlas-detail-tiers td { padding: 10px 12px; overflow-wrap: anywhere; }
+.atlas-detail-request { display: grid; gap: 10px; }
+.atlas-detail-request>button { width: 100%; min-height: 48px; font-size: 15px; justify-content: center; }
+.atlas-detail-supplier { margin-top: 24px; padding: 18px 20px; background: white; border: 1px solid #dfe4d6; border-radius: 14px; }
+.atlas-detail-supplier h2 { margin: 5px 0; font-size: 18px; overflow-wrap: anywhere; }
+.atlas-detail-supplier h2 a { color: #2d4c34; text-decoration: none; }
+.atlas-detail-supplier p { margin: 6px 0; font-size: 13px; }
+.atlas-detail-supplier .button-link { display: flex; justify-content: center; min-height: 44px; margin-top: 14px; font-size: 13px; overflow-wrap: anywhere; }
+.atlas-detail-section-nav { display: flex; gap: 10px; flex-wrap: wrap; border-block: 1px solid #dfe4d6; margin-block: 30px; padding: 12px 0; }
+.atlas-detail-section-nav a { display: flex; align-items: center; min-height: 44px; padding: 8px 15px; border-radius: 8px; background: #edf1e5; color: #2c4932; text-decoration: none; font-size: 14px; }
+.atlas-detail-section { padding: 26px; border: 1px solid #dfe4d6; border-radius: 15px; background: #fff; margin-block: 24px; scroll-margin-top: 20px; }
+.atlas-detail-section h2,.atlas-detail-discover h2 { font-size: 23px; line-height: 1.5; margin: 0 0 15px; }
+.atlas-detail-info-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 35px; }
+.atlas-detail-info-grid>* { min-width: 0; }
+.atlas-detail-description { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.9; }
+.atlas-detail-specs { display: grid; grid-template-columns: minmax(90px,1fr) minmax(0,1.2fr); font-size: 14px; gap: 0; }
+.atlas-detail-specs dt,.atlas-detail-specs dd { padding: 12px 6px; margin: 0; border-bottom: 1px solid #e8ebdf; overflow-wrap: anywhere; }
+.atlas-detail-specs dt { color: #627053; }
+.atlas-detail-specs dd { font-weight: 600; }
+.atlas-detail-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.atlas-detail-section-heading h2 { margin-bottom: 0; }
+.atlas-detail-rating { color: #6b581f; font-size: 17px; }
+.atlas-reviews-empty { padding: 22px; background: #f4f6ee; border-radius: 10px; font-size: 14px; }
+.atlas-detail-review { padding-block: 20px; border-bottom: 1px solid #e1e6d9; font-size: 14px; overflow-wrap: anywhere; }
+.atlas-detail-review header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
+.atlas-detail-review header>span { color: #806122; }
+.atlas-detail-review time { font-size: 12px; color: #637257; }
+.atlas-detail-review p { white-space: pre-wrap; }
+.atlas-detail-review blockquote { margin-inline: 0; border-inline-start: 3px solid #81936a; background: #f3f5ed; padding: 13px 17px; }
+.atlas-detail-review-form { display: grid; gap: 12px; max-width: 600px; margin-top: 24px; }
+.atlas-detail-review-form h3 { font-size: 17px; margin: 0; }
+.atlas-detail-review-form button { min-height: 44px; }
+.atlas-detail-discover { margin-top: 40px; scroll-margin-top: 20px; }
+.atlas-detail-discover>section { margin-top: 26px; }
+.atlas-detail-discover h3 { font-size: 18px; margin-bottom: 6px; }
+.atlas-detail-discover .product-grid { margin-top: 16px; }
+.atlas-zoom-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.atlas-zoom-toolbar button { padding: 8px 12px; }
+.atlas-zoom-toolbar output { min-width: 48px; text-align: center; }
+.atlas-zoom-viewport { height: min(60vh,600px); width: 100%; overflow: auto; background: #e9ede1; border: 1px solid #ccd6be; border-radius: 12px; direction: ltr; }
+.atlas-zoom-surface { display: grid; place-items: center; }
+.atlas-zoom-surface img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.atlas-detail-page :is(button,a):focus-visible { outline: 3px solid #8c6e2c; outline-offset: 3px; }
+@media(max-width:800px) {
+  .atlas-detail-layout { grid-template-columns: 1fr; gap: 22px; }
+  .atlas-public .atlas-gallery-main { height: auto; aspect-ratio: 1 / 1; max-height: 450px; }
+  .atlas-detail-summary h1 { font-size: 25px; margin-bottom: 12px; }
+  .atlas-detail-pricing { padding: 16px; margin-block: 16px; }
+  .atlas-detail-info-grid { grid-template-columns: 1fr; gap: 20px; }
+  .atlas-detail-section { padding: 18px 16px; }
+  .atlas-detail-section h2,.atlas-detail-discover h2 { font-size: 21px; }
+  .atlas-detail-section-nav { gap: 6px; margin-block: 22px; }
+  .atlas-detail-section-nav a { padding: 8px 10px; font-size: 13px; }
+  .atlas-detail-tiers th,.atlas-detail-tiers td { padding: 9px 8px; }
+  .atlas-detail-supplier { padding: 16px; }
+  .atlas-detail-specs { font-size: 13px; }
+  .atlas-zoom-toolbar button { flex: 1 1 auto; font-size: 12px; }
+}

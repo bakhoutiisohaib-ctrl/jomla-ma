@@ -4,6 +4,10 @@ const { logError } = require('./logger')
 const errorHandler = (err, req, res, next) => {
   logError(err, `خطأ في ${req.method} ${req.path}`)
 
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ message: 'الصورة تتجاوز الحد المسموح (10MB)' })
+  }
+
   // أخطاء MongoDB
   if (err.name === 'ValidationError') {
     return res.status(400).json({
@@ -30,7 +34,7 @@ const errorHandler = (err, req, res, next) => {
 
   // أخطاء عامة
   res.status(err.status || 500).json({
-    message: err.message || '❌ حدث خطأ في السيرفر',
+    message: err.status && err.status < 500 ? err.message : 'تعذر تنفيذ الطلب حالياً',
     error: process.env.NODE_ENV === 'development' ? err : {}
   })
 }

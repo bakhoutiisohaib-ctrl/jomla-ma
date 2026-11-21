@@ -6,14 +6,19 @@ let isRedisReady = false
 
 async function initRedis() {
   try {
-    client = redis.createClient({ url: process.env.REDIS_URL || 'redis://127.0.0.1:6379' })
-    client.on('error', (err) => console.error('Redis error', err))
+    client = redis.createClient({
+      url: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
+      socket: { connectTimeout: 3000, reconnectStrategy: retries => retries < 2 ? 250 : new Error('Redis unavailable') }
+    })
+    client.on('error', () => { isRedisReady = false })
+    client.on('ready', () => { isRedisReady = true })
     await client.connect()
     isRedisReady = true
     console.log('✅ Redis connected')
   } catch (err) {
     console.warn('⚠️ Redis not available, falling back to in-memory cache')
     isRedisReady = false
+    if (client?.isOpen) await client.disconnect()
   }
 }
 

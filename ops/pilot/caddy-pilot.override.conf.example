@@ -1,0 +1,11 @@
+# Drop-in for the distribution's reviewed caddy.service, not a replacement unit.
+# Intended path after approval: /etc/systemd/system/caddy.service.d/pilot.conf
+# Confirm that the package uses /etc/caddy/Caddyfile and the caddy service user.
+[Unit]
+Requires=wg-quick@wg0.service
+After=wg-quick@wg0.service
+
+[Service]
+# Reload must read the reviewed certificate files without granting application
+# users access to the private key. Keep the standard Caddy admin API loopback.
+ReadOnlyPaths=/etc/jomla-pilot-tls /srv/jomla-pilot

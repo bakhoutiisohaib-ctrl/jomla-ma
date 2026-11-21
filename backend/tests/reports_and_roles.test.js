@@ -1,175 +1,88 @@
+require('./helpers/pilotIsolation')
 const request = require('supertest')
 const mongoose = require('mongoose')
 const { MongoMemoryServer } = require('mongodb-memory-server')
 const app = require('../server')
 const Supplier = require('../models/Supplier')
 const Product = require('../models/Product')
-const QuoteRequest = require('../models/QuoteRequest')
+const Store = require('../models/Store')
 const Report = require('../models/Report')
+const AuditLog = require('../models/AuditLog')
 const { generateToken } = require('../middleware/auth')
+const { mediaFixture } = require('./helpers/mediaFixture')
 
 let mongoServer
 let adminToken
 let supplierToken
-let testAdmin
 let testSupplier
 let testProduct
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create()
-  const uri = mongoServer.getUri()
-  await mongoose.connect(uri)
-
-  testAdmin = await Supplier.create({
-    name: 'مشرف المنصة الرئيسي',
-    email: 'admin-reports@jomla.ma',
-    password: 'password123',
-    role: 'admin',
-    isVerified: true
-  })
-  adminToken = generateToken(testAdmin)
-
-  testSupplier = await Supplier.create({
-    name: 'مورد تجريبي للأدوار',
-    email: 'supplier-roles@jomla.ma',
-    password: 'password123',
-    city: 'الدار البيضاء',
-    phone: '+212611223344',
-    isVerified: true
-  })
+  await mongoose.connect(mongoServer.getUri())
+  const admin = await Supplier.create({ name: 'مشرف البلاغات', email: 'admin-reports@jomla.ma', password: 'hashed-fixture', role: 'admin' })
+  adminToken = generateToken(admin)
+  testSupplier = await Supplier.create({ name: 'مورد البلاغات', email: 'supplier-reports@jomla.ma', password: 'hashed-fixture', role: 'supplier', city: 'فاس', phone: '+212612345678' })
   supplierToken = generateToken(testSupplier)
-
-  testProduct = await Product.create({
-    name: 'قفطان مغربي أصيل',
-    category: 'ملابس',
-    price: 350,
-    city: 'الدار البيضاء',
-    moq: 10,
-    unit: 'قطعة',
-    supplierId: testSupplier._id,
-    supplierPhone: testSupplier.phone
-  })
+  const store = await Store.create({ name: 'متجر البلاغات', supplierId: testSupplier._id, reviewStatus: 'approved', isActive: true })
+  testProduct = await Product.create({ name: 'منتج عام للبلاغات', supplierId: testSupplier._id, storeId: store._id,
+    category: 'أحذية', price: 120, city: 'فاس', description: 'منتج اصطناعي لاختبار البلاغات العامة', imageUrl: await mediaFixture(testSupplier),
+    isDraft: false, inStock: true, availability: 'in_stock', availabilityConfirmed: true,
+    hasImageRights: true, imageRights: { source: 'owned', declaredBy: testSupplier._id, declaredAt: new Date() },
+    approvedBy: testSupplier._id, approvedAt: new Date() })
 })
-
 afterAll(async () => {
   await mongoose.disconnect()
   if (mongoServer) await mongoServer.stop()
 })
 
-describe('B2B Roles, RFQ Acceptance, and Moderation Reports', () => {
-  let createdRfqId
-  let createdReportId
+test('buyer and staff registration never grants unaccepted organizational permissions', async () => {
+  for (const role of ['buyer', 'staff']) {
+    const response = await request(app).post('/api/suppliers/register').send({
+      name: 'حساب ' + role, email: role + '-roles@test.ma', password: 'password123',
+      city: 'الرباط', phone: '+212612345678', role, organization: testSupplier.name
+    })
+    expect(response.status).toBe(201)
+    expect(response.body.supplier.role).toBe(role)
+    expect(response.body.supplier.permissions).toEqual([])
+    expect(response.body.supplier.organizationId).toBeNull()
+    expect((await request(app).post('/api/stores').set('Authorization', 'Bearer ' + response.body.token).send({ name: 'لا يجوز إنشاؤه' })).status).toBe(403)
+  }
+})
 
-  test('POST /api/suppliers/register supports buyer and staff roles', async () => {
-    // 1. Register a professional buyer
-    const resBuyer = await request(app)
-      .post('/api/suppliers/register')
-      .send({
-        name: 'كريم التاجر المهني',
-        email: 'buyer-karim@test.ma',
-        password: 'password123',
-        city: 'الرباط',
-        phone: '+212677889900',
-        role: 'buyer',
-        organization: 'شركة التجزئة الحديثة'
-      })
-
-    expect(resBuyer.statusCode).toBe(201)
-    expect(resBuyer.body.supplier.role).toBe('buyer')
-    expect(resBuyer.body.supplier.organization).toBe('شركة التجزئة الحديثة')
-
-    // 2. Register staff member
-    const resStaff = await request(app)
-      .post('/api/suppliers/register')
-      .send({
-        name: 'أحمد مسؤول المبيعات',
-        email: 'staff-ahmed@test.ma',
-        password: 'password123',
-        city: 'الدار البيضاء',
-        phone: '+212633221100',
-        role: 'staff',
-        organization: testSupplier.name
-      })
-
-    expect(resStaff.statusCode).toBe(201)
-    expect(resStaff.body.supplier.role).toBe('staff')
-    expect(resStaff.body.supplier.permissions).toContain('manage_products')
+test('report submission and dismissal persist valid audit records with the real admin actor', async () => {
+  const response = await request(app).post('/api/reports').send({
+    reporterName: 'مبلغ تجريبي', reporterPhone: '+212677889900', targetType: 'product',
+    targetId: String(testProduct._id), targetName: 'اسم غير موثوق من المتصفح',
+    reason: 'copyright_infringement', details: 'طلب مراجعة حقوق الصورة'
   })
+  expect(response.status).toBe(201)
+  expect(Object.keys(response.body.report)).toEqual(['_id'])
+  const reportId = response.body.report._id
+  expect((await Report.findById(reportId)).targetName).toBe(testProduct.name)
+  const submitted = await AuditLog.findOne({ action: 'REPORT_SUBMITTED', targetType: 'Report', targetId: reportId })
+  expect(submitted.phase).toBe('completed')
+  expect((await request(app).get('/api/reports')).status).toBe(401)
+  expect((await request(app).get('/api/reports').set('Authorization', 'Bearer ' + supplierToken)).status).toBe(403)
+  const list = await request(app).get('/api/reports?status=pending').set('Authorization', 'Bearer ' + adminToken)
+  expect(list.status).toBe(200)
+  expect(list.body.data.some(report => report._id === reportId)).toBe(true)
+  const dismissal = await request(app).put('/api/reports/' + reportId + '/resolve').set('Authorization', 'Bearer ' + adminToken)
+    .send({ action: 'dismissed', resolutionNotes: 'الترخيص صالح حسب المستندات' })
+  expect(dismissal.status).toBe(200)
+  const dismissed = await AuditLog.findOne({ action: 'REPORT_DISMISSED', targetId: reportId })
+  expect(dismissed.phase).toBe('completed')
+  expect(dismissed.performedBy.role).toBe('admin')
+  expect((await Report.findById(reportId)).status).toBe('dismissed')
+})
 
-  test('PUT /api/rfq/:id/action allows buyer to accept an offer with WhatsApp link', async () => {
-    // First, create an RFQ
-    const rfqRes = await request(app)
-      .post('/api/rfq')
-      .send({
-        productId: testProduct._id,
-        buyerName: 'طارق المشتري',
-        buyerPhone: '+212612341234',
-        quantity: 25
-      })
-    expect(rfqRes.statusCode).toBe(201)
-    createdRfqId = rfqRes.body.rfq._id
-
-    // Supplier responds
-    await request(app)
-      .put(`/api/rfq/${createdRfqId}/respond`)
-      .set('Authorization', `Bearer ${supplierToken}`)
-      .send({
-        unitPrice: 320,
-        deliveryDays: 3,
-        notes: 'موافقون على السعر المخفض للكمية'
-      })
-
-    // Buyer accepts the offer
-    const acceptRes = await request(app)
-      .put(`/api/rfq/${createdRfqId}/action`)
-      .send({ action: 'accept' })
-
-    expect(acceptRes.statusCode).toBe(200)
-    expect(acceptRes.body.rfq.status).toBe('accepted')
-    expect(acceptRes.body.whatsappSupplier).toContain('wa.me')
-  })
-
-  test('POST /api/reports submits a product violation report', async () => {
-    const res = await request(app)
-      .post('/api/reports')
-      .send({
-        reporterName: 'سعيد التاجر',
-        reporterPhone: '+212688776655',
-        targetType: 'product',
-        targetId: testProduct._id,
-        targetName: testProduct.name,
-        reason: 'copyright_infringement',
-        details: 'الصورة مأخوذة من كتالوج آخر بدون ترخيص'
-      })
-
-    expect(res.statusCode).toBe(201)
-    expect(res.body.report.status).toBe('pending')
-    expect(res.body.report.reason).toBe('copyright_infringement')
-    createdReportId = res.body.report._id
-  })
-
-  test('GET /api/reports lists reports for admin', async () => {
-    const res = await request(app)
-      .get('/api/reports?status=pending')
-      .set('Authorization', `Bearer ${adminToken}`)
-
-    expect(res.statusCode).toBe(200)
-    expect(res.body).toHaveProperty('data')
-    expect(res.body.data.length).toBeGreaterThanOrEqual(1)
-    expect(res.body.data[0]._id.toString()).toBe(createdReportId.toString())
-  })
-
-  test('PUT /api/reports/:id/resolve resolves the report by admin', async () => {
-    const res = await request(app)
-      .put(`/api/reports/${createdReportId}/resolve`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({
-        action: 'resolved',
-        resolutionNotes: 'تم التحقق من الوثائق وحل النزاع مع المورد'
-      })
-
-    expect(res.statusCode).toBe(200)
-    expect(res.body.report.status).toBe('resolved')
-    expect(res.body.report.resolutionNotes).toContain('تم التحقق')
-  })
+test('invalid report targets and resolution actions are rejected without silently closing reports', async () => {
+  const missing = await request(app).post('/api/reports').send({ targetType: 'supplier', targetId: String(new mongoose.Types.ObjectId()), reason: 'fraud' })
+  expect(missing.status).toBe(404)
+  const report = await Report.create({ targetType: 'product', targetId: testProduct._id, targetName: testProduct.name, reason: 'other' })
+  for (const body of [{ action: 'unknown', resolutionNotes: 'reason' }, { action: 'resolved' }, { action: 'resolved', resolutionNotes: 'reason', moderationAction: 'suspend_supplier' }]) {
+    const result = await request(app).put('/api/reports/' + report._id + '/resolve').set('Authorization', 'Bearer ' + adminToken).send(body)
+    expect(result.status).toBe(400)
+  }
+  expect((await Report.findById(report._id)).status).toBe('pending')
 })

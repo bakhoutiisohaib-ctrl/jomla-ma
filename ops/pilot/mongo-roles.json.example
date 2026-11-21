@@ -1,0 +1,11 @@
+{
+  "database": "REPLACE_WITH_CONFIRMED_FRESH_PILOT_DATABASE",
+  "roles": [
+    { "role": "jomla_pilot_app", "actions": ["find", "insert", "update", "remove", "listCollections", "listIndexes"] },
+    { "role": "jomla_pilot_backup", "actions": ["find", "listCollections", "listIndexes"] },
+    { "role": "jomla_pilot_index_operator", "actions": ["find", "listCollections", "listIndexes", "createCollection", "createIndex"] },
+    { "role": "jomla_pilot_restore_target_only", "actions": ["find", "insert", "listCollections", "listIndexes", "createCollection", "createIndex", "dropCollection"] }
+  ],
+  "applyAutomatically": false,
+  "note": "Separate identities, each scoped to its approved database; restore role only on a NEW isolated target. No passwords or admin grants. Index operator never used by API/worker."
+}

@@ -19,6 +19,9 @@ const ReportSchema = new mongoose.Schema({
   },
   resolutionNotes: { type: String, default: '' },
   resolvedAt:      Date,
+  resolvedBy:      { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
+  reporterId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
+  moderationAction: { type: String, enum: ['none', 'hide_product', 'suspend_supplier'], default: 'none' },
   createdAt:       { type: Date, default: Date.now }
 })
 

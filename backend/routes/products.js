@@ -1,315 +1,127 @@
-const express  = require('express')
-const router   = express.Router()
-const Product  = require('../models/Product')
+const express = require('express')
+const router = express.Router()
+const Product = require('../models/Product')
 const Supplier = require('../models/Supplier')
-const { authenticate } = require('../middleware/auth')
+const Store = require('../models/Store')
+const { getPublicStore } = require('../services/publicStore')
+const { authenticate, requirePermission } = require('../middleware/auth')
 const { validateProduct, validateProductUpdate, validateMongoId } = require('../middleware/validators')
 const { asyncHandler } = require('../middleware/errorHandler')
-const { getPaginationParams, formatPaginationResponse, escapeRegex } = require('../utils/constants')
+const { formatPaginationResponse } = require('../utils/constants')
+const { badRequest, parseOptions, searchCatalog, PUBLIC_FIELDS, PUBLIC_VISIBILITY } = require('../utils/catalog')
+const { auditedChange } = require('../utils/audit')
+const { assertProductImagesOwned } = require('../services/mediaPrivacy')
+const { enqueueJob, publicJob } = require('../services/jobQueue')
+const { createProductOnce, publicProduct } = require('../services/productCreation')
 
-/**
- * @swagger
- * tags:
- *   - name: Products
- *     description: Product management and search
- */
+const editFields = ['name', 'category', 'pricingMode', 'price', 'currency', 'country', 'moq', 'unit', 'priceTiers', 'availability', 'availabilityConfirmed', 'inStock', 'city', 'description', 'images', 'imageUrl', 'isDraft', 'storeId']
 
-/**
- * @swagger
- * /api/products:
- *   get:
- *     summary: Retrieve a paginated list of products
- *     tags: [Products]
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *         description: Page number (default 1)
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *         description: Items per page (default 10)
- *     responses:
- *       200:
- *         description: A paginated list of products
- *   post:
- *     summary: Create a new product (requires authentication)
- *     tags: [Products]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               category:
- *                 type: string
- *               price:
- *                 type: number
- *               city:
- *                 type: string
- *               description:
- *                 type: string
- *               imageUrl:
- *                 type: string
- *     responses:
- *       201:
- *         description: Product created
- */
+async function queueIndex(product, req, receipt = null) {
+  try {
+    const { job } = await enqueueJob({ type: 'visual_index_product', ownerId: String(product.supplierId),
+      requestedBy: String(receipt?.actorId || req.supplier.id), organizationId: receipt ? (receipt.organizationId ? String(receipt.organizationId) : null) : (req.supplier.organizationId ? String(req.supplier.organizationId) : null),
+      requiredPermission: 'manage_products', payload: { productId: String(product._id) },
+      idempotencyKey: receipt ? `creation:${product._id}` : `${product._id}:${product.updatedAt.toISOString()}`, timeoutMs: 60000 })
+    return { status: 'queued', job: publicJob(job) }
+  } catch {
+    // The product is already saved. Explicitly report a retryable indexing gap.
+    return { status: 'unavailable', message: 'حُفظ المنتج؛ فهرسة الصورة تحتاج إعادة المحاولة أو تشغيل أداة الفهرسة.' }
+  }
+}
 
-// جيب المنتجات (مع pagination)
-const { cacheMiddleware } = require('../middleware/cache')
+async function prepareProduct(product, req) {
+  const body = req.body
+  const ownerId = req.supplier.ownerId || req.supplier.id
+  const imageChanged = body.imageUrl !== undefined && body.imageUrl !== product.imageUrl
+  if (imageChanged) { product.hasImageRights = false; product.imageRights = undefined }
+  for (const field of editFields) if (body[field] !== undefined) product[field] = field === 'storeId' && !body[field] ? undefined : body[field]
+  product.supplierId = ownerId
+  product.organizationId = req.supplier.organizationId || undefined
+  const supplier = await Supplier.findById(ownerId).select('phone')
+  product.supplierPhone = supplier?.phone || ''
+  if (product.pricingMode === 'on_request') { product.price = undefined; product.priceTiers = [] }
+  await assertProductImagesOwned(product)
+  if (body.hasImageRights === false) { product.hasImageRights = false; product.imageRights = undefined }
+  if (body.hasImageRights === true) {
+    const source = body.imageRights?.source
+    if (!['owned', 'licensed'].includes(source)) throw badRequest('حدد مصدر حق الصورة: owned أو licensed')
+    const licenseReference = body.imageRights?.licenseReference?.trim()
+    if (source === 'licensed' && !licenseReference) throw badRequest('مرجع ترخيص الصورة مطلوب')
+    product.hasImageRights = true
+    product.imageRights = { source, licenseReference, declaredBy: req.supplier.id, declaredAt: new Date() }
+  }
+  let store = null
+  if (product.storeId) store = await Store.findOne({ _id: product.storeId, supplierId: ownerId })
+  if (product.storeId && !store) throw badRequest('المتجر غير موجود أو لا تملكه')
+  if (product.isDraft === false) {
+    if (body.publishApproved !== true || body.hasImageRights !== true || body.availabilityConfirmed !== true) throw badRequest('النشر يحتاج اعتماداً صريحاً وإقرار حقوق الصورة وتأكيد التوفر في هذا الطلب')
+    if (!store || store.reviewStatus !== 'approved' || !store.isActive || store.adminSuspended) throw badRequest('النشر يحتاج متجراً مملوكاً ومعتمداً ونشطاً')
+    if (!product.imageUrl) throw badRequest('صورة المنتج مطلوبة للنشر')
+    if (product.moderationStatus === 'hidden') throw badRequest('المنتج محجوب من الإشراف')
+    product.approvedBy = req.supplier.id
+    product.approvedAt = new Date()
+  } else { product.approvedBy = undefined; product.approvedAt = undefined }
+  await product.validate()
+  return product
+}
 
-router.get('/', cacheMiddleware(20), asyncHandler(async (req, res) => {
-  const { page, limit, skip } = getPaginationParams(req)
-
-  const products = await Product.find()
-    .select('name price city category supplierId supplierPhone views moq unit priceTiers inStock imageUrl description createdAt')
-    .populate('supplierId', 'name city phone isVerified verificationStatus')
-    .sort({ views: -1 })
-    .limit(limit)
-    .skip(skip)
-
-  const total = await Product.countDocuments()
-
+router.get('/mine', authenticate, requirePermission('manage_products'), asyncHandler(async (req, res) => {
+  const { page, limit, skip } = parseOptions(req.query)
+  const filter = { supplierId: req.supplier.ownerId || req.supplier.id }
+  const [products, total] = await Promise.all([
+    Product.find(filter).populate('supplierId', 'name city phone').sort({ createdAt: -1, _id: 1 }).skip(skip).limit(limit),
+    Product.countDocuments(filter)
+  ])
   res.json(formatPaginationResponse(products, total, page, limit))
 }))
 
-/**
- * @swagger
- * /api/products/{id}:
- *   put:
- *     summary: Update a product (requires authentication)
- *     tags: [Products]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               category:
- *                 type: string
- *               price:
- *                 type: number
- *               city:
- *                 type: string
- *               description:
- *                 type: string
- *               imageUrl:
- *                 type: string
- *     responses:
- *       200:
- *         description: Product updated
- *   delete:
- *     summary: Delete a product (requires authentication)
- *     tags: [Products]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Product deleted
- */
+const publicList = asyncHandler(async (req, res) => {
+  const result = await searchCatalog(req.query)
+  res.json({ ...formatPaginationResponse(result.products, result.total, result.page, result.limit), exactCount: result.exactCount, similarCount: result.similarCount })
+})
+router.get('/', publicList)
+router.get('/search', publicList)
 
-// إضافة منتج جديد (يتطلب المصادقة)
-router.post('/', authenticate, validateProduct, asyncHandler(async (req, res) => {
-  let supplierPhone = req.body.supplierPhone
-  if (!supplierPhone && req.supplier?.id) {
-    const s = await Supplier.findById(req.supplier.id)
-    if (s) supplierPhone = s.phone
+// Editor reads remain on /mine; public details never expose a draft to an
+// owner/admin simply because a session or a known id was supplied.
+router.get('/:id', validateMongoId, asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  const product = await Product.findOne({ _id: req.params.id, ...PUBLIC_VISIBILITY }).select(PUBLIC_FIELDS).lean()
+  const store = product && await getPublicStore(product.storeId)
+  if (!product || !store || String(store.supplierId._id) !== String(product.supplierId)) {
+    return res.status(404).json({ message: 'المنتج غير متاح' })
   }
+  res.json({ product: { ...product, supplierId: store.supplierId }, store })
+}))
 
-  const product = new Product({
-    ...req.body,
-    supplierId: req.supplier.id,
-    supplierPhone: supplierPhone || ''
-  })
+router.post('/', authenticate, requirePermission('manage_products'), validateProduct, asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  const { product, receipt, replayed } = await createProductOnce(req, prepareProduct)
+  try { await Supplier.findByIdAndUpdate(product.supplierId, { $addToSet: { products: product._id } }) }
+  catch { throw Object.assign(new Error('حُفظ المنتج وتعذر استكمال الربط؛ أعد المحاولة بنفس معرف الحفظ'), { status: 503 }) }
+  const visualIndex = await queueIndex(product, req, receipt)
+  const result = receipt ? receipt.snapshot : publicProduct(product)
+  res.status(201).json({ message: result.isDraft ? 'تم حفظ المنتج كمسودة خاصة' : 'تم اعتماد ونشر المنتج', product: result, visualIndex,
+    ...(receipt ? { creation: { replayed } } : {}) })
+}))
 
+router.put('/:id', authenticate, requirePermission('manage_products'), validateMongoId, validateProductUpdate, asyncHandler(async (req, res) => {
+  const product = await Product.findOne({ _id: req.params.id, supplierId: req.supplier.ownerId || req.supplier.id })
+  if (!product) return res.status(404).json({ message: 'المنتج غير موجود' })
+  await prepareProduct(product, req)
   await product.save()
-
-  // ربط المنتج بحساب المورد
-  if (req.supplier?.id) {
-    await Supplier.findByIdAndUpdate(req.supplier.id, {
-      $addToSet: { products: product._id }
-    })
-  }
-
-  res.status(201).json({
-    message: '✅ تم إضافة المنتج بنجاح',
-    product
-  })
+  const visualIndex = await queueIndex(product, req)
+  res.json({ message: product.isDraft ? 'تم تحديث المسودة الخاصة' : 'تم اعتماد تحديث المنتج', product, visualIndex })
 }))
 
-// تحديث منتج (يتطلب المصادقة)
-router.put('/:id', authenticate, validateMongoId, validateProductUpdate, asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id)
-
-  if (!product) {
-    return res.status(404).json({ message: '❌ المنتج غير موجود' })
-  }
-
-  // التحقق من أن المورد هو صاحب المنتج
-  if ((product.supplierId && product.supplierId.toString()) !== req.supplier.id) {
-    return res.status(403).json({ message: '❌ ليس لديك صلاحية لتعديل هذا المنتج' })
-  }
-
-  // تحديث البيانات المسموحة
-  const { name, category, price, city, description, imageUrl, moq, unit, priceTiers, inStock } = req.body
-  if (name !== undefined) product.name = name
-  if (category !== undefined) product.category = category
-  if (price !== undefined) product.price = price
-  if (city !== undefined) product.city = city
-  if (description !== undefined) product.description = description
-  if (imageUrl !== undefined) product.imageUrl = imageUrl
-  if (moq !== undefined) product.moq = moq
-  if (unit !== undefined) product.unit = unit
-  if (priceTiers !== undefined) product.priceTiers = priceTiers
-  if (inStock !== undefined) product.inStock = inStock
-  if (req.body.hasImageRights !== undefined) product.hasImageRights = req.body.hasImageRights
-  if (req.body.isDraft !== undefined) product.isDraft = req.body.isDraft
-
-  await product.save()
-
-  res.json({
-    message: '✅ تم تحديث المنتج بنجاح',
-    product
+router.delete('/:id', authenticate, requirePermission('manage_products'), validateMongoId, asyncHandler(async (req, res) => {
+  const filter = { _id: req.params.id, supplierId: req.supplier.ownerId || req.supplier.id }
+  const product = await Product.findOne(filter)
+  if (!product) return res.status(404).json({ message: 'المنتج غير موجود' })
+  await auditedChange({ action: 'PRODUCT_DELETED', targetType: 'Product', targetId: product._id, actor: req.supplier, details: { name: product.name } }, async () => {
+    await Product.deleteOne(filter)
+    await Supplier.findByIdAndUpdate(product.supplierId, { $pull: { products: product._id } })
   })
+  res.json({ message: 'تم حذف المنتج' })
 }))
-
-// حذف منتج (يتطلب المصادقة)
-router.delete('/:id', authenticate, validateMongoId, asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id)
-
-  if (!product) {
-    return res.status(404).json({ message: '❌ المنتج غير موجود' })
-  }
-
-  // التحقق من أن المورد هو صاحب المنتج
-  if ((product.supplierId && product.supplierId.toString()) !== req.supplier.id) {
-    return res.status(403).json({ message: '❌ ليس لديك صلاحية لحذف هذا المنتج' })
-  }
-
-  await Product.findByIdAndDelete(req.params.id)
-
-  res.json({
-    message: '✅ تم حذف المنتج بنجاح'
-  })
-}))
-
-// دالة تحليل البحث الذكي
-function parseQuery(query) {
-  const raw = typeof query === 'string' ? query : String(query || '')
-  const cities = ['فاس', 'طنجة', 'كازا', 'الدار البيضاء', 'مراكش', 'أكادير', 'الرباط', 'مكناس']
-  const cheapWords = ['رخيص', 'رخيصة', 'أرخص', 'قليل', 'بسيط']
-  const expWords = ['غالي', 'غالية', 'جودة', 'فاخر']
-  const synonyms = {
-    'صباط': ['شوز', 'سباط', 'حذاء'],
-    'شوز': ['صباط', 'سباط', 'حذاء'],
-    'تيشورت': ['قميص', 'تيشرت'],
-    'پانطالون': ['سروال', 'جينز'],
-  }
-
-  let city = null
-  let isCheap = false
-  let isExpensive = false
-
-  // استخراج المدينة
-  cities.forEach(c => { if (raw.includes(c)) city = c })
-
-  // استخراج نية السعر
-  cheapWords.forEach(w => { if (raw.includes(w)) isCheap = true })
-  expWords.forEach(w => { if (raw.includes(w)) isExpensive = true })
-
-  // تنظيف الجملة
-  let clean = raw
-  ;[...cities, ...cheapWords, ...expWords].forEach(w => {
-    clean = clean.split(w).join('')
-  })
-  clean = clean.replace(/في|ف|من|بحال/g, '').trim()
-
-  // توسيع الكلمات المشابهة
-  let searchWords = [clean]
-  Object.entries(synonyms).forEach(([key, vals]) => {
-    if (clean.includes(key)) searchWords = [...searchWords, ...vals]
-    vals.forEach(v => { if (clean.includes(v)) searchWords = [...searchWords, key, ...vals] })
-  })
-  searchWords = [...new Set(searchWords.filter(w => w && w.length > 0))]
-
-  return { searchWords, city, isCheap, isExpensive, original: clean }
-}
-
-// بحث ذكي
-router.get('/search', asyncHandler(async (req, res) => {
-  const q = typeof req.query.q === 'string' ? req.query.q.slice(0, 100).trim() : ''
-  const { page, limit, skip } = getPaginationParams(req)
-
-  if (!q) {
-    const all = await Product.find()
-      .sort({ views: -1 })
-      .limit(limit)
-      .skip(skip)
-    
-    const total = await Product.countDocuments()
-    return res.json(formatPaginationResponse(all, total, page, limit))
-  }
-
-  const parsed = parseQuery(q)
-  const searchTerms = parsed.searchWords.filter(Boolean)
-  const regexes = searchTerms.map(w => new RegExp(escapeRegex(w), 'i'))
-
-  const filter = {}
-  if (regexes.length > 0) {
-    filter.$or = [
-      { name: { $in: regexes } },
-      { category: { $in: regexes } }
-    ]
-  } else {
-    filter.name = { $regex: escapeRegex(q), $options: 'i' }
-  }
-  if (parsed.city) filter.city = { $regex: escapeRegex(parsed.city), $options: 'i' }
-
-  let results = await Product.find(filter)
-    .select('name price city category supplierId supplierPhone views moq unit priceTiers inStock imageUrl description createdAt')
-    .populate('supplierId', 'name city phone isVerified verificationStatus')
-    .sort({ views: -1 })
-    .limit(limit)
-    .skip(skip)
-
-  const total = await Product.countDocuments(filter)
-
-  results = results.sort((a, b) => {
-    let scoreA = a.views || 0
-    let scoreB = b.views || 0
-
-    if (parsed.isCheap) {
-      scoreA -= a.price * 0.1
-      scoreB -= b.price * 0.1
-    }
-    if (parsed.isExpensive) {
-      scoreA += a.price * 0.1
-      scoreB += b.price * 0.1
-    }
-
-    return scoreB - scoreA
-  })
-
-  res.json(formatPaginationResponse(results, total, page, limit))
-}))
-
 module.exports = router

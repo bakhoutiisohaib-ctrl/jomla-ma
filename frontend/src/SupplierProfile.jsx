@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import ProtectedImage from './components/common/ProtectedImage'
 
 export default function SupplierProfile() {
   const [profile, setProfile] = useState(null)
@@ -161,7 +162,7 @@ export default function SupplierProfile() {
           {products.map(p => (
             <li key={p._id} style={{ marginBottom: 8 }}>
               <strong>{p.name}</strong> — {p.category} — {p.price} د.م<br/>
-              {p.imageUrl && <img src={p.imageUrl} alt="img" style={{ height: 60 }} />}
+              <ProtectedImage value={p.imageUrl} alt={p.name || 'صورة المنتج'} style={{ height: 60 }} />
             </li>
           ))}
         </ul>

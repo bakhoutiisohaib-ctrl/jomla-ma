@@ -1,0 +1,15 @@
+# TEMPLATE ONLY. The private key is generated on the participant device and
+# remains there. 198.51.100.20 is documentation space, not a real endpoint.
+[Interface]
+Address = 10.77.0.2/32
+PrivateKey = REPLACE_WITH_THIS_DEVICE_PRIVATE_KEY_GENERATED_ON_DEVICE
+
+[Peer]
+PublicKey = REPLACE_WITH_SERVER_PUBLIC_KEY_ONLY
+Endpoint = 198.51.100.20:51820
+# Route only the pilot server through the tunnel; do not set 0.0.0.0/0.
+AllowedIPs = 10.77.0.1/32
+PersistentKeepalive = 25
+# DNS is deliberately absent. Before onboarding, the approved resolvers must
+# resolve the OWNER'S real pilot subdomain to10.77.0.1 on every target device.
+# Do not point DNS at10.77.0.1 unless an actual reviewed DNS service exists there.

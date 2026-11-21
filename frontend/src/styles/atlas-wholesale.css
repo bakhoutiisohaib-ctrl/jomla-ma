@@ -1,0 +1,6 @@
+.wholesale-filters,.wholesale-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:18px;align-items:end}
+.wholesale-page label,.wholesale-workspace label{display:grid;gap:6px;font-weight:600;min-width:0}
+.wholesale-workspace input,.wholesale-workspace select,.wholesale-workspace textarea,.wholesale-page input{width:100%;box-sizing:border-box;font:inherit;padding:10px;border:1px solid #819386;border-radius:8px;min-height:44px}
+.wholesale-editor fieldset{border:0;padding:0;margin:0;min-width:0}.wholesale-tier{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:12px;align-items:end;margin-block:18px}
+.wholesale-intro h1{margin-block:8px}.wholesale-workspace .product-grid{margin-block:20px}.wholesale-text,.wholesale-rfq-context p{white-space:pre-wrap;overflow-wrap:anywhere}.wholesale-page .product-gallery img{width:100%;object-fit:contain;max-height:520px}
+@media(max-width:700px){.wholesale-fields,.wholesale-filters,.wholesale-tier{grid-template-columns:1fr}.wholesale-workspace input,.wholesale-workspace select,.wholesale-page input{font-size:16px}.atlas-public .wholesale-page .product-grid{grid-template-columns:1fr}.atlas-public .wholesale-page .detail-layout{grid-template-columns:1fr}.wholesale-tier{padding-block:12px;border-bottom:1px solid #d8dfd5}}

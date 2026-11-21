@@ -1,0 +1,33 @@
+# REVIEW TEMPLATE ONLY. No install/apply command is supplied or executed here.
+# Do not flush or replace a live firewall. A network operator must reconcile
+# this policy with the host and cloud rules using an out-of-band console.
+# 203.0.113.10 is a reserved documentation address: replace with the approved
+# management source. An unchanged example intentionally provides no real SSH.
+table inet jomla_pilot {
+    set invited_v4 {
+        type ipv4_addr
+        elements = { 10.77.0.2, 10.77.0.3 }
+    }
+
+    chain input {
+        type filter hook input priority 0; policy drop;
+        iifname "lo" accept
+        ct state invalid drop
+        ct state established,related accept
+        # Public application HTTP/HTTPS, API5000, Mongo27017 and Caddy2019
+        # are never allowed by an internet-interface rule.
+        ip saddr 203.0.113.10 tcp dport 22 accept
+        udp dport 51820 accept
+        iifname "wg0" ip saddr @invited_v4 tcp dport 443 accept
+        ip protocol icmp icmp type { destination-unreachable, time-exceeded, parameter-problem } accept
+        ip6 nexthdr ipv6-icmp icmpv6 type { destination-unreachable, packet-too-big, time-exceeded, parameter-problem, nd-neighbor-solicit, nd-neighbor-advert } accept
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+    }
+
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}

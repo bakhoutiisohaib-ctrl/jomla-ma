@@ -1,0 +1,38 @@
+/* Scoped overrides: the detail page and supplier editor keep their own layout. */
+.atlas-public .product-card.atlas-compact-card { display: flex; flex-direction: column; min-width: 0; }
+.atlas-public .atlas-compact-card .atlas-card-media { min-height: 0; }
+.atlas-public .atlas-compact-card .atlas-card-media>a { height: 200px; min-height: 0; }
+.atlas-public .atlas-compact-card .atlas-card-media img { height: 100%; width: 100%; object-fit: contain; }
+.atlas-public .atlas-compact-card .atlas-quick-view { min-width: 44px; min-height: 44px; padding: 7px 10px; }
+.atlas-public .atlas-compact-card .product-body { padding: 12px 14px 8px; flex: 1; min-width: 0; }
+.atlas-public .atlas-compact-card .product-body h3 { font-size: 16px; line-height: 1.5; min-height: 48px; margin: 0 0 6px!important; }
+.atlas-compact-card h3 a { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.atlas-public .atlas-compact-card .product-body .price { font-size: 23px; line-height: 1.4; margin: 4px 0; overflow-wrap: anywhere; }
+.atlas-public .atlas-compact-card .price small { display: inline; font-size: 12px; font-weight: 400; white-space: nowrap; }
+.atlas-public .atlas-compact-card .atlas-card-moq { margin: 5px 0; font-size: 13px; line-height: 1.5; color: #465b3f; overflow-wrap: anywhere; }
+.atlas-public .atlas-compact-card .atlas-card-supplier { display: flex; margin: 7px 0 0; font-size: 12px; line-height: 1.5; text-decoration: none; color: #465b3f; gap: 5px; }
+.atlas-compact-card .atlas-card-supplier span:first-of-type { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atlas-compact-card .atlas-card-supplier .atlas-icon { width: 15px; height: 15px; flex: 0 0 15px; }
+.atlas-compact-card .atlas-supplier-verified { flex: none; color: #275d42; }
+.atlas-public .atlas-compact-card .atlas-card-city { margin: 2px 0 0; color: #62705e; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.atlas-supplier-rating { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 6px 0 0; font-size: 12px; color: #526344; }
+.atlas-supplier-rating>span:first-child { color: #8b651b; }
+.atlas-public .atlas-compact-card .product-footer { padding: 8px 12px 12px; border-top: 0; background: white; }
+.atlas-public .atlas-compact-card .product-footer .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.atlas-public .atlas-compact-card .product-footer .primary { flex: 1; width: auto; min-width: 0; min-height: 44px; padding: 6px; font-size: 13px; }
+.atlas-public .atlas-compact-card .product-footer .atlas-add-cart-compact { flex: 0 0 44px; width: 44px; min-height: 44px; padding: 8px; display: inline-flex; align-items: center; justify-content: center; color: #32553c; background: #edf1e6; border-color: #d5deca; }
+.atlas-public .atlas-compact-card .atlas-cart-add-status { flex-basis: 100%; margin: 0; }
+.atlas-compact-card a:focus-visible, .atlas-compact-card button:focus-visible { outline: 3px solid #8c6e2c; outline-offset: 2px; }
+@media(max-width:700px) {
+  .atlas-public .atlas-compact-card .atlas-card-media>a { height: auto; aspect-ratio: 1 / 1; }
+  .atlas-public .atlas-compact-card .product-body { padding: 9px 9px 6px; }
+  .atlas-public .atlas-compact-card .product-body h3 { font-size: 14px; min-height: 42px; margin-bottom: 4px!important; }
+  .atlas-public .atlas-compact-card .product-body .price { font-size: 20px; }
+  .atlas-public .atlas-compact-card .price small { display: block; line-height: 1.4; }
+  .atlas-public .atlas-compact-card .product-footer { padding: 6px 8px 9px; }
+  .atlas-public .atlas-compact-card .atlas-quick-view { padding: 6px 9px; }
+  .atlas-public .atlas-compact-card .atlas-quick-view>span { display: none; }
+}
+@media(max-width:359px) {
+  .atlas-public .atlas-compact-card .product-footer .primary { font-size: 12px; white-space: nowrap; padding-inline: 3px; }
+}

@@ -6,60 +6,39 @@ const handleValidationErrors = (req, res, next) => {
   if (!errors.isEmpty()) {
     return res.status(400).json({ 
       message: '❌ بيانات غير صحيحة',
-      errors: errors.array().map(e => ({ field: e.param, message: e.msg }))
+      errors: errors.array().map(e => ({ field: e.path || e.param, message: e.msg }))
     })
   }
   next()
 }
 
-// --- Validators للمنتجات ---
-const validateProduct = [
-  body('name')
-    .notEmpty().withMessage('اسم المنتج مطلوب')
-    .isLength({ min: 2 }).withMessage('اسم المنتج يجب أن يكون حرفين على الأقل'),
-  body('category')
-    .notEmpty().withMessage('الفئة مطلوبة'),
-  body('price')
-    .notEmpty().withMessage('السعر مطلوب')
-    .isNumeric().withMessage('السعر يجب أن يكون رقماً'),
-  body('city')
-    .notEmpty().withMessage('المدينة مطلوبة'),
-  body('moq')
-    .optional()
-    .isInt({ min: 1 }).withMessage('الحد الأدنى للطلب (MOQ) يجب أن يكون 1 على الأقل'),
-  body('unit')
-    .optional()
-    .isString().withMessage('وحدة البيع غير صحيحة'),
-  body('priceTiers')
-    .optional()
-    .isArray().withMessage('جدول أسعار الكميات يجب أن يكون مصفوفة'),
-  body('supplierPhone')
-    .optional()
-    .matches(/^[+0-9\s\-()]+$/).withMessage('رقم الهاتف غير صحيح'),
+// Drafts may be incomplete; publication is validated against the merged document.
+const productFields = [
+  body('name').optional().isString().isLength({ max: 160 }),
+  body('category').optional().isString().isLength({ max: 100 }),
+  body('description').optional().isString().isLength({ max: 5000 }),
+  body('city').optional().isString().isLength({ max: 100 }),
+  body('unit').optional().isString().isLength({ min: 1, max: 50 }),
+  body('currency').optional().matches(/^[A-Za-z]{3}$/),
+  body('country').optional().matches(/^[A-Za-z]{2}$/),
+  body('price').optional({ nullable: true }).isFloat({ min: 0 }),
+  body('moq').optional().isInt({ min: 1 }),
+  body('priceTiers').optional().isArray({ max: 30 }),
+  body('priceTiers.*.minQty').isInt({ min: 1 }),
+  body('priceTiers.*.maxQty').optional({ nullable: true }).isInt({ min: 1 }),
+  body('priceTiers.*.price').isFloat({ min: 0 }),
+  body('pricingMode').optional().isIn(['fixed', 'on_request']),
+  body('availability').optional().isIn(['unknown', 'in_stock', 'out_of_stock']),
+  ...['isDraft', 'inStock', 'hasImageRights', 'publishApproved', 'availabilityConfirmed'].map(field => body(field).optional().custom(v => typeof v === 'boolean').withMessage('يجب إرسال قيمة منطقية صحيحة')),
+  body('storeId').optional({ values: 'falsy' }).isMongoId(),
+  body('images').optional().isArray({ max: 6 }),
+  body('imageUrl').optional().isString(),
+  body('imageRights.source').optional().isIn(['owned', 'licensed']),
+  body('imageRights.licenseReference').optional().isString().isLength({ max: 1000 }),
   handleValidationErrors
 ]
-
-const validateProductUpdate = [
-  body('name')
-    .optional()
-    .isLength({ min: 2 }).withMessage('اسم المنتج يجب أن يكون حرفين على الأقل'),
-  body('price')
-    .optional()
-    .isNumeric().withMessage('السعر يجب أن يكون رقماً'),
-  body('moq')
-    .optional()
-    .isInt({ min: 1 }).withMessage('الحد الأدنى للطلب (MOQ) يجب أن يكون 1 على الأقل'),
-  body('unit')
-    .optional()
-    .isString().withMessage('وحدة البيع غير صحيحة'),
-  body('priceTiers')
-    .optional()
-    .isArray().withMessage('جدول أسعار الكميات يجب أن يكون مصفوفة'),
-  body('supplierPhone')
-    .optional()
-    .matches(/^[+0-9\s\-()]+$/).withMessage('رقم الهاتف غير صحيح'),
-  handleValidationErrors
-]
+const validateProduct = productFields
+const validateProductUpdate = productFields
 
 // --- Validators للمورّدين ---
 const validateSupplierRegister = [
@@ -70,8 +49,10 @@ const validateSupplierRegister = [
     .notEmpty().withMessage('البريد الإلكتروني مطلوب')
     .isEmail().withMessage('البريد الإلكتروني غير صحيح'),
   body('password')
+    .isString().withMessage('كلمة المرور يجب أن تكون نصاً').bail()
     .notEmpty().withMessage('كلمة المرور مطلوبة')
-    .isLength({ min: 6 }).withMessage('كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
+    .isLength({ min: 8 }).withMessage('كلمة المرور يجب أن تكون 8 أحرف على الأقل')
+    .custom(value => Buffer.byteLength(value, 'utf8') <= 72).withMessage('كلمة المرور لا يجب أن تتجاوز 72 بايت؛ الحروف العربية قد تستعمل أكثر من بايت'),
   body('city')
     .notEmpty().withMessage('المدينة مطلوبة'),
   body('phone')

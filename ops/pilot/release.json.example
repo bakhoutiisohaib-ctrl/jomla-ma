@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "releaseId": "REPLACE_WITH_REVIEWED_RELEASE_ID",
+  "releasePath": "/srv/jomla-pilot/releases/REPLACE_WITH_REVIEWED_RELEASE_ID",
+  "manifestSha256": "REPLACE_WITH_64_HEX_MANIFEST_HASH",
+  "nodeVersion": "v24.22.1",
+  "database": "jomla_pilot",
+  "port": 5000,
+  "origin": "https://pilot.example.invalid",
+  "uploadsPath": "/var/lib/jomla-pilot/uploads",
+  "logPath": "/var/log/jomla-pilot/runtime"
+}

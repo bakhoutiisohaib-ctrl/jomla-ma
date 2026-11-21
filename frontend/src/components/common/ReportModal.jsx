@@ -1,9 +1,12 @@
-import { useState } from 'react'
-import { API } from '../../api/config'
+import { useId, useState } from 'react'
+import { apiRequest } from '../../api/config'
 import { useTranslation } from '../../i18n/LanguageContext'
+import { useLabels } from '../../i18n/useLabels'
 
 export default function ReportModal({ targetType = 'product', targetId, targetName, onClose }) {
   const { t } = useTranslation()
+  const l = useLabels()
+  const id = useId()
   const [form, setForm] = useState({
     reporterName: '',
     reporterPhone: '',
@@ -20,25 +23,20 @@ export default function ReportModal({ targetType = 'product', targetId, targetNa
     setMsg('')
 
     try {
-      const res = await fetch(`${API}/reports`, {
+      await apiRequest('/reports', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        token: '',
+        body: {
           ...form,
           targetType,
           targetId,
           targetName
-        })
+        }
       })
-      const data = await res.json()
-      if (res.ok) {
-        setSubmitted(true)
-        setMsg(data.message)
-      } else {
-        setMsg(data.message || '⚠️ تعذر إرسال البلاغ')
-      }
-    } catch {
-      setMsg('❌ خطأ في الاتصال بالخادم')
+      setSubmitted(true)
+      setMsg(l('تم إرسال البلاغ للإدارة.', 'Signalement envoyé à l’administration.'))
+    } catch (error) {
+      setMsg(error.message || l('تعذر إرسال البلاغ', 'Impossible d’envoyer le signalement'))
     } finally {
       setLoading(false)
     }
@@ -63,27 +61,32 @@ export default function ReportModal({ targetType = 'product', targetId, targetNa
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={id + '-title'}
         style={{
           background: 'white',
           borderRadius: '16px',
           padding: '24px',
           maxWidth: '460px',
           width: '100%',
+          maxHeight: '90dvh',
+          overflowY: 'auto',
           boxShadow: '0 8px 30px rgba(0,0,0,0.2)'
         }}
         onClick={e => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-          <h3 style={{ margin: 0, fontSize: '16px', color: '#DC2626' }}>
+          <h3 id={id + '-title'} style={{ margin: 0, fontSize: '16px', color: '#DC2626' }}>
             {t('report_title')}
           </h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#64748B' }}>✕</button>
+          <button aria-label={l('إغلاق', 'Fermer')} onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#64748B' }}>✕</button>
         </div>
 
         {submitted ? (
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          <div role="status" style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={{ fontSize: '42px', marginBottom: '8px' }}>🛡️</div>
-            <h4 style={{ color: '#047857', margin: '0 0 6px', fontSize: '16px' }}>شكراً لمساهمتك في حماية السوق</h4>
+            <h4 style={{ color: '#047857', margin: '0 0 6px', fontSize: '16px' }}>{l('شكراً لمساهمتك في حماية السوق', 'Merci de contribuer à la protection du marché')}</h4>
             <p style={{ color: '#475569', fontSize: '13px', margin: '0 0 16px' }}>{msg}</p>
             <button
               onClick={onClose}
@@ -97,26 +100,27 @@ export default function ReportModal({ targetType = 'product', targetId, targetNa
                 fontWeight: '600'
               }}
             >
-              إغلاق
+              {l('إغلاق', 'Fermer')}
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
             <div style={{ background: '#FEF2F2', padding: '10px 14px', borderRadius: '8px', marginBottom: '14px', fontSize: '13px', color: '#991B1B' }}>
-              البلاغ بخصوص: <strong>{targetName}</strong> ({targetType === 'product' ? 'منتج' : 'مورد'})
+              {l('البلاغ بخصوص', 'Signalement concernant')}: <strong>{targetName}</strong> ({targetType === 'product' ? l('منتج', 'Produit') : l('مورد', 'Fournisseur')})
             </div>
 
             {msg && (
-              <div style={{ background: '#FFFBEB', color: '#B45309', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', marginBottom: '12px' }}>
+              <div role="alert" style={{ background: '#FFFBEB', color: '#B45309', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', marginBottom: '12px' }}>
                 {msg}
               </div>
             )}
 
             <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px', color: '#334155' }}>
-                سبب البلاغ *
+              <label htmlFor={id + '-reason'} style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px', color: '#334155' }}>
+                {l('سبب البلاغ', 'Motif du signalement')}
               </label>
               <select
+                id={id + '-reason'}
                 value={form.reason}
                 onChange={e => setForm({ ...form, reason: e.target.value })}
                 style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '13px', outline: 'none' }}
@@ -130,10 +134,11 @@ export default function ReportModal({ targetType = 'product', targetId, targetNa
             </div>
 
             <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px', color: '#334155' }}>
-                تفاصيل إضافية
+              <label htmlFor={id + '-details'} style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px', color: '#334155' }}>
+                {l('تفاصيل إضافية', 'Détails complémentaires')}
               </label>
               <textarea
+                id={id + '-details'}
                 rows="3"
                 value={form.details}
                 onChange={e => setForm({ ...form, details: e.target.value })}
@@ -144,18 +149,20 @@ export default function ReportModal({ targetType = 'product', targetId, targetNa
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>اسمك (اختياري)</label>
+                <label htmlFor={id + '-name'} style={{ display: 'block', fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>{l('اسمك (اختياري)', 'Votre nom (facultatif)')}</label>
                 <input
+                  id={id + '-name'}
                   type="text"
-                  placeholder="محمد تاجر"
+                  placeholder={l('محمد تاجر', 'Nom du commerçant')}
                   value={form.reporterName}
                   onChange={e => setForm({ ...form, reporterName: e.target.value })}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px', boxSizing: 'border-box' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>رقم هاتفك (اختياري)</label>
+                <label htmlFor={id + '-phone'} style={{ display: 'block', fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>{l('رقم هاتفك (اختياري)', 'Votre téléphone (facultatif)')}</label>
                 <input
+                  id={id + '-phone'}
                   type="text"
                   placeholder="0600000000"
                   value={form.reporterPhone}

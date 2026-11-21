@@ -2,6 +2,17 @@ const mongoose = require('mongoose')
 
 const ExternalDiscoveryResultSchema = new mongoose.Schema({
   query:            { type: String, required: true, trim: true },
+  provider:         { type: String, enum: ['brave'], required: true },
+  termsReference:   { type: String, required: true },
+  queriedAt:        { type: Date, required: true },
+  results: [{
+    title: { type: String, required: true },
+    url: { type: String, required: true },
+    description: String,
+    sourceName: { type: String, required: true },
+    external: { type: Boolean, default: true },
+    isVerified: { type: Boolean, default: false }
+  }],
   detectedCategory: { type: String, default: 'عام' },
   isAvailableInCatalog: { type: Boolean, default: false },
   externalSources: [{

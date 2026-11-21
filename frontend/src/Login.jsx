@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { setSession } from './api/session'
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('')
@@ -14,7 +15,7 @@ export default function Login({ onLogin }) {
       })
       const data = await res.json()
       if (res.ok && data.token) {
-        localStorage.setItem('supplierToken', data.token)
+        setSession(data.token)
         onLogin()
       } else {
         alert(data.message || 'فشل تسجيل الدخول')

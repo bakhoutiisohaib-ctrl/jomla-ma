@@ -1,0 +1,38 @@
+[Unit]
+Description=JOMLA closed pilot API - reviewed template only
+Requires=mongod.service
+After=network.target mongod.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=jomla-pilot
+Group=jomla-pilot
+WorkingDirectory=/srv/jomla-pilot
+EnvironmentFile=/etc/jomla-pilot/runtime.env
+ExecStart=/usr/bin/flock --shared --nonblock --no-fork /run/jomla-pilot/generation.lock /usr/bin/flock --exclusive --nonblock --no-fork /run/jomla-pilot/api.lock /usr/bin/node /srv/jomla-pilot/launcher/launch.cjs api
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+KillMode=control-group
+TimeoutStopSec=60
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/jomla-pilot/uploads /var/log/jomla-pilot/runtime /run/jomla-pilot
+InaccessiblePaths=-/etc/jomla-pilot-tls
+CapabilityBoundingSet=
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+# This filters traffic, not the bind address. start.js still listens wildcard.
+# Host/cloud firewall restrictions remain mandatory even if BPF is unavailable.
+IPAccounting=true
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+[Install]
+WantedBy=multi-user.target

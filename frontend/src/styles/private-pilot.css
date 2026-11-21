@@ -1,0 +1,21 @@
+.private-pilot-notice {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: .35rem 1rem;
+  padding: .7rem 1rem;
+  color: #493000;
+  background: #fff1c2;
+  border-bottom: 1px solid #dfbd61;
+  font-size: .9rem;
+  line-height: 1.6;
+  text-align: center;
+}
+.private-pilot-notice strong {
+  flex-shrink: 0;
+}
+@media (max-width: 480px) {
+  .private-pilot-notice { font-size: .8rem; gap: .15rem; }
+  .private-pilot-notice strong { width: 100%; }
+}

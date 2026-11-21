@@ -1,0 +1,6 @@
+# Install only after approval as /etc/tmpfiles.d/jomla-pilot.conf.
+# Root owns directory/inodes: service user can lock but cannot unlink/replace.
+d /run/jomla-pilot 0755 root root -
+f /run/jomla-pilot/generation.lock 0660 root jomla-pilot -
+f /run/jomla-pilot/api.lock 0660 root jomla-pilot -
+f /run/jomla-pilot/worker.lock 0660 root jomla-pilot -

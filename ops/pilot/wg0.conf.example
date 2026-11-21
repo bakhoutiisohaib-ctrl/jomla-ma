@@ -1,0 +1,18 @@
+# TEMPLATE ONLY. Never commit a completed copy or send participant QR codes in
+# reports. Intended server path: /etc/wireguard/wg0.conf, root-owned mode0600.
+# This is access to services ON the server, not an internet gateway or mesh.
+[Interface]
+Address = 10.77.0.1/24
+ListenPort = 51820
+PrivateKey = REPLACE_WITH_SERVER_PRIVATE_KEY_GENERATED_ON_SERVER
+SaveConfig = false
+
+# One unique device key and source /32 per invited device. Remove a peer and
+# its Caddy/firewall allowlist entries when access is revoked.
+[Peer]
+PublicKey = REPLACE_WITH_PARTICIPANT_A_PUBLIC_KEY_ONLY
+AllowedIPs = 10.77.0.2/32
+
+[Peer]
+PublicKey = REPLACE_WITH_PARTICIPANT_B_PUBLIC_KEY_ONLY
+AllowedIPs = 10.77.0.3/32

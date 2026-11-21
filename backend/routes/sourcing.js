@@ -1,109 +1,73 @@
-const express = require('express')
-const router = express.Router()
+const router = require('express').Router()
+const mongoose = require('mongoose')
 const SourcingRequest = require('../models/SourcingRequest')
-const QuoteRequest = require('../models/QuoteRequest')
-const { authenticate } = require('../middleware/auth')
+const { authenticate, requirePermission, requireRole } = require('../middleware/auth')
 const { validateMongoId } = require('../middleware/validators')
 const { asyncHandler } = require('../middleware/errorHandler')
 const { getPaginationParams, formatPaginationResponse } = require('../utils/constants')
-
-/**
- * @swagger
- * tags:
- *   - name: Sourcing
- *     description: B2B wholesale sourcing requests for out-of-catalog products
- */
-
-// تقديم طلب توريد خاص (مشتري مهني يبحث عن منتج غير متوفر)
-router.post('/', asyncHandler(async (req, res) => {
-  const { buyerName, buyerPhone, buyerCity, productName, category, quantity, unit, targetPrice, imageUrl, notes } = req.body
-
-  if (!buyerName || !buyerPhone || !productName || !quantity) {
-    return res.status(400).json({
-      message: '⚠️ يرجى ملء الحقول الإلزامية: اسم المشتري، رقم الهاتف، اسم المنتج، والكمية المطلوبة'
-    })
+const sourcingCreation = require('../services/sourcingCreation')
+const { sourcingDto } = require('../services/sourcingDto')
+const sourcingOffers = require('../services/sourcingOfferSubmission')
+const sourcingDecisions = require('../services/sourcingDecision')
+router.use(authenticate)
+const ownerId = req => String(req.supplier.ownerId || req.supplier.id)
+const cleanText = (v, max = 5000) => typeof v === 'string' ? v.trim().slice(0, max) : ''
+router.post('/', requireRole('buyer'), asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  try {
+    const { sourcing, replayed } = await sourcingCreation.create(req)
+    res.status(replayed ? 200 : 201).json({ message: 'تم تسجيل طلب التوريد؛ يمكنك متابعة العروض في حسابك', sourcing: sourcingDto(sourcing, req.supplier), replayed })
+  } catch (err) {
+    res.status(err.status || 503).json({ code: err.code || 'SOURCING_CREATION_UNCONFIRMED', message: err.status ? err.message : 'تعذر تأكيد نتيجة الإنشاء؛ استكمل المحاولة نفسها' })
   }
-
-  const sourcing = new SourcingRequest({
-    buyerName: String(buyerName).trim(),
-    buyerPhone: String(buyerPhone).trim(),
-    buyerCity: buyerCity ? String(buyerCity).trim() : 'المغرب',
-    productName: String(productName).trim(),
-    category: category ? String(category).trim() : 'عام',
-    quantity: Number(quantity),
-    unit: unit ? String(unit).trim() : 'قطعة',
-    targetPrice: targetPrice ? Number(targetPrice) : undefined,
-    imageUrl: imageUrl ? String(imageUrl).trim() : undefined,
-    notes: notes ? String(notes).trim() : ''
-  })
-
-  await sourcing.save()
-
-  // رابط واتساب للمتابعة السريعة مع إدارة المنصة
-  const whatsappMsg = `طلب توريد جديد على Jomla.ma:\nالمنتج: ${sourcing.productName}\nالكمية: ${sourcing.quantity} ${sourcing.unit}\nالمشتري: ${sourcing.buyerName} (${sourcing.buyerCity})\nالهاتف: ${sourcing.buyerPhone}`
-  const whatsappLink = `https://wa.me/212600000000?text=${encodeURIComponent(whatsappMsg)}`
-
-  res.status(201).json({
-    message: '✅ تم تسجيل طلب التوريد بنجاح! سيتم بثه للموردين المعتمدين لتلقي عروض الأسعار.',
-    sourcing,
-    whatsappFollowup: whatsappLink
-  })
 }))
-
-// جلب طلبات التوريد المفتوحة في السوق (للموردين لتصفح فرص التوريد)
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/creation-result', requireRole('buyer'), asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  try { res.json({ sourcing: sourcingDto(await sourcingCreation.lookup(req), req.supplier), replayed: true }) }
+  catch (err) { res.status(err.status || 503).json({ code: err.code || 'SOURCING_CREATION_UNCONFIRMED', message: err.status ? err.message : 'تعذر تأكيد نتيجة الإنشاء؛ استكمل المحاولة نفسها' }) }
+}))
+router.get('/buyer', requireRole('buyer'), asyncHandler(async (req, res) => {
+  const data = await SourcingRequest.find({ buyerId: req.supplier.id }).sort({ createdAt: -1 })
+  res.json({ data: data.map(doc => sourcingDto(doc, req.supplier)) })
+}))
+router.get('/', requirePermission('manage_rfq'), asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationParams(req)
-  const { status = 'open', category } = req.query
-
-  const filter = {}
-  if (status && status !== 'all') filter.status = status
-  if (category) filter.category = category
-
-  const requests = await SourcingRequest.find(filter)
-    .sort({ createdAt: -1 })
-    .limit(limit)
-    .skip(skip)
-
-  const total = await SourcingRequest.countDocuments(filter)
-
-  res.json(formatPaginationResponse(requests, total, page, limit))
+  const status = req.query.status || 'open'
+  if (!['open', 'quoted', 'all'].includes(status)) return res.status(400).json({ message: 'حالة الطلب غير صحيحة' })
+  const filter = { status: status === 'all' ? { $in: ['open', 'quoted'] } : status }
+  if (req.query.category) filter.category = cleanText(req.query.category, 200)
+  const [requests, total] = await Promise.all([SourcingRequest.find(filter).sort({ createdAt: -1 }).limit(limit).skip(skip), SourcingRequest.countDocuments(filter)])
+  res.json(formatPaginationResponse(requests.map(r => sourcingDto(r, req.supplier)), total, page, limit))
 }))
-
-// جلب تفاصيل طلب توريد معين
 router.get('/:id', validateMongoId, asyncHandler(async (req, res) => {
   const sourcing = await SourcingRequest.findById(req.params.id)
-  if (!sourcing) {
-    return res.status(404).json({ message: '❌ طلب التوريد غير موجود' })
+  if (!sourcing) return res.status(404).json({ message: 'طلب التوريد غير موجود' })
+  if (String(sourcing.buyerId) === String(req.supplier.id)) return res.json(sourcingDto(sourcing, req.supplier))
+  const hasPermission = ['supplier', 'admin'].includes(req.supplier.role) ||
+    (req.supplier.role === 'staff' && req.supplier.permissions?.some(p => ['all', 'manage_rfq'].includes(p)))
+  if (!hasPermission || (!['open', 'quoted'].includes(sourcing.status) && !sourcing.quotes.some(q => String(q.supplierId) === ownerId(req)))) {
+    return res.status(403).json({ message: 'هذا الطلب خاص بأطرافه' })
   }
-  res.json(sourcing)
+  res.json(sourcingDto(sourcing, req.supplier))
 }))
-
-// قيام مورد بتقديم عرض سعر لطلب التوريد (يتطلب تسجيل دخول المورد)
-router.post('/:id/quote', authenticate, validateMongoId, asyncHandler(async (req, res) => {
-  const { unitPrice, deliveryDays, notes } = req.body
-
-  if (!unitPrice) {
-    return res.status(400).json({ message: '⚠️ سعر الوحدة المعروض مطلوب' })
-  }
-
-  const sourcing = await SourcingRequest.findById(req.params.id)
-  if (!sourcing) {
-    return res.status(404).json({ message: '❌ طلب التوريد غير موجود' })
-  }
-
-  sourcing.quotesCount += 1
-  sourcing.status = 'quoted'
-  await sourcing.save()
-
-  // إنشاء رابط واتساب للتواصل المباشر مع المشتري
-  const quoteText = `السلام عليكم ${sourcing.buyerName}، اطلعت على طلب التوريد لـ "${sourcing.productName}" على Jomla.ma.\nعرضنا بالجملة:\n- سعر الوحدة: ${unitPrice} درهم\n- مدة التسليم: ${deliveryDays || 3} أيام\n- الملاحظات: ${notes || 'جاهز للتسليم'}`
-  const buyerWhatsapp = `https://wa.me/${sourcing.buyerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(quoteText)}`
-
-  res.json({
-    message: '✅ تم تسجيل عرض التوريد بنجاح! يمكنك الآن التواصل مباشرة مع المشتري.',
-    sourcing,
-    buyerWhatsapp
-  })
+router.post('/:id/quote', requirePermission('manage_rfq'), validateMongoId, asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  try { const result = await sourcingOffers.submit(req); res.status(result.processing ? 202 : 200).json(sourcingOffers.response(result, req.supplier)) }
+  catch (err) { res.status(err.status || 503).json({ code: err.status ? err.code : 'SOURCING_OFFER_UNCONFIRMED', message: err.status ? err.message : 'تعذر تأكيد إرسال العرض؛ استكمل المحاولة نفسها' }) }
 }))
-
+router.post('/:id/operations/:operationId/retry', validateMongoId, asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  if (!mongoose.isValidObjectId(req.params.operationId)) return res.status(400).json({ code: 'SOURCING_OPERATION_INVALID', message: 'معرف العملية غير صحيح' })
+  try {
+    // Each handler verifies its own receipt kind and current actor ownership.
+    const handler = req.supplier.role === 'buyer' ? sourcingDecisions : sourcingOffers
+    const result = await handler.retry(req); res.status(result.processing ? 202 : 200).json(handler.response(result, req.supplier))
+  }
+  catch (err) { res.status(err.status || 503).json({ code: err.status ? err.code : 'SOURCING_OFFER_UNCONFIRMED', message: err.status ? err.message : 'تعذر تأكيد إرسال العرض؛ استكمل المحاولة نفسها' }) }
+}))
+router.put('/:id/quotes/:quoteId/action', requireRole('buyer'), validateMongoId, asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  try { const result = await sourcingDecisions.decide(req); res.status(result.processing ? 202 : 200).json(sourcingDecisions.response(result, req.supplier)) }
+  catch (err) { res.status(err.status || 503).json({ code: err.status ? err.code : 'SOURCING_DECISION_UNCONFIRMED', message: err.status ? err.message : 'تعذر تأكيد القرار؛ استكمل المحاولة نفسها' }) }
+}))
 module.exports = router

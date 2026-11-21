@@ -34,3 +34,25 @@ Thumbs.db
 
 # Test coverage
 coverage/
+
+# Local dependency caches and private operational artifacts
+.npm-cache/
+.local/
+backups/
+
+# Machine-local caches, private evidence, and recovery material
+.cache/
+*.private.json
+*.dpapi.json
+*.key
+*.pem
+*.p12
+*.pfx
+*.bson
+*.wt
+*.zip
+*.tar
+*.tar.gz
+# Keep reviewed narrative reports; raw captures and safety snapshots stay local.
+/reports/*
+!/reports/*.md

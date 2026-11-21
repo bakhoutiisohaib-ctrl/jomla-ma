@@ -1,0 +1,145 @@
+import { render,screen,fireEvent,act } from '@testing-library/react'
+import SupplierDashboard from './SupplierDashboard'
+import { LanguageProvider } from '../../i18n/LanguageContext'
+import { apiRequest } from '../../api/config'
+jest.mock('../../api/config',()=>({apiRequest:jest.fn(),assetUrl:()=>''}))
+const user={_id:'supplier-1',id:'supplier-1',role:'supplier',name:'المورد',permissions:['all']}
+beforeEach(()=>{localStorage.clear();require('../../api/session').setSession('s2-dashboard-synthetic-session');apiRequest.mockReset();apiRequest.mockImplementation(async path=>{
+ if(path==='/suppliers/me/profile')return user
+ if(path.startsWith('/products/mine'))return {data:[{_id:'product-1',name:'منتج المورد الخاص',isDraft:true,moq:10,price:25}],pagination:{pages:1,total:1}}
+ if(path.startsWith('/stores/mine'))return {data:[]}
+ if(path.startsWith('/notifications'))return {data:[{_id:'notice-1',type:'sourcing_decision',resourceType:'sourcing',resourceId:'request-1',readAt:null}]}
+ if(path==='/sourcing/request-1')return {productName:'طلب تم قبوله',status:'fulfilled',quotes:[{_id:'q-1',unitPrice:20,currency:'MAD',status:'accepted',paymentTerms:'اختبار'}]}
+ return {data:[]}
+})})
+function show(){render(<LanguageProvider><SupplierDashboard supplier={user} onBack={()=>{}} onLogout={()=>{}}/></LanguageProvider>)}
+test.each([
+ ['ar','طلبات الأسعار','تفاصيل ومحادثة','رفض الطلب','نية الرفض محفوظة وقيد الاستكمال؛ الرفض ليس نهائياً بعد.','استكمال رفض الطلب'],
+ ['fr','Demandes de devis','Détails et conversation','Refuser la demande','Refus enregistré, finalisation en cours ; il n’est pas encore définitif.','Reprendre le refus']
+])('supplier dashboard keeps 202 pending without final success (%s)',async(lang,tab,open,reject,pending,retry)=>{
+ localStorage.setItem('jomla_lang',lang);require('../../api/session').setSession('r43a-dashboard-session');
+ const rfq={_id:'r43a-ui',status:'responded',quantity:20,currency:'MAD',buyerName:'Synthetic buyer',productId:{name:'Synthetic product',unit:'زوج'}};
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(path,options)=>{
+  if(path==='/rfq/supplier')return {data:[rfq]};
+  if(path==='/rfq/r43a-ui/thread')return {rfq,thread:{messages:[]},offers:[]};
+  if(path==='/rfq/r43a-ui/respond')return {rfq:{...rfq,status:'deciding',revision:3},processing:true,rejection:{version:1,phase:'pending'}};
+  return base(path,options);
+ });
+ show();fireEvent.click(await screen.findByRole('button',{name:tab,exact:true}));
+ fireEvent.click(await screen.findByRole('button',{name:open}));fireEvent.click(await screen.findByRole('button',{name:reject}));
+ expect(await screen.findByText(pending)).toBeInTheDocument();expect(screen.getByRole('button',{name:retry})).toBeDisabled();
+ expect(screen.queryByText(/تم إرسال الرد وحفظه|Réponse enregistrée et transmise/)).not.toBeInTheDocument();
+ expect(apiRequest.mock.calls.filter(([path])=>path.endsWith('/respond'))).toHaveLength(1);
+});
+test('supplier products come from the private paginated endpoint and display without owner-object comparison',async()=>{
+ show();fireEvent.click(await screen.findByRole('button',{name:'منتجاتي',exact:true}))
+ expect(await screen.findByRole('heading',{name:'منتج المورد الخاص'})).toBeInTheDocument()
+ expect(apiRequest.mock.calls.some(([path])=>path.startsWith('/products/mine?page='))).toBe(true)
+ expect(apiRequest.mock.calls.some(([path])=>path==='/products')).toBe(false)
+})
+test('supplier can open a sourcing decision after fulfillment without resubmitting a closed offer',async()=>{
+ show();fireEvent.click(await screen.findByRole('button',{name:/الإشعارات/}))
+ fireEvent.click(await screen.findByRole('button',{name:'فتح الطلب'}))
+ expect(await screen.findByRole('heading',{name:'طلب تم قبوله'})).toBeInTheDocument()
+ expect(screen.getByText(/مقبول/)).toBeInTheDocument()
+ expect(screen.queryByRole('button',{name:'إرسال العرض'})).not.toBeInTheDocument()
+})
+
+test.each([
+ ['ar','طلبات الأسعار','تفاصيل ومحادثة','سعر الوحدة (EUR / صندوق)'],
+ ['fr','Demandes de devis','Détails et conversation','Prix unitaire (EUR / صندوق)']
+])('the supplier sees the RFQ currency and selling unit before entering a price (%s)',async(lang,tab,open,label)=>{
+ localStorage.setItem('jomla_lang',lang)
+ const base=apiRequest.getMockImplementation()
+ apiRequest.mockImplementation(async(path,options)=>{
+  if(path==='/rfq/supplier')return {data:[{_id:'rfq-eur',status:'pending',quantity:30,currency:'EUR',buyerName:'Acheteur test',productId:{name:'Produit synthétique EUR',unit:'صندوق'}}]}
+  if(path==='/rfq/rfq-eur/thread')return {thread:{messages:[]},offers:[]}
+  return base(path,options)
+ })
+ show();fireEvent.click(await screen.findByRole('button',{name:tab,exact:true}))
+ fireEvent.click(await screen.findByRole('button',{name:open}))
+ expect(await screen.findByLabelText(label)).toHaveValue(null)
+ expect(screen.queryByLabelText(/MAD/)).not.toBeInTheDocument()
+})
+
+test('a sourcing offer displays its fixed MAD currency and the sourcing request unit',async()=>{
+ localStorage.setItem('jomla_lang','fr')
+ const base=apiRequest.getMockImplementation()
+ apiRequest.mockImplementation(async(path,options)=>path==='/sourcing?status=open'
+  ? {data:[{_id:'sourcing-open',productName:'Demande test',status:'open',quantity:20,unit:'صندوق'}]}
+  : path==='/sourcing/sourcing-open' ? {_id:'sourcing-open',productName:'Demande test',status:'open',quantity:20,unit:'صندوق',quotes:[]} : base(path,options))
+ show();fireEvent.click(await screen.findByRole('button',{name:'Opportunités de sourcing',exact:true}))
+ fireEvent.click(await screen.findByRole('button',{name:'Soumettre une offre'}))
+ expect(await screen.findByLabelText('Prix unitaire (MAD / صندوق)')).toHaveValue(null)
+ expect(screen.queryByLabelText(/EUR/)).not.toBeInTheDocument()
+})
+
+test('supplier sees the same frozen commercial agreement and a freshly closed decision hides the quote form',async()=>{
+ const pending={_id:'rfq-fixed',status:'responded',quantity:20,currency:'MAD',buyerName:'المشتري',productId:{name:'اسم كتالوج جديد',unit:'صندوق'}}
+ const agreed={version:1,source:'offer_snapshot',offerId:'offer-fixed',product:{name:'المنتج كما اتفقنا',unit:'زوج',description:'الوصف المثبت'},supplier:{name:'المورد'},buyer:{name:'المشتري'},unitPrice:19,totalPrice:380,quantity:20,unit:'زوج',currency:'MAD',deliveryDays:4,paymentTerms:'الشروط المثبتة'}
+ const base=apiRequest.getMockImplementation()
+ apiRequest.mockImplementation(async(path,options)=>{
+  if(path==='/rfq/supplier')return {data:[pending]}
+  if(path==='/rfq/rfq-fixed/thread')return {thread:{messages:[],status:'closed'},offers:[],rfq:{...pending,status:'accepted',decision:{phase:'completed',action:'accept',agreement:agreed}}}
+  return base(path,options)
+ })
+ show();fireEvent.click(await screen.findByRole('button',{name:'طلبات الأسعار',exact:true}))
+ fireEvent.click(await screen.findByRole('button',{name:'تفاصيل ومحادثة'}))
+ expect(await screen.findByRole('heading',{name:'بيانات الاتفاق المثبتة'})).toBeInTheDocument()
+ expect(screen.getByText(/الشروط المثبتة/)).toBeInTheDocument()
+ expect(screen.getByText(/20 زوج/)).toBeInTheDocument()
+ expect(screen.queryByRole('button',{name:'إرسال العرض'})).not.toBeInTheDocument()
+})
+
+test('drafts scan the existing private pagination and never use the public catalog',async()=>{
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(path,options)=>{
+  if(path==='/products/mine?page=1&limit=100')return {data:[{_id:'pub',name:'Published first',isDraft:false}],pagination:{pages:2,total:101}}
+  if(path==='/products/mine?page=2&limit=100')return {data:[{_id:'draft-page-two',name:'مسودة في الصفحة التالية',isDraft:true}],pagination:{pages:2,total:101}}
+  return base(path,options)
+ });
+ show();fireEvent.click(await screen.findByRole('button',{name:'المسودات',exact:true}));
+ expect(await screen.findByRole('heading',{name:'مسودة في الصفحة التالية'})).toBeInTheDocument();
+ expect(screen.queryByRole('heading',{name:'Published first'})).not.toBeInTheDocument();
+ expect(apiRequest.mock.calls.some(([path])=>path==='/products')).toBe(false)
+})
+
+test('supplier capabilities still hide product and RFQ sections from an unprivileged staff member',async()=>{
+ const staff={...user,role:'staff',permissions:[]};const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(path,options)=>path==='/suppliers/me/profile'?staff:base(path,options));
+ render(<LanguageProvider><SupplierDashboard supplier={staff} onBack={()=>{}} onLogout={()=>{}}/></LanguageProvider>);
+ expect(await screen.findByRole('button',{name:'الشركة والفريق'})).toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'المسودات',exact:true})).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'إضافة منتج',exact:true})).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'طلبات الأسعار',exact:true})).not.toBeInTheDocument();
+})
+
+test('refreshing revoked product permission removes the currently open private product list',async()=>{
+ let allowed=true;const base=apiRequest.getMockImplementation();
+ const staff={...user,role:'staff',organizationId:'org-test',permissions:['manage_products']};
+ apiRequest.mockImplementation(async(path,options)=>path==='/suppliers/me/profile'?{...staff,permissions:allowed?['manage_products']:[]}:base(path,options));
+ render(<LanguageProvider><SupplierDashboard supplier={staff} onBack={()=>{}} onLogout={()=>{}}/></LanguageProvider>);
+ fireEvent.click(await screen.findByRole('button',{name:'منتجاتي',exact:true}));
+ expect(await screen.findByRole('heading',{name:'منتج المورد الخاص'})).toBeInTheDocument();
+ allowed=false;fireEvent.click(screen.getByRole('button',{name:'تحديث مساحة العمل'}));
+ await screen.findByRole('button',{name:'الشركة والفريق'});
+ await act(async()=>{});
+ expect(screen.queryByRole('heading',{name:'منتج المورد الخاص'})).not.toBeInTheDocument();
+})
+
+test('leaving the editor offers stay or explicit discard without auto-saving or publishing',async()=>{
+ show();fireEvent.click(await screen.findByRole('button',{name:'إضافة منتج',exact:true}));
+ fireEvent.change(screen.getByLabelText('عنوان المنتج'),{target:{value:'مدخلات غير محفوظة'}});
+ fireEvent.click(screen.getByRole('button',{name:'متاجري',exact:true}));
+ expect(screen.getByRole('alert')).toHaveTextContent('ستفقد المدخلات غير المحفوظة');
+ expect(screen.getByLabelText('عنوان المنتج')).toHaveValue('مدخلات غير محفوظة');
+ fireEvent.click(screen.getByRole('button',{name:'البقاء في المحرر'}));
+ expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'متاجري',exact:true}));
+ fireEvent.click(screen.getByRole('button',{name:'مغادرة دون حفظ'}));
+ expect(await screen.findByRole('heading',{name:'متاجر الشركة'})).toBeInTheDocument();
+ expect(screen.queryByLabelText('عنوان المنتج')).not.toBeInTheDocument();
+ expect(apiRequest.mock.calls.some(([,o])=>['POST','PUT'].includes(o?.method))).toBe(false);
+})
+

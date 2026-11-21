@@ -1,0 +1,80 @@
+# REVIEW TEMPLATE ONLY. Not installed or loaded by this repository.
+# Replace the reserved hostname and supply a reviewed DNS-01 certificate first.
+# A/C1 media authorization and H5 remain in Express. No filesystem media alias.
+{
+    admin 127.0.0.1:2019
+    auto_https off
+    servers {
+        protocols h1 h2
+    }
+}
+
+https://pilot.example.invalid {
+    # Never use a wildcard/public listener for this closed-pilot template.
+    bind 10.77.0.1
+    tls /etc/jomla-pilot-tls/fullchain.pem /etc/jomla-pilot-tls/privkey.pem
+
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+        X-Frame-Options DENY
+        -Server
+    }
+
+    route {
+        # Assign one /32 per invited device and keep this list synchronized with
+        # WireGuard peers and the host firewall. Do not trust X-Forwarded-For here.
+        @notInvited not remote_ip 10.77.0.2/32 10.77.0.3/32
+        respond @notInvited "Closed pilot: access denied" 403
+
+        # Bound the whole multipart request; the application separately limits
+        # each image to10MiB. This is not a concurrency or per-user quota.
+        request_body {
+            max_size 12MiB
+        }
+
+        # Keep storage references, AI and sensitive verification intake closed.
+        # Case-insensitive to match Express; do not block authorized /api/media.
+        @blocked path_regexp unavailable (?i)^/(uploads|api/product-ai/enhance|api/suppliers/me/verify|api-docs|__audit)(/|$)
+        respond @blocked "Unavailable pending pilot approval" 404
+
+        @privateFiles path_regexp privatefiles (?i)^/(\.env([./]|$)|\.git(/|$)|backend(/|$)|ops(/|$)|node_modules(/|$)|release-manifest\.json$)
+        respond @privateFiles "Not found" 404
+
+        @bareApi path_regexp bareapi (?i)^/api$
+        respond @bareApi "Not found" 404
+
+        # Preserve the /api prefix and Authorization: Bearer header. No HTTP
+        # Basic authentication layer is inserted in front of application JWTs.
+        @api path_regexp apiprefix (?i)^/api/
+        handle @api {
+            # Defer replacement until upstream response headers are available.
+            # No shared cache of private JSON, media, errors or 202 responses.
+            header {
+                Cache-Control "private, no-store"
+                Pragma "no-cache"
+                Expires "0"
+                defer
+            }
+            reverse_proxy 127.0.0.1:5000 {
+                # Exactly one trusted hop. Ignore client-supplied identities.
+                header_up X-Forwarded-For {http.request.remote.host}
+                header_up X-Forwarded-Host {http.request.host}
+                header_up X-Forwarded-Proto {http.request.scheme}
+                header_up -Forwarded
+                header_up -X-Real-IP
+            }
+        }
+
+        handle /health/* {
+            reverse_proxy 127.0.0.1:5000
+        }
+
+        handle {
+            # Must match releasePath in the reviewed release.json exactly.
+            root * /srv/jomla-pilot/releases/REPLACE_WITH_REVIEWED_RELEASE_ID/frontend/build
+            try_files {path} /index.html
+            file_server
+        }
+    }
+}

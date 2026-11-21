@@ -1,59 +1,29 @@
-const express = require('express')
-const router = express.Router()
+const router = require('express').Router()
+const mongoose = require('mongoose')
 const Analytics = require('../models/Analytics')
+const { authenticate, requireAdmin } = require('../middleware/auth')
 const { asyncHandler } = require('../middleware/errorHandler')
 
-/**
- * @swagger
- * tags:
- *   - name: Analytics
- *     description: Simple analytics event collection and summaries
- */
-
-/**
- * @swagger
- * /api/analytics:
- *   post:
- *     summary: Record an analytics event
- *     tags: [Analytics]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               event:
- *                 type: string
- *               meta:
- *                 type: object
- *     responses:
- *       201:
- *         description: Event recorded
- * /api/analytics/summary:
- *   get:
- *     summary: Get simple analytics summary
- *     tags: [Analytics]
- *     responses:
- *       200:
- *         description: Analytics summary
- */
-
-// سجل حدث
-router.post('/', asyncHandler(async (req, res) => {
-  const { event, meta } = req.body
-  const a = new Analytics({ event, meta })
-  await a.save()
-  res.status(201).json({ message: '✅ تم تسجيل الحدث' })
+// Business totals come from Products/RFQ, never client-submitted analytics.
+router.post('/', authenticate, asyncHandler(async (req, res) => {
+  const { event, meta = {} } = req.body
+  if (Object.keys(req.body).some(k => !['event', 'meta'].includes(k)) ||
+      !['search', 'image_search', 'product_view'].includes(event) || !meta || Array.isArray(meta) || typeof meta !== 'object' ||
+      Object.keys(meta).some(k => !['query', 'category', 'city', 'productId'].includes(k))) {
+    return res.status(400).json({ message: 'حدث تحليلي غير مسموح أو بيانات غير صحيحة' })
+  }
+  for (const key of ['query', 'category', 'city']) {
+    if (meta[key] !== undefined && (typeof meta[key] !== 'string' || meta[key].length > 120)) return res.status(400).json({ message: 'بيانات الحدث غير صحيحة' })
+  }
+  if (meta.productId !== undefined && !mongoose.isValidObjectId(meta.productId)) return res.status(400).json({ message: 'معرف المنتج غير صحيح' })
+  await Analytics.create({ event, meta })
+  res.status(201).json({ message: 'تم تسجيل الحدث' })
 }))
 
-// احصل على إحصاءات بسيطة
-router.get('/summary', asyncHandler(async (req, res) => {
-  const total = await Analytics.countDocuments()
-  const byEvent = await Analytics.aggregate([
-    { $group: { _id: '$event', count: { $sum: 1 } } }
+router.get('/summary', authenticate, requireAdmin, asyncHandler(async (req, res) => {
+  const [total, byEvent] = await Promise.all([
+    Analytics.countDocuments(), Analytics.aggregate([{ $group: { _id: '$event', count: { $sum: 1 } } }])
   ])
   res.json({ total, byEvent })
 }))
-
 module.exports = router

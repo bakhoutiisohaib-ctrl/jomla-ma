@@ -1,0 +1,13 @@
+.atlas-mobile-nav { display: none; }
+.atlas-language-select { width: auto; min-width: 90px; min-height: 44px; max-width: 125px; padding: 7px 9px; border: 1px solid #dfe4d6; border-radius: 8px; color: #294b36; background: white; font: inherit; font-size: 13px; }
+@media (max-width: 600px) {
+  .atlas-public { padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px)); }
+  .atlas-mobile-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); position: fixed; bottom: 0; inset-inline: 0; z-index: 40; padding: 5px 8px calc(5px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #dce3d3; background: #fffffff5; box-shadow: 0 -3px 16px #253d2510; }
+  .atlas-mobile-nav a, .atlas-mobile-nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; position: relative; min-width: 0; min-height: 58px; padding: 5px 2px; margin: 0; border: 0; border-radius: 10px; background: transparent; color: #57624d; font: inherit; font-size: 12px; line-height: 1.4; text-decoration: none; }
+  .atlas-mobile-nav [aria-current=page] { background: #edf2e5; color: #2b5138; font-weight: 700; }
+  .atlas-mobile-nav .atlas-icon { width: 22px; height: 22px; }
+  .atlas-mobile-nav .atlas-mobile-count { position: absolute; top: 1px; inset-inline-end: 12%; min-width: 18px; padding: 1px 4px; border-radius: 12px; background: #35563f; color: white; font-size: 11px; }
+  .atlas-mobile-nav :focus-visible, .atlas-language-select:focus-visible { outline: 3px solid #8c6e2c; outline-offset: 1px; }
+  .atlas-public:has(input:focus, textarea:focus) .atlas-mobile-nav { display: none; }
+  .atlas-language-select { min-width: 82px; max-width: 105px; font-size: 12px; }
+}

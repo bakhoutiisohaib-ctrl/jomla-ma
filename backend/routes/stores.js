@@ -1,114 +1,96 @@
 const express = require('express')
 const router = express.Router()
+const crypto = require('crypto')
 const Store = require('../models/Store')
 const Supplier = require('../models/Supplier')
-const Product = require('../models/Product')
-const { authenticate } = require('../middleware/auth')
+const { authenticate, requirePermission } = require('../middleware/auth')
 const { validateMongoId } = require('../middleware/validators')
 const { asyncHandler } = require('../middleware/errorHandler')
 const { getPaginationParams, formatPaginationResponse } = require('../utils/constants')
+const { auditedChange } = require('../utils/audit')
+const { searchCatalog } = require('../utils/catalog')
+const { assertProductImagesOwned } = require('../services/mediaPrivacy')
+const { STORE_VISIBLE, STORE_FIELDS, supplierPopulation, publicStoreDto, getPublicStore } = require('../services/publicStore')
 
-// 1. جلب قائمة المتاجر النشطة
+const fields = ['name', 'description', 'city', 'address', 'phone', 'logoUrl', 'bannerUrl', 'categories']
+function validateStoreInput(body, updating = false) {
+  if ((!updating || body.name !== undefined) && (typeof body.name !== 'string' || !body.name.trim() || body.name.length > 200)) return 'اسم متجر صالح مطلوب'
+  for (const key of fields.filter(k => k !== 'categories')) {
+    if (body[key] !== undefined && (typeof body[key] !== 'string' || body[key].length > (key === 'description' ? 3000 : 1000))) return 'بيانات المتجر غير صحيحة'
+  }
+  if (body.categories !== undefined && (!Array.isArray(body.categories) || body.categories.length > 30 || body.categories.some(v => typeof v !== 'string' || v.length > 100))) return 'فئات المتجر غير صحيحة'
+  if (body.isActive !== undefined && typeof body.isActive !== 'boolean') return 'حالة المتجر غير صحيحة'
+  if (Object.keys(body).some(k => ![...fields, ...(updating ? ['isActive'] : [])].includes(k))) return 'هناك حقول غير مسموحة في بيانات المتجر'
+  return null
+}
+
+router.get('/mine', authenticate, requirePermission('manage_store', 'manage_products'), asyncHandler(async (req, res) => {
+  const { page, limit, skip } = getPaginationParams(req)
+  const filter = { supplierId: req.supplier.ownerId }
+  const stores = await Store.find(filter).sort({ createdAt: -1 }).limit(limit).skip(skip)
+  res.json(formatPaginationResponse(stores, await Store.countDocuments(filter), page, limit))
+}))
+
 router.get('/', asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationParams(req)
-  const { city, category } = req.query
-
-  const filter = { isActive: true }
-  if (city) filter.city = city
-  if (category) filter.categories = category
-
-  const stores = await Store.find(filter)
-    .populate('supplierId', 'name isVerified verificationStatus iceNumber')
-    .sort({ views: -1, createdAt: -1 })
-    .limit(limit)
-    .skip(skip)
-
-  const total = await Store.countDocuments(filter)
-
-  res.json(formatPaginationResponse(stores, total, page, limit))
+  const owners = await Supplier.find({ role: 'supplier', isActive: { $ne: false } }).distinct('_id')
+  const filter = { ...STORE_VISIBLE, supplierId: { $in: owners } }
+  if (typeof req.query.city === 'string') filter.city = req.query.city
+  if (typeof req.query.category === 'string') filter.categories = req.query.category
+  const stores = await Store.find(filter).select(STORE_FIELDS).populate(supplierPopulation)
+    .sort({ views: -1, createdAt: -1 }).limit(limit).skip(skip).lean()
+  const visible = (await Promise.all(stores.map(publicStoreDto))).filter(Boolean)
+  res.set('Cache-Control', 'no-store').json(formatPaginationResponse(visible, await Store.countDocuments(filter), page, limit))
 }))
 
-// 2. جلب تفاصيل متجر معين مع منتجاته
 router.get('/:id', validateMongoId, asyncHandler(async (req, res) => {
-  const store = await Store.findById(req.params.id)
-    .populate('supplierId', 'name email phone isVerified verificationStatus iceNumber tradeRegistry')
-
-  if (!store) {
-    return res.status(404).json({ message: '❌ المتجر غير موجود' })
-  }
-
-  // تسجيل مشاهدة
-  store.views = (store.views || 0) + 1
-  await store.save().catch(() => {})
-
-  const products = await Product.find({ supplierId: store.supplierId._id, inStock: true, isDraft: false })
-    .sort({ createdAt: -1 })
-
-  res.json({
-    store,
-    products
-  })
+  res.set('Cache-Control', 'no-store')
+  const store = await getPublicStore(req.params.id)
+  if (!store || !store.supplierId) return res.status(404).json({ message: 'المتجر غير متاح' })
+  await Store.updateOne({ _id: store._id }, { $inc: { views: 1 } })
+  const result = await searchCatalog({ ...req.query, limit: req.query.limit || 100 }, { storeId: store._id, supplierId: store.supplierId._id })
+  res.json({ store, products: result.products, pagination: result.pagination })
 }))
 
-// 3. إنشاء متجر مستقل للمورد (يتطلب المصادقة كمورد)
-router.post('/', authenticate, asyncHandler(async (req, res) => {
-  const { name, description, city, address, phone, logoUrl, bannerUrl, categories } = req.body
-
-  if (!name) {
-    return res.status(400).json({ message: '⚠️ اسم المتجر التجاري مطلوب' })
-  }
-
-  const supplier = await Supplier.findById(req.supplier.id)
-  if (!supplier) {
-    return res.status(404).json({ message: '❌ المورد غير موجود' })
-  }
-
-  const slug = name.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, '-') + '-' + Math.floor(Math.random() * 1000)
-
+router.post('/', authenticate, requirePermission('manage_store'), asyncHandler(async (req, res) => {
+  const error = validateStoreInput(req.body)
+  if (error) return res.status(400).json({ message: error })
+  const supplier = await Supplier.findOne({ _id: req.supplier.ownerId, role: 'supplier', isActive: { $ne: false } })
+  if (!supplier) return res.status(403).json({ message: 'إنشاء متجر متاح لحساب مورد فعال فقط' })
+  if (!req.supplier.organizationId) return res.status(409).json({ message: 'أكمل ملف الشركة أولاً' })
+  if (req.body.logoUrl) await assertProductImagesOwned({ supplierId: supplier._id, imageUrl: req.body.logoUrl })
   const store = new Store({
-    supplierId: supplier._id,
-    name: String(name).trim(),
-    slug,
-    description: description || '',
-    city: city || supplier.city || 'الدار البيضاء',
-    address: address || '',
-    phone: phone || supplier.phone || '',
-    logoUrl: logoUrl || '',
-    bannerUrl: bannerUrl || '',
-    categories: Array.isArray(categories) ? categories : ['عام'],
-    isVerified: supplier.isVerified
+    supplierId: supplier._id, organizationId: req.supplier.organizationId,
+    slug: crypto.randomBytes(12).toString('hex'), name: req.body.name.trim(),
+    description: req.body.description || '', city: req.body.city || supplier.city || '',
+    address: req.body.address || '', phone: req.body.phone || supplier.phone || '',
+    logoUrl: req.body.logoUrl || '', bannerUrl: req.body.bannerUrl || '',
+    categories: req.body.categories || [], isVerified: supplier.isVerified,
+    reviewStatus: 'pending', isActive: false
   })
-
-  await store.save()
-
-  res.status(201).json({
-    message: '✅ تم إنشاء المتجر التجاري بنجاح',
-    store
-  })
+  await auditedChange({
+    action: 'STORE_CREATED', targetType: 'Store', targetId: store._id, actor: req.supplier,
+    details: { supplierId: supplier._id, reviewStatus: 'pending' }
+  }, () => store.save())
+  res.status(201).json({ message: 'تم إنشاء المتجر وهو بانتظار مراجعة الإدارة', store })
 }))
 
-// 4. تحديث بيانات المتجر
-router.put('/:id', authenticate, validateMongoId, asyncHandler(async (req, res) => {
+router.put('/:id', authenticate, requirePermission('manage_store'), validateMongoId, asyncHandler(async (req, res) => {
+  const error = validateStoreInput(req.body, true)
+  if (error) return res.status(400).json({ message: error })
   const store = await Store.findById(req.params.id)
-  if (!store) {
-    return res.status(404).json({ message: '❌ المتجر غير موجود' })
-  }
-
-  if (store.supplierId.toString() !== req.supplier.id && req.supplier.role !== 'admin') {
-    return res.status(403).json({ message: '❌ ليس لديك صلاحية تعديل هذا المتجر' })
-  }
-
-  const allowedUpdates = ['name', 'description', 'city', 'address', 'phone', 'logoUrl', 'bannerUrl', 'categories', 'isActive']
-  allowedUpdates.forEach(key => {
-    if (req.body[key] !== undefined) store[key] = req.body[key]
+  if (!store) return res.status(404).json({ message: 'المتجر غير موجود' })
+  if (String(store.supplierId) !== req.supplier.ownerId && req.supplier.role !== 'admin') return res.status(403).json({ message: 'لا تملك هذا المتجر' })
+  if (req.body.logoUrl) await assertProductImagesOwned({ supplierId: store.supplierId, imageUrl: req.body.logoUrl })
+  if (req.body.isActive === true && (store.reviewStatus !== 'approved' || store.adminSuspended)) return res.status(409).json({ message: 'تفعيل المتجر يتطلب موافقة الإدارة ورفع التعليق' })
+  await auditedChange({
+    action: 'STORE_UPDATED', targetType: 'Store', targetId: store._id, actor: req.supplier,
+    details: { fields: Object.keys(req.body) }
+  }, async () => {
+    for (const key of [...fields, 'isActive']) if (req.body[key] !== undefined) store[key] = req.body[key]
+    await store.save()
   })
-
-  await store.save()
-
-  res.json({
-    message: '✅ تم تحديث بيانات المتجر بنجاح',
-    store
-  })
+  res.json({ message: 'تم تحديث بيانات المتجر', store })
 }))
 
 module.exports = router
