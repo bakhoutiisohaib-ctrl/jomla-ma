@@ -1,0 +1,11 @@
+{
+  "encryptedOffhostCopyVerified": true,
+  "authenticatedDecryption": true,
+  "tamperRejected": true,
+  "privateKeyOutsideVps": true,
+  "plaintextLocalFileWritten": false,
+  "archivePathsValidated": true,
+  "bytes": 3430400,
+  "plainSha256": "bce1ba5573a6742e61f2deced5d12113d3305ca4df6baa672d502cddf6f5fad1",
+  "encryptedSha256": "e74d5307754cdce496a55a38cd764a8f48390a3c52052f8021076873011cfa59"
+}

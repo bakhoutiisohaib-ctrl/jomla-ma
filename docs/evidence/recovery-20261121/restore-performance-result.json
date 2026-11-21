@@ -1,0 +1,49 @@
+{
+  "restoreOutcome": {
+    "operation": "restore",
+    "status": "complete",
+    "startedAt": "2026-11-21T15:24:55.845Z",
+    "targetDatabase": "jomla_recovered_20261116",
+    "atomicDatabaseRestore": false,
+    "createdCollections": [
+      "adminBootstrapLocks",
+      "analytics",
+      "auditlogs",
+      "backgroundjobs",
+      "externaldiscoveryresults",
+      "mediaassets",
+      "memberships",
+      "messagethreads",
+      "notifications",
+      "organizations",
+      "products",
+      "quoteoffers",
+      "quoterequests",
+      "reports",
+      "reviews",
+      "sourcingrequests",
+      "stores",
+      "suppliers",
+      "visualembeddings",
+      "wholesaleopportunities"
+    ],
+    "restoredDocuments": 61,
+    "restoredMediaFiles": 5,
+    "completedAt": "2026-11-21T15:25:04.893Z"
+  },
+  "byteExactDocuments": 61,
+  "indexesMatched": true,
+  "restoreMs": 10041,
+  "performance": {
+    "requests": 100,
+    "concurrency": 5,
+    "elapsedMs": 2275,
+    "p50Ms": 98,
+    "p95Ms": 280.6,
+    "maxMs": 390,
+    "failures": [],
+    "publicProducts": 6
+  },
+  "scope": "Production-mode Express on isolated InterServer clone. Small synthetic dataset; not final hosting acceptance, browser performance or capacity certification.",
+  "rssBytes": 190603264
+}
