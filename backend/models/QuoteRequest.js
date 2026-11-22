@@ -89,7 +89,7 @@ const QuoteRequestSchema = new mongoose.Schema({
   creation: { type: new mongoose.Schema({
     version: { type: Number, required: true, enum: [1] },
     key: { type: String, required: true }, hash: { type: String, required: true },
-    phase: { type: String, required: true, enum: ['pending', 'completed'] },
+    phase: { type: String, required: true, enum: ['pending', 'completed', 'dead'] },
     threadId: { type: mongoose.Schema.Types.ObjectId, required: true },
     notificationId: { type: mongoose.Schema.Types.ObjectId, required: true },
     subject: { type: String, required: true }, initialContent: { type: String, required: true },
