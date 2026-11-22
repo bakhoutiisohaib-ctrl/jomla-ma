@@ -71,4 +71,51 @@ async function readAssetBytes(asset) {
   } finally { if (handle) await handle.close() }
 }
 
-module.exports = { ownedAsset, assertProductImagesOwned, mayReadAsset, readAssetBytes }
+// Snapshot verified bytes to a private temporary file before HTTP headers.
+// Streaming the original path after hashing would reopen a mutation race.
+async function verifiedAssetStream(asset) {
+  let original, snapshot, directory
+  const cleanup = async () => {
+    if (snapshot) { await snapshot.close().catch(() => {}); snapshot = null }
+    if (directory) {
+      await fs.unlink(path.join(directory, 'verified')).catch(() => {})
+      await fs.rmdir(directory).catch(() => {})
+    }
+  }
+  try {
+    const filename = localImagePath(asset.imageUrl)
+    if (!filename || path.basename(filename) !== asset.filename) return null
+    const [realRoot, realFile] = await Promise.all([fs.realpath(uploadsDirectory()), fs.realpath(filename)])
+    if (path.dirname(realFile) !== realRoot) return null
+    original = await fs.open(filename, constants.O_RDONLY | (constants.O_NOFOLLOW || 0))
+    const before = await original.stat()
+    if (!before.isFile() || before.size !== asset.size || before.size < 20 || before.size > 10 * 1024 * 1024) return null
+    directory = await fs.mkdtemp(path.join(require('os').tmpdir(), 'jomla-verified-media-'))
+    snapshot = await fs.open(path.join(directory, 'verified'), 'wx+', 0o600)
+    const chunk = Buffer.alloc(64 * 1024), hash = createHash('sha256')
+    let offset = 0
+    while (offset < before.size) {
+      const { bytesRead } = await original.read(chunk, 0, Math.min(chunk.length, before.size - offset), offset)
+      if (!bytesRead) { await cleanup(); return null }
+      hash.update(chunk.subarray(0, bytesRead))
+      let written = 0
+      while (written < bytesRead) {
+        const result = await snapshot.write(chunk, written, bytesRead - written, offset + written)
+        if (!result.bytesWritten) throw new Error('Incomplete media snapshot')
+        written += result.bytesWritten
+      }
+      offset += bytesRead
+    }
+    const after = await original.stat()
+    if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || hash.digest('hex') !== asset.sha256) { await cleanup(); return null }
+    const stream = snapshot.createReadStream({ start: 0, autoClose: false })
+    stream.once('close', () => { cleanup().catch(() => {}) })
+    return { stream, size: before.size, close: async () => { stream.destroy(); await cleanup() } }
+  } catch (error) {
+    await cleanup()
+    if (['ENOENT', 'ENOTDIR', 'EACCES', 'ELOOP'].includes(error.code) || /symbolic link|Invalid image storage entry/.test(error.message)) return null
+    throw error
+  } finally { if (original) await original.close() }
+}
+
+module.exports = { ownedAsset, assertProductImagesOwned, mayReadAsset, readAssetBytes, verifiedAssetStream }
