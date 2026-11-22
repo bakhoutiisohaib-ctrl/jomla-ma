@@ -69,6 +69,7 @@ export default function AdminDashboard({
         body: login,
         token: ''
       });
+      setLogin(previous => ({ ...previous, password: '' }));
       setSession(result.token);
       onLogin({
         ...result.admin,

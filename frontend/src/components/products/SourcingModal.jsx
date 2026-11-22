@@ -62,7 +62,7 @@ function SourcingForm({ initialData = {}, onClose, onSuccess, onRequireLogin, us
     } finally { busy.current = false; if (current()) setLoading(false) }
   }
   function submit(event) { event.preventDefault(); send() }
-  return <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.65)', zIndex: 1200, display: 'grid', placeItems: 'center', padding: 16 }}>
+  return <div onClick={() => { if (!loading) onClose() }} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.65)', zIndex: 1200, display: 'grid', placeItems: 'center', padding: 16 }}>
     <section role="dialog" aria-modal="true" aria-labelledby="sourcing-title" dir={lang === 'ar' ? 'rtl' : 'ltr'} onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, boxSizing: 'border-box', maxHeight: '90dvh', overflowY: 'auto', padding: 24, borderRadius: 16, background: 'white' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}><h2 id="sourcing-title" style={{ fontSize: 19 }}>{c.title}</h2><button aria-label={c.close} onClick={onClose} style={button}>×</button></div>
       {!allowed ? <><p>{c.login}</p><button onClick={() => onRequireLogin?.()} style={{ ...button, background: '#C1272D', color: 'white' }}>{c.loginButton}</button></>
