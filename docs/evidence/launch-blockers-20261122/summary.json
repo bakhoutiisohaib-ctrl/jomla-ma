@@ -1,0 +1,390 @@
+{
+  "date": "2026-11-22",
+  "node": "24.22.1",
+  "mongodb": "8.0.34",
+  "backend": [
+    {
+      "suite": "accountRecovery",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "437255a314132f73ba67d84f59d87ad1117c51e26464c3a9e68c9e9837705190",
+      "retried": false
+    },
+    {
+      "suite": "admin",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "6d23c47587edbdb2d54e7344315015dc12c2a17dbc4b22cf8c6fd4424e42c003",
+      "retried": false
+    },
+    {
+      "suite": "backup",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "1a9de9a7914e1b29abba08c04b4e67ea90bab015019e4918eb728f446278ddaf",
+      "retried": false
+    },
+    {
+      "suite": "externalDiscovery",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "36787c916be77069e49f3114575438fff834d4106539a452e1706657f99bca2b",
+      "retried": false
+    },
+    {
+      "suite": "jobs",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "74b0babb081ed3e98cd61ed78597dd5d4edfbd6e6d052e3a5a46c232ab45b16a",
+      "retried": false
+    },
+    {
+      "suite": "journey",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "c1a56e25e800ae263695a2c7e5c06fc9f0390ac2daf6e038a5ad2a2f1412ab0d",
+      "retried": false
+    },
+    {
+      "suite": "launchBlockers",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "a01a2a0816c8c09c5fb82370a9153c98cd83b24284a7042206e2f16e65248c82",
+      "retried": true
+    },
+    {
+      "suite": "mediaPrivacy",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "92c3e4fba5d009d953856f152997652070ee0c7a69860d7a5af6cd8e32e89a60",
+      "retried": false
+    },
+    {
+      "suite": "mediaRateLimits",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "02a4e53604d68283b398d5b9032d8636acff4276c6324257a67cec5aa375689e",
+      "retried": false
+    },
+    {
+      "suite": "mongoLifecycle",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 1,
+      "success": true,
+      "evidenceSha256": "c9e432af2c9298752da3391ef7fec40e4ecd3db259c211dda6dd17902dbac8eb",
+      "retried": false
+    },
+    {
+      "suite": "pilotOperations",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "8e4ce00f7cb7c47b67a6ac3bf84ba002b560c7fe50b77b79ff73c7c06fedd4dd",
+      "retried": true
+    },
+    {
+      "suite": "pilot_journey",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "9c9d35b37150a45692bd60fe26e062ae574d1a82787e1334abd48495917c3f58",
+      "retried": false
+    },
+    {
+      "suite": "pilot_security",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "be4098daf2b6b7fdf558f8d4ac6ace29489d8301497cc6b6147fa0520315fb49",
+      "retried": false
+    },
+    {
+      "suite": "preflight",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "cc89cd1f5307c72e3b9e0e3cc90e25ad90c43890931171db847e1a9d5dd7b980",
+      "retried": false
+    },
+    {
+      "suite": "productAI",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "691645cd5f67ee563be3b29e1709d5b2f44e59b82c52241c397a7f7143fbf21b",
+      "retried": false
+    },
+    {
+      "suite": "productCreationIdempotency",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "505d26effccfc899f70efb00de11cfa048b2634d4959bc09a46dcc0b607454b6",
+      "retried": false
+    },
+    {
+      "suite": "products",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "2c686763aff6c231c9b1f7cda6dde681a111a6c405577e9e14e810955369c957",
+      "retried": false
+    },
+    {
+      "suite": "publicMedia",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "fba345c18e48ca0da508cc67e4ddab73abe058af19fd4db35b68bf4a17d9aaed",
+      "retried": false
+    },
+    {
+      "suite": "publicPages",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "4cad4d9fb39e412cda04ccf5bd46e22e1afb6aaaaaa61715874d57c2c486cd57",
+      "retried": false
+    },
+    {
+      "suite": "reportPrivacy",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "10afdc4df671c41b5acafd9e8804665d550a7842679497a50298b70e735dd0de",
+      "retried": false
+    },
+    {
+      "suite": "reportTransactions",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "6ff7122f37e856b6fa96e04dc615459bc0a868f37b973ffa78fa67bd9a7449e2",
+      "retried": false
+    },
+    {
+      "suite": "reports_and_roles",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "96dd42beaf33400cd4e363219540d0a06c66dc675a1d76e510364f5706bc9fa4",
+      "retried": false
+    },
+    {
+      "suite": "requestParserSecurity",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "d4279647171552fea3930e95670f996b2dfa0c5695d9ba2a1918381f3e6c5836",
+      "retried": false
+    },
+    {
+      "suite": "reviews_trust",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "1e20b23f58774fdded5dc00a9739f3efaaacaea27eb158831894b97323597d48",
+      "retried": false
+    },
+    {
+      "suite": "rfq",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "9fd4350b3bfdda8fb1ce6e34de5b394a98ea56f9f3f3fd3e665ba32ae8e0916d",
+      "retried": false
+    },
+    {
+      "suite": "rfq_consistency",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "2abd87e415d2325abe6722f47dd18cb55d32188e60da5fa76994fc6d8060389e",
+      "retried": false
+    },
+    {
+      "suite": "rfq_creation",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "24f9dddbfb403ef48fb7cd00c4a0c42f3116b3875fbf40f75c33a63bc22e1260",
+      "retried": false
+    },
+    {
+      "suite": "rfq_offer_submission",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "878b45a7e1f54b86af146bdf2d7ff8c06bc6df125fb7ac21ac1ca23d4d1eab1f",
+      "retried": false
+    },
+    {
+      "suite": "rfq_supplier_rejection",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "b7cc5837d1d140f2a9844b9bd5d7ec39b31f56f7e56880ec053e4fdffc83bd28",
+      "retried": false
+    },
+    {
+      "suite": "runtime",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "4e1089748e57db4af4ae11c006297db1862ed637b7b7576b9349c5d80b14efe9",
+      "retried": false
+    },
+    {
+      "suite": "security",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "f27909fb909db2920bda0753b0e6933067e89ca3067ab3e51a53b736b28fe0e2",
+      "retried": false
+    },
+    {
+      "suite": "sourcing",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "714d8c7a072e86aec6e5e63369be15839285e093b03cb23bdac27030fe9bda1a",
+      "retried": false
+    },
+    {
+      "suite": "sourcingCreation",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "11be912849d48f34a0374c1d1c42c02db85ada54fa21af614e232b4afa1fa11d",
+      "retried": false
+    },
+    {
+      "suite": "sourcingDecision",
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "a8b6424aed48911ad43f5378bb874134cc23c18d8de5946ecafc8113acd0e11d",
+      "retried": false
+    },
+    {
+      "suite": "sourcingOfferSubmission",
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "a05006cefeb22f64ef5bc3f6ce75a9658b235cefa501102a6b7afbc53cc7004d",
+      "retried": false
+    },
+    {
+      "suite": "stores_and_threads",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "8fc2f72a4c90714caa3a06ccd2febe8df383c4e7153ba5b7aacca56329f9dac1",
+      "retried": false
+    },
+    {
+      "suite": "visualIndex",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "684c7c5a26825ab4ffef3b08371a68993f7e06a89f78bfb67ad043b25963ed68",
+      "retried": false
+    },
+    {
+      "suite": "wholesaleOpportunities",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "evidenceSha256": "8853d134e4e2d13c0b975e93d78e1fa43d1b2d4d130f63c8c72cb623904ef5c8",
+      "retried": false
+    }
+  ],
+  "frontend": {
+    "passed": 41,
+    "failed": 0,
+    "suites": 5
+  },
+  "buildExitCode": 0,
+  "buildLogSha256": "50c4eb8b9283a5370841b020d32005c7949f25d7d919f2708582900bf7261314",
+  "sourceSha256": {
+    "backend/middleware/errorHandler.js": "72b65a54ef608afd59667f76705b90f954a46f1b4d8c413130fe3c11eb8604b4",
+    "backend/middleware/validators.js": "15f0cffa57380de1e36f6837662e9ece6787d8c22d721df1735d108bef3e423f",
+    "backend/models/QuoteRequest.js": "0194d27ecf9d0586796189a40e23d99713a4346fd797b17f4c87d99f54713b01",
+    "backend/models/Report.js": "2dcbffbb08fc92268d49abefb04be13b39388c9a9c0220255abb6acb3d41744c",
+    "backend/models/SourcingRequest.js": "2c723cbe3034ce41eee167da81e7efe3d9655917a1e26bfa7bbacd1d5944d11f",
+    "backend/routes/media.js": "759e4d7b326af59606f0b33f96159f16957276b39a953aaf2f8e24dc026ceda5",
+    "backend/routes/notifications.js": "8c4e3777686fb52175b820c49b7f8504e66952358e2d9372bdb4b5dd49fcb155",
+    "backend/routes/reports.js": "6ff6146f59f9948ad0b15872d93b40c0114adcd57025be795db672ef2cca0df8",
+    "backend/services/mediaPrivacy.js": "8dd398c5fc863079a0fcb9e1153948769aebb2f23821884a6971dafb5e0216f6",
+    "backend/services/rfqCreation.js": "c40a48ae98e3cd2d789fb0a3b9787f626615c02e74b6de1e736ab8ce3e796ab3",
+    "backend/services/sourcingDecision.js": "e33fdd05b8578e469bfb81e54c86dabed70f6783069ceb04a35c982ae3784ac3",
+    "backend/services/sourcingRecovery.js": "8a278f864845a25d3217db32833a89acba331e382d95088c1d62f387a8bb13b2",
+    "backend/tests/reportPrivacy.test.js": "9e1feb3d6036c1fc532e5fa5b4aeb0a0a4e8469eab123b0e87088a3f32140491",
+    "backend/tests/sourcingDecision.test.js": "aa35737de9375a3b92d867d27d97fae9a3241dbe0226c8839d588b3fa08d7fb3",
+    "frontend/src/components/admin/AdminDashboard.jsx": "27f9b5b414817e7c61e6490222ddb2588e8a08d5093f89fb8d2f1774a161e2c1",
+    "frontend/src/components/products/SourcingModal.jsx": "e39a84ae3847c03ed419016f55773073d15938ba9b01e4372b391ca72e320a66",
+    "frontend/src/components/products/SourcingModal.test.jsx": "559552b132ef67776010a174194cb599656ea0cb98b9181264be60bf4d1223db",
+    "backend/services/reportResolution.js": "9992d8233b7c5225807b1193801cb541687d1e846152eef678962337abd12b44",
+    "backend/tests/launchBlockers.test.js": "f9ab9661bef1b5ad312e8090ff06afa92ef8ce77b887d32345307e599951eea4",
+    "backend/tests/reportTransactions.test.js": "c60b2f1f024332d8b4a27f3ff5591e0ab72461f4c7ce9d71a32abc7a011e715f",
+    "frontend/src/components/admin/AdminDashboard.test.jsx": "fceeb5d274d9f8db8c1495dfd93b1879a7886cc3a5a819afe648eb6bfe714083"
+  },
+  "backendTotals": {
+    "passed": 684,
+    "failed": 0,
+    "skipped": 1
+  },
+  "limitations": [
+    "One explicit ephemeralForTest teardown test excluded: engine removed in MongoDB 8. wiredTiger teardown tested.",
+    "38 backend suites executed in separate Node processes with isolated synthetic databases.",
+    "No new browser or physical-phone validation in this phase.",
+    "Initial full-process run exhausted heap; final per-suite results supersede it."
+  ]
+}
