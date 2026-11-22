@@ -1,12 +1,17 @@
 // Global Error Handler Middleware
 const { logError } = require('./logger')
+const { MAX_IMAGE_BYTES } = require('./upload')
 
 const errorHandler = (err, req, res, next) => {
+  if (res.headersSent) return next(err)
   logError(err, `خطأ في ${req.method} ${req.path}`)
 
   if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(413).json({ message: 'الصورة تتجاوز الحد المسموح (10MB)' })
+    return res.status(413).json({ message: `الصورة تتجاوز الحد المسموح (${MAX_IMAGE_BYTES / (1024 * 1024)}MB)` })
   }
+
+  if (err.name === 'MulterError') return res.status(400).json({ message: 'طلب رفع الملفات غير صحيح' })
+  if (['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(err.name)) return res.status(401).json({ message: 'جلسة غير صالحة؛ سجل الدخول مجدداً' })
 
   // أخطاء MongoDB
   if (err.name === 'ValidationError') {
@@ -26,7 +31,7 @@ const errorHandler = (err, req, res, next) => {
   }
 
   if (err.code === 11000) {
-    const field = Object.keys(err.keyPattern)[0]
+    const field = Object.keys(err.keyPattern || {})[0] || 'السجل'
     return res.status(409).json({
       message: `❌ ${field} موجود بالفعل`
     })
