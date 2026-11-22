@@ -150,3 +150,6 @@ test('store reports remain unsupported instead of exposing store details through
   expect(await Report.countDocuments()).toBe(0)
   expect(await AuditLog.countDocuments()).toBe(0)
 })
+
+// Independent cases must not consume each other's public endpoint budget.
+afterEach(() => require('../routes/reports').publicReportLimit.resetKey('::ffff:127.0.0.1'))

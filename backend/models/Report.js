@@ -17,6 +17,8 @@ const ReportSchema = new mongoose.Schema({
     enum: ['pending', 'investigating', 'resolved', 'dismissed'], 
     default: 'pending' 
   },
+  resolutionClaim: { type: new mongoose.Schema({ hash: String, token: String, auditId: mongoose.Schema.Types.ObjectId,
+    actorId: mongoose.Schema.Types.ObjectId, action: String, resolutionNotes: String, moderationAction: String, leaseUntil: Date }, { _id: false }), default: undefined },
   resolutionNotes: { type: String, default: '' },
   resolvedAt:      Date,
   resolvedBy:      { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
