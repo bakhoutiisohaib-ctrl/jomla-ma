@@ -237,3 +237,17 @@ test.each(['api', 'worker'])('real %s entry point dispatches a persisted decisio
     if (code === 'timeout') running.process.kill(); expect(code).toBe(0)
   }
 })
+
+
+test('expiry pauses recovery without releasing decision intent; explicit retry preserves one notice', async () => {
+  const id = await create(), q = await offer(id), block = fault('publication')
+  expect((await decide(id, q)).status).toBe(202); block.mockRestore()
+  const before = await raw(id)
+  await S.updateOne({ _id: id }, { $set: { 'operation.expiresAt': new Date(0) } })
+  await recover()
+  const held = await raw(id); expect(held.operation.recoveryPausedAt).toBeTruthy()
+  expect(String(held.operation.id)).toBe(String(before.operation.id)); expect(held.quotes[0].status).toBe('active')
+  expect((await decide(id, q, 'reject')).status).toBe(409)
+  expect((await retry(id, held.operation.id)).status).toBe(200)
+  expect(await notices(id)).toHaveLength(1); expect((await raw(id)).operation).toBeUndefined()
+})

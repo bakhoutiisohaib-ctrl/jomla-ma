@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 const crypto = require('crypto')
 const Sourcing = require('../models/SourcingRequest')
 const Notification = require('../models/Notification')
+const { logWarn } = require('../middleware/logger')
 const Supplier = require('../models/Supplier')
 const { load, MAX_BSON, HEADROOM, busy } = require('./sourcingOfferSubmission')
 const { sourcingDto, quoteDto } = require('./sourcingDto')
@@ -92,7 +93,7 @@ const byOperation = (s, id) => s?.quotes?.find(q => same(q.decisionReceipt?.id, 
 async function checkpoint(id, expected) {
   const s = await load(id), done = byOperation(s, expected.id)
   if (done) return checkedReceipt(s, done)
-  const j = validate(s, expected.id), immutable = v => { const { attempts, nextAttemptAt, lastErrorCode, ...rest } = v; return rest }
+  const j = validate(s, expected.id), immutable = v => { const { attempts, nextAttemptAt, lastErrorCode, recoveryPausedAt, expiresAt, ...rest } = v; return rest }
   if (digest(immutable(j)) !== digest(immutable(expected))) throw conflict()
   await actorAuthorized(j)
   return { sourcing: s, j, processing: true }
@@ -124,7 +125,7 @@ async function record(req) {
   const startedAt = new Date(), j = { version: 1, kind: KIND, phase: 'pending', id: new mongoose.Types.ObjectId(), parentId: s._id,
     buyerId: s.buyerId, supplierId: q.supplierId, quoteId: q._id, notificationId: new mongoose.Types.ObjectId(), action,
     actor: { id: s.buyerId, ownerId: s.buyerId, role: 'buyer', name: req.supplier.name }, ...snapshot(s, q, startedAt),
-    previousStatus: s.status, expectedVersion: (s.__v || 0) + 1, baselineHash: digest(state(s)), startedAt, attempts: 0, nextAttemptAt: startedAt }
+    previousStatus: s.status, expectedVersion: (s.__v || 0) + 1, baselineHash: digest(state(s)), startedAt, expiresAt: new Date(startedAt.getTime() + 3600000), attempts: 0, nextAttemptAt: startedAt }
   j.hash = hash(j); capacity(s, j)
   try { await Sourcing.updateOne({ _id: s._id, buyerId: s.buyerId, status: s.status,
     __v: s.__v === undefined ? { $exists: false } : s.__v, operation: { $exists: false }, quotes: { $elemMatch: { _id: q._id, status: 'active', decisionReceipt: { $exists: false } } } },
@@ -161,6 +162,8 @@ async function complete(id, operationId) {
   return result
 }
 async function resume(id, operationId) {
+  const held = await load(id)
+  if (held?.operation?.recoveryPausedAt && same(held.operation.id, operationId)) return { sourcing: held, processing: true, operationId, code: 'SOURCING_DECISION_MANUAL_RETRY' }
   try { return await complete(id, operationId) } catch (error) {
     const s = await load(id), done = byOperation(s, operationId)
     if (done) return checkedReceipt(s, done)
@@ -170,7 +173,7 @@ async function resume(id, operationId) {
     try { if (!identity(s, j, operationId)) throw conflict()
       await Sourcing.updateOne(fence(s, j), { $set: { 'operation.lastErrorCode': code,
         'operation.nextAttemptAt': new Date(Date.now() + Math.min(60000, 1000 * 2 ** Math.min(j.attempts || 0, 6))) } }, WRITE)
-    } catch { /* Hold contradictory intent; never force a commercial result. */ }
+    } catch { logWarn('SOURCING_DECISION_RECOVERY_STATE_FAILED') }
     return { sourcing: s, processing: true, operationId: j.id, code }
   }
 }
@@ -186,6 +189,7 @@ async function retry(req) {
     const done = byOperation(s, operationId)
     if (done) return checkedReceipt(s, done)
     if (!identity(s, s.operation, operationId)) throw fail(403, 'SOURCING_DECISION_FORBIDDEN', 'لا توجد عملية قرار مخولة بهذا المعرف')
+    if (s.operation.recoveryPausedAt) await Sourcing.updateOne(fence(s, s.operation), { $set: { 'operation.attempts': 0, 'operation.expiresAt': new Date(Date.now() + 3600000) }, $unset: { 'operation.recoveryPausedAt': 1 } }, WRITE)
     return { ...await resume(s._id, operationId), replayed: true }
   } catch (error) { if (error.status) throw error; throw unavailable() }
 }

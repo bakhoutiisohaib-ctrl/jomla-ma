@@ -17,7 +17,7 @@ const OperationSchema = new mongoose.Schema({ version: { type: Number, required:
   input: { type: InputSchema, required() { return this.kind === 'sourcing_offer' } }, commercialSnapshot: { type: SnapshotSchema, required: true },
   action: { type: String, enum: ['accept', 'reject'] }, source: { type: String, enum: ['s2_commercial_snapshot', 'legacy_sourcing_quote_at_decision'] },
   expectedVersion: { type: Number, required: true }, previousStatus: String, startedAt: { type: Date, required: true },
-  attempts: Number, nextAttemptAt: Date, lastErrorCode: { type: String, maxlength: 64 } }, { _id: false })
+  recoveryPausedAt: Date, expiresAt: Date, attempts: Number, nextAttemptAt: Date, lastErrorCode: { type: String, maxlength: 64 } }, { _id: false })
 
 const SourcingRequestSchema = new mongoose.Schema({
   operation: optional(OperationSchema),
