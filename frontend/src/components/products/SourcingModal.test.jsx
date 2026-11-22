@@ -165,3 +165,14 @@ test('the real marketplace caller opens a buyer form without posting until an ex
   submit()
   await waitFor(() => expect(apiRequest.mock.calls.some(([path, options]) => path === '/sourcing' && options.headers['Idempotency-Key'])).toBe(true))
 })
+
+
+test('backdrop cannot close an in-flight sourcing submission', async () => {
+  let finish; apiRequest.mockImplementation(() => new Promise(resolve => { finish = resolve }))
+  const value = props(); render(view(value)); submit()
+  fireEvent.click(screen.getByRole('dialog').parentElement)
+  expect(value.onClose).not.toHaveBeenCalled()
+  await act(async () => { finish({ sourcing: { _id: 'backdrop-result' } }) })
+  fireEvent.click(screen.getByRole('dialog').parentElement)
+  expect(value.onClose).toHaveBeenCalledTimes(1)
+})

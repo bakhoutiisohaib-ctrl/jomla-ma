@@ -1,4 +1,5 @@
 const { body, validationResult, param } = require('express-validator')
+const { imageUrlAllowed } = require('../utils/catalog')
 
 // Middleware للتحقق من نتائج التحقق
 const handleValidationErrors = (req, res, next) => {
@@ -23,7 +24,7 @@ const productFields = [
   body('country').optional().matches(/^[A-Za-z]{2}$/),
   body('price').optional({ nullable: true }).isFloat({ min: 0 }),
   body('moq').optional().isInt({ min: 1 }),
-  body('priceTiers').optional().isArray({ max: 30 }),
+  body('priceTiers').optional().isArray({ max: 30 }).bail().custom(tiers => tiers.every(t => t && (t.maxQty == null || Number(t.maxQty) >= Number(t.minQty)))),
   body('priceTiers.*.minQty').isInt({ min: 1 }),
   body('priceTiers.*.maxQty').optional({ nullable: true }).isInt({ min: 1 }),
   body('priceTiers.*.price').isFloat({ min: 0 }),
@@ -32,7 +33,8 @@ const productFields = [
   ...['isDraft', 'inStock', 'hasImageRights', 'publishApproved', 'availabilityConfirmed'].map(field => body(field).optional().custom(v => typeof v === 'boolean').withMessage('يجب إرسال قيمة منطقية صحيحة')),
   body('storeId').optional({ values: 'falsy' }).isMongoId(),
   body('images').optional().isArray({ max: 6 }),
-  body('imageUrl').optional().isString(),
+  body('images.*').custom(value => typeof value === 'string' && imageUrlAllowed(value)),
+  body('imageUrl').optional().custom(value => value === '' || (typeof value === 'string' && imageUrlAllowed(value))),
   body('imageRights.source').optional().isIn(['owned', 'licensed']),
   body('imageRights.licenseReference').optional().isString().isLength({ max: 1000 }),
   handleValidationErrors
@@ -57,6 +59,7 @@ const validateSupplierRegister = [
     .notEmpty().withMessage('المدينة مطلوبة'),
   body('phone')
     .notEmpty().withMessage('رقم الهاتف مطلوب')
+    .isLength({ min: 8, max: 20 })
     .matches(/^[+0-9\s\-()]+$/).withMessage('رقم الهاتف غير صحيح'),
   handleValidationErrors
 ]
@@ -73,7 +76,8 @@ const validateSupplierLogin = [
 // --- Validators للتقييمات ---
 const validateReview = [
   body('supplierId')
-    .notEmpty().withMessage('معرّف المورد مطلوب'),
+    .notEmpty().withMessage('معرّف المورد مطلوب')
+    .isMongoId(),
   body('stars')
     .notEmpty().withMessage('التقييم مطلوب')
     .isInt({ min: 1, max: 5 }).withMessage('التقييم يجب أن يكون بين 1 و 5'),

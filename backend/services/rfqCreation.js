@@ -5,6 +5,7 @@ const MessageThread = require('../models/MessageThread')
 const Notification = require('../models/Notification')
 const Product = require('../models/Product')
 const Store = require('../models/Store')
+const { logWarn } = require('../middleware/logger')
 const Supplier = require('../models/Supplier')
 const WRITE = { writeConcern: { w: 1, j: true }, maxTimeMS: 10000 }
 const INDEX = 'rfq_creation_buyer_key'
@@ -133,12 +134,14 @@ async function postpone(id, failure) {
 }
 
 async function resumeCreation(id) {
+  const held = await load(id)
+  if (held?.creation?.phase === 'dead') return { rfq: held, processing: true }
   try { return { rfq: await completeCreation(id), processing: false } }
   catch (failure) {
     const current = await load(id)
     if (current?.creation?.version === 1 && current.creation.phase === 'completed' && current.status !== 'creating') return { rfq: current, processing: false }
     if (!pending(current)) throw failure
-    try { await postpone(id, failure) } catch { /* Durable pending intent is still discoverable. */ }
+    try { await postpone(id, failure) } catch { logWarn('RFQ_CREATION_POSTPONE_FAILED') }
     return { rfq: current, processing: true }
   }
 }
@@ -153,16 +156,19 @@ async function retryCreation(id, buyerId) {
   if (!rfq) throw error(404, 'الطلب غير موجود')
   if (!same(rfq.buyerId, buyerId)) throw error(403, 'لا يمكنك استكمال طلب مشترٍ آخر')
   if (rfq.creation?.version !== 1) throw error(409, 'هذا سجل سابق لا يحمل محاولة إنشاء قابلة للاستكمال')
+  if (rfq.creation.phase === 'dead') await QuoteRequest.updateOne({ _id: id, buyerId, status: 'creating', 'creation.phase': 'dead' }, { $set: { 'creation.phase': 'pending', 'creation.attempts': 0 }, $unset: { 'creation.lastErrorCode': 1 } }, WRITE)
   return { ...await resumeCreation(id), replayed: true }
 }
 
 function creationResponse(result) {
-  return { message: result.processing ? 'حُفظ طلبك وجارٍ استكمال المحادثة والإشعار؛ لم يكتمل الإرسال بعد.' : 'تم إرسال طلب عرض السعر',
+  return { message: result.rfq.creation.phase === 'dead' ? 'توقفت المحاولات الآلية. استكمل المحاولة نفسها دون إنشاء طلب بديل.' : result.processing ? 'حُفظ طلبك وجارٍ استكمال المحادثة والإشعار؛ لم يكتمل الإرسال بعد.' : 'تم إرسال طلب عرض السعر',
     rfq: publicRfq(result.rfq), processing: result.processing, ...(!result.processing ? { threadId: result.rfq.creation.threadId } : {}),
-    creation: { version: 1, phase: result.processing ? 'pending' : 'completed', replayed: result.replayed } }
+    creation: { version: 1, phase: result.rfq.creation.phase, replayed: result.replayed } }
 }
 
 async function recoverPendingCreations({ limit = 25, now = new Date(), onError } = {}) {
+  const stopped = await QuoteRequest.updateMany({ status: 'creating', 'creation.version': 1, 'creation.phase': 'pending', 'creation.attempts': { $gte: 5 } }, { $set: { 'creation.phase': 'dead', 'creation.lastErrorCode': 'RFQ_CREATION_MANUAL_RETRY' }, $unset: { 'creation.nextAttemptAt': 1 } }, WRITE)
+  if (stopped.modifiedCount) logWarn('RFQ_CREATION_RETRY_LIMIT_REACHED')
   const rows = await QuoteRequest.find({ status: 'creating', 'creation.version': 1, 'creation.phase': 'pending',
     $or: [{ 'creation.nextAttemptAt': { $lte: now } }, { 'creation.nextAttemptAt': { $exists: false } }] })
     .sort({ 'creation.nextAttemptAt': 1, _id: 1 }).limit(Math.min(100, Math.max(1, limit))).select('_id').lean()

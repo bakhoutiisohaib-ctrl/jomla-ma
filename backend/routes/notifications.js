@@ -4,10 +4,18 @@ const { authenticate } = require('../middleware/auth')
 const { asyncHandler } = require('../middleware/errorHandler')
 const { validateMongoId } = require('../middleware/validators')
 router.use(authenticate)
-const inboxIds = req => req.supplier.role === 'staff' && req.supplier.permissions?.some(p => p === 'manage_rfq' || p === 'all')
-  ? [req.supplier.id, req.supplier.ownerId || req.supplier.id] : [req.supplier.id]
+// Delegated sales notifications only; future/private owner types fail closed.
+const inboxFilter = req => {
+  const own = { userId: req.supplier.id }
+  if (req.supplier.role !== 'staff' || !req.supplier.organizationId ||
+      !req.supplier.permissions?.includes('manage_rfq') || !req.supplier.ownerId) return own
+  return { $or: [own, { userId: req.supplier.ownerId, $or: [
+    { resourceType: 'rfq', type: { $in: ['rfq_created', 'offer_decision', 'message_received'] } },
+    { resourceType: 'sourcing', type: 'sourcing_decision' }
+  ] }] }
+}
 router.get('/', asyncHandler(async (req, res) => {
-  const filter = { userId: { $in: inboxIds(req) } }
+  const filter = inboxFilter(req)
   const [data, unreadCount] = await Promise.all([
     Notification.find(filter).sort({ createdAt: -1 }).limit(100),
     Notification.countDocuments({ ...filter, readAt: null })
@@ -15,12 +23,12 @@ router.get('/', asyncHandler(async (req, res) => {
   res.json({ data, unreadCount })
 }))
 router.put('/read-all', asyncHandler(async (req, res) => {
-  await Notification.updateMany({ userId: { $in: inboxIds(req) }, readAt: null }, { $set: { readAt: new Date() } })
+  await Notification.updateMany({ ...inboxFilter(req), readAt: null }, { $set: { readAt: new Date() } })
   res.json({ message: 'تم تعليم الإشعارات كمقروءة' })
 }))
 router.put('/:id/read', validateMongoId, asyncHandler(async (req, res) => {
   const notification = await Notification.findOneAndUpdate(
-    { _id: req.params.id, userId: { $in: inboxIds(req) } }, { $set: { readAt: new Date() } }, { new: true }
+    { _id: req.params.id, ...inboxFilter(req) }, { $set: { readAt: new Date() } }, { new: true }
   )
   if (!notification) return res.status(404).json({ message: 'الإشعار غير موجود' })
   res.json({ notification })

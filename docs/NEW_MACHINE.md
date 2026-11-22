@@ -1,6 +1,6 @@
 # إعداد نسخة على حاسوب جديد
 
-استنسخ المستودع الخاص بحساب لديه صلاحية وصول:
+استنسخ المستودع (تحقق من إعداد خصوصيته في GitHub؛ ظهرت حالته Public عند فحص22 نوفمبر):
 
 ```powershell
 git clone https://github.com/bakhoutiisohaib-ctrl/jomla-ma.git

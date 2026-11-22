@@ -2,7 +2,13 @@ const Sourcing = require('../models/SourcingRequest')
 const offers = require('./sourcingOfferSubmission')
 const decisions = require('./sourcingDecision')
 async function recover({ limit = 25, now = new Date(), onError } = {}) {
-  const rows = await Sourcing.find({ 'operation.kind': { $in: ['sourcing_offer', 'sourcing_decision'] }, 'operation.version': 1, 'operation.phase': 'pending',
+  // Expiry pauses retries, never deletes a journal or releases a commercial lock.
+  const held = await Sourcing.updateMany({ 'operation.kind': 'sourcing_decision', 'operation.version': 1, 'operation.phase': 'pending', 'operation.recoveryPausedAt': { $exists: false }, $or: [
+    { 'operation.attempts': { $gte: 10 } }, { 'operation.expiresAt': { $lte: now } },
+    { 'operation.expiresAt': { $exists: false }, 'operation.startedAt': { $lte: new Date(now.getTime() - 3600000) } }
+  ] }, { $set: { 'operation.recoveryPausedAt': now, 'operation.lastErrorCode': 'SOURCING_DECISION_MANUAL_RETRY' } })
+  if (held.modifiedCount) require('../middleware/logger').logWarn('SOURCING_DECISION_RETRY_LIMIT_REACHED')
+  const rows = await Sourcing.find({ 'operation.kind': { $in: ['sourcing_offer', 'sourcing_decision'] }, 'operation.version': 1, 'operation.phase': 'pending', 'operation.recoveryPausedAt': { $exists: false },
     $or: [{ 'operation.nextAttemptAt': { $lte: now } }, { 'operation.nextAttemptAt': { $exists: false } }] })
     .read('primary').sort({ _id: 1 }).limit(Math.min(100, Math.max(1, Math.floor(Number(limit)) || 25))).select('_id operation.id operation.kind operation.version').lean().maxTimeMS(10000)
   const result = { processed: rows.length, completed: 0, pending: 0 }
