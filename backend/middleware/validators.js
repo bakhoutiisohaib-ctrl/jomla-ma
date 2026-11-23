@@ -45,6 +45,8 @@ const validateProductUpdate = productFields
 // --- Validators للمورّدين ---
 const validateSupplierRegister = [
   body('name')
+    .if((value, { req }) => req.body.role !== 'buyer' || (value !== undefined && value !== ''))
+    .isString().bail().trim()
     .notEmpty().withMessage('الاسم مطلوب')
     .isLength({ min: 2 }).withMessage('الاسم يجب أن يكون حرفين على الأقل'),
   body('email')
@@ -56,11 +58,17 @@ const validateSupplierRegister = [
     .isLength({ min: 8 }).withMessage('كلمة المرور يجب أن تكون 8 أحرف على الأقل')
     .custom(value => Buffer.byteLength(value, 'utf8') <= 72).withMessage('كلمة المرور لا يجب أن تتجاوز 72 بايت؛ الحروف العربية قد تستعمل أكثر من بايت'),
   body('city')
+    .if((value, { req }) => req.body.role !== 'buyer' || (value !== undefined && value !== ''))
+    .isString().bail().trim()
     .notEmpty().withMessage('المدينة مطلوبة'),
   body('phone')
+    .if((value, { req }) => req.body.role !== 'buyer' || (value !== undefined && value !== ''))
+    .isString().bail().trim()
     .notEmpty().withMessage('رقم الهاتف مطلوب')
     .isLength({ min: 8, max: 20 })
     .matches(/^[+0-9\s\-()]+$/).withMessage('رقم الهاتف غير صحيح'),
+  body('confirmPassword').optional().custom((value, { req }) => value === req.body.password).withMessage('كلمتا المرور غير متطابقتين'),
+  body('gender').optional().isIn(['female', 'male', 'undisclosed']),
   handleValidationErrors
 ]
 

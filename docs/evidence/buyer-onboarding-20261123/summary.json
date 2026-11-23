@@ -1,0 +1,54 @@
+{
+  "date": "2026-11-23",
+  "runs": [
+    {
+      "run": "buyerOnboarding",
+      "passed": 2,
+      "failed": 0,
+      "sha256": "03a02c989a0196fc8da57e26e927f627bb732236863bc64ce2dc1281b06eed10"
+    },
+    {
+      "run": "security",
+      "passed": 15,
+      "failed": 0,
+      "sha256": "7b5e7160858a6884a5379f0aa3b98d7c9c022702cd69f76af24f4d577a036466"
+    },
+    {
+      "run": "pilot_journey",
+      "passed": 3,
+      "failed": 0,
+      "sha256": "9db82069236c3f9d51ee8fdbb15c39b166901059288a16eb9793a559676d0b20"
+    },
+    {
+      "run": "rfq_creation",
+      "passed": 19,
+      "failed": 0,
+      "sha256": "6062b0298284f7d02983e6e3eb17dff166900e5c20363a65213e9ba52aa3d7e5"
+    },
+    {
+      "run": "sourcingCreation",
+      "passed": 35,
+      "failed": 0,
+      "sha256": "a43de6174c59f9813b090828ea9d7454e1f60d655abacddaa7e086988bcb6f49"
+    },
+    {
+      "run": "frontend",
+      "passed": 47,
+      "failed": 0,
+      "sha256": "0a221ca41028adbe8474e59655296055a048114c528e7ac859d19d9d2d45a069"
+    },
+    {
+      "run": "contact-final",
+      "passed": 2,
+      "failed": 0,
+      "sha256": "9bbe57e511439e5da95014cd915e87538781401731d361e7454eb70f650e8f4c"
+    }
+  ],
+  "backendPassed": 74,
+  "frontendUniquePassed": 48,
+  "note": "contact-final reruns the original registration test and adds the contact gate test; do not count the rerun twice.",
+  "build": "Compiled successfully",
+  "buildLogSha256": "1b5b31ee662c31d720b5c4dd4d938806e20852640dea40eba64a2025d039560e",
+  "browserVerification": "New Android routing command blocked by policy; desktop browser tool timed out. No new visual acceptance claimed.",
+  "oauthProviders": "Not implemented or enabled; provider registrations and credentials unavailable."
+}

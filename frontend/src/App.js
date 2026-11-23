@@ -176,9 +176,9 @@ function AppContent() {
       });
     } catch {}
   }
-  function authenticated(account) {
+  function authenticated(account, options = {}) {
     setUser({ data: account, sessionToken: getSessionToken() });
-    navigate(safeReturnTo(route.search, account.role) || dashboardPath(account.role), { replace: true });
+    navigate(safeReturnTo(route.search, account.role) || (options.browse ? '/' : dashboardPath(account.role)), { replace: true });
   }
   function dashboard() {
     setPage(user?.role === 'buyer' ? 'buyer' : user?.role === 'admin' ? 'admin' : 'supplier');

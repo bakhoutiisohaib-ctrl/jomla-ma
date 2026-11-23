@@ -21,7 +21,7 @@ const buyerParty = (req, rfq) => String(rfq.buyerId) === String(req.supplier.id)
 const permitted = (req, rfq) => buyerParty(req, rfq) || supplierParty(req, rfq)
 const notice = (userId, type, resourceId) => Notification.create({ userId, type, resourceType: 'rfq', resourceId })
 
-router.post('/', requireRole('buyer'), asyncHandler(async (req, res) => {
+router.post('/', requireRole('buyer'), require('../services/buyerProfile').requireBuyerContact, asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'no-store')
   const result = await createRfq(req)
   res.status(result.processing ? 202 : 201).json(creationResponse(result))
