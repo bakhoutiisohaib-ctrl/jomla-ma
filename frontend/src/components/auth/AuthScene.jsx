@@ -1,3 +1,4 @@
+import BrandHomeLink from '../common/BrandHomeLink';
 import LanguageSwitch from '../../i18n/LanguageSwitch';
 import { useState } from 'react';
 import { useLabels } from '../../i18n/useLabels';
@@ -40,7 +41,7 @@ export default function AuthScene({ children, onBack, seller, registration = fal
   return <div className={'atlas-auth' + (registration ? ' auth-registration' : '')} data-motion={paused ? 'paused' : 'playing'}>
     <ChalkRoutes />
     <header className="auth-header">
-      <button type="button" className="auth-brand" onClick={onBack} aria-label={l('Jomla.ma — العودة إلى الموقع', 'Jomla.ma — Retour au site')}><span className="auth-brand-mark">ج</span><span><strong dir="ltr">jomla.ma</strong><small>{l('سوق الجملة المغربي', 'Le marché de gros marocain')}</small></span></button>
+      <BrandHomeLink className="auth-brand" aria-label={l('Jomla.ma — العودة إلى الموقع', 'Jomla.ma — Retour au site')}><span className="auth-brand-mark">ج</span><span><strong dir="ltr">jomla.ma</strong><small>{l('سوق الجملة المغربي', 'Le marché de gros marocain')}</small></span></BrandHomeLink>
       <nav aria-label={l('اللغة والعودة للموقع', 'Langue et retour au site')}><LanguageSwitch /><button type="button" onClick={onBack}><MarketIcon name="arrow" />{l('العودة إلى الموقع', 'Retour au site')}</button></nav>
     </header>
     <main className="auth-stage" id="auth-main">

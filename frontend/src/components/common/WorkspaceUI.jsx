@@ -1,3 +1,4 @@
+import BrandHomeLink from './BrandHomeLink';
 import LanguageSwitch from '../../i18n/LanguageSwitch';
 import { useLabels } from '../../i18n/useLabels';
 export function WorkspaceHeader({
@@ -8,7 +9,7 @@ export function WorkspaceHeader({
 }) {
 const l = useLabels();
   return <header className="workspace-header"><div className="header-inner">
-    <div><strong>🇲🇦 Jomla.ma</strong><span className="header-title">{title}</span></div>
+    <div><BrandHomeLink><strong>🇲🇦 Jomla.ma</strong></BrandHomeLink><span className="header-title">{title}</span></div>
     <nav className="actions" aria-label={l('التنقل', 'Navigation')}>
       {children}
       <LanguageSwitch />
