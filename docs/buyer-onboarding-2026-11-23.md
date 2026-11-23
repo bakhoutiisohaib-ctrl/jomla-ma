@@ -37,9 +37,22 @@ upgrade or original-data operation was needed. This was not a full regression.
 
 The fresh private preview listens only on `127.0.0.1:3001`; registration is at
 `http://localhost:3001/register`. Its readiness endpoint returned ready. The
-previous preview on port 3000 was retained. The new Android forwarding/opening
-command was rejected by automatic policy review, and the desktop browser tool
-timed out. Therefore no new visual or physical-phone acceptance is claimed.
+previous preview on port 3000 was retained. After access was restored, physical
+Redmi/Chrome verification passed in Arabic over USB forwarding: minimal buyer
+registration, continue browsing without contact details, product RFQ contact
+gate, contact save with phone/city carried forward, and submission of quantity
+10. The buyer dashboard displayed the request as awaiting the supplier.
+Screenshots below contain only synthetic test details. The welcome screenshot
+was excluded because Chrome displayed an unrelated personal account popup.
+
+- [Contact gate](evidence/buyer-onboarding-20261123/android-contact-gate.png)
+- [RFQ after contact completion](evidence/buyer-onboarding-20261123/android-rfq-form.png)
+- [Created request](evidence/buyer-onboarding-20261123/android-rfq-record.png)
+
+This verifies the direct-product RFQ path on Android, not a new cart-path,
+iPhone, cross-language or full responsive regression. The dashboard header
+still showed the session's initial buyer display name after contact completion;
+that cosmetic refresh issue remains open and did not block request creation.
 The preview scripts/build/raw logs are outside Git under
 `C:\JomlaLocal\onboarding-20261123`.
 
@@ -63,5 +76,5 @@ Official setup references:
 - [Apple web configuration](https://developer.apple.com/help/account/capabilities/configure-sign-in-with-apple-for-the-web)
 - [Microsoft OpenID Connect](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc)
 
-No deployment or final hosting acceptance was performed. Phone testing and the
+No deployment or final hosting acceptance was performed. iPhone testing and the
 provider phase remain open; this report does not close the owner's full request.

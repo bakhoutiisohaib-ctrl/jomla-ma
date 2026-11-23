@@ -49,6 +49,21 @@
   "note": "contact-final reruns the original registration test and adds the contact gate test; do not count the rerun twice.",
   "build": "Compiled successfully",
   "buildLogSha256": "1b5b31ee662c31d720b5c4dd4d938806e20852640dea40eba64a2025d039560e",
-  "browserVerification": "New Android routing command blocked by policy; desktop browser tool timed out. No new visual acceptance claimed.",
-  "oauthProviders": "Not implemented or enabled; provider registrations and credentials unavailable."
+  "browserVerification": "Physical Redmi / Chrome Arabic: minimal signup, browse, deferred contact gate, contact save, direct-product RFQ submission and awaiting-supplier dashboard record passed. iPhone, other languages and cart path not retested.",
+  "oauthProviders": "Not implemented or enabled; provider registrations and credentials unavailable.",
+  "screenshots": [
+    {
+      "file": "android-contact-gate.png",
+      "sha256": "d0c0e251379d6f61ea404467a22155440c8646c2ba85207c0da6f2cc8020c1a5"
+    },
+    {
+      "file": "android-rfq-form.png",
+      "sha256": "c128c15a778b845fd04ae9f929d74747ac0f937ddeb6346cb9ce6be07733de3c"
+    },
+    {
+      "file": "android-rfq-record.png",
+      "sha256": "c144e0ceb8a0f39b0be32d9e6dfaa5553d3924e492c34a37bf74013e656c0f1c"
+    }
+  ],
+  "observedLimitation": "Dashboard display name retained the initial session label after contact completion."
 }
