@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-23",
+  "sourceCommit": "bf7e9b4cddd7b21317a151dcda7055c1c6c23503",
+  "node": "25.9.0",
+  "mongodb": "5.0.19",
+  "syntheticOnly": true,
+  "serverUsed": false,
+  "suites": [
+    {
+      "suite": "backup",
+      "passed": 11,
+      "failed": 0,
+      "rawResultSha256": "6cb53602f0dfb60a1ba8e572d7e657f0e08fdbd2d4695dbacaa0d40dc6de3cc3"
+    },
+    {
+      "suite": "pilot_journey",
+      "passed": 3,
+      "failed": 0,
+      "rawResultSha256": "a23bb0babfb980cfa2a6c3aa5a6221dfc1398bb763b74e93c986751914ecf995"
+    },
+    {
+      "suite": "accountRecovery",
+      "passed": 8,
+      "failed": 0,
+      "rawResultSha256": "42e81f754fae95b76986b90dc172639e245b8f70d22f67124a10206ef9f6f58c"
+    }
+  ],
+  "nodeHeapLimitMB": 384,
+  "mongoCacheGB": 0.25,
+  "performanceRunnerSha256": "c4be35942cca3675b2500ccaee3bee9b571a072bfa533aee40fef117e2a1affd"
+}

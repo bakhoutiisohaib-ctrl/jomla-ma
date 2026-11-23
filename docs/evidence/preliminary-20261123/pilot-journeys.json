@@ -1,0 +1,81 @@
+{
+  "date": "2026-11-23",
+  "environment": "isolated MongoMemoryServer; no dotenv; temporary image/log directories",
+  "realLocalComponents": [
+    "Express routes",
+    "JWT authentication and bcrypt",
+    "MongoDB persistence",
+    "sharp image decoder",
+    "MongoDB durable queue and real handlers",
+    "local visual vectors",
+    "RFQ and notification persistence"
+  ],
+  "simulatedOrUnavailable": [
+    "synthetic accounts, businesses, stores, products and owned generated images",
+    "AI deliberately unavailable; no live provider call",
+    "external discovery deliberately disabled",
+    "supertest HTTP client; no device/browser usability claim"
+  ],
+  "noOriginalDatabaseConnection": true,
+  "noOriginalImagesWritten": true,
+  "completedChecks": [
+    "supplier_registration_to_explicit_publication_and_indexing",
+    "buyer_text_visual_filters_and_comparison_data",
+    "rfq_offer_acceptance_notifications_isolation_and_legacy_unchanged"
+  ],
+  "allThreeJourneysPassed": true,
+  "timingsInformationalOnly": [
+    {
+      "operation": "supplier registration",
+      "milliseconds": 446.5
+    },
+    {
+      "operation": "company and pending store creation",
+      "milliseconds": 54.7
+    },
+    {
+      "operation": "real local image upload",
+      "milliseconds": 32.7
+    },
+    {
+      "operation": "explicit product publication",
+      "milliseconds": 35.4
+    },
+    {
+      "operation": "durable visual index worker all queued jobs",
+      "milliseconds": 256.1
+    },
+    {
+      "operation": "Arabic text search and tier filters",
+      "milliseconds": 20.6
+    },
+    {
+      "operation": "French text search",
+      "milliseconds": 14.2
+    },
+    {
+      "operation": "exact-image API search",
+      "milliseconds": 30.8
+    },
+    {
+      "operation": "resized/reencoded-image API search",
+      "milliseconds": 39.3
+    },
+    {
+      "operation": "buyer creates RFQ",
+      "milliseconds": 50.2
+    },
+    {
+      "operation": "supplier revises offer",
+      "milliseconds": 72.2
+    },
+    {
+      "operation": "buyer accepts current offer",
+      "milliseconds": 41.4
+    },
+    {
+      "operation": "buyer receives persisted bilingual notification",
+      "milliseconds": 8.8
+    }
+  ]
+}

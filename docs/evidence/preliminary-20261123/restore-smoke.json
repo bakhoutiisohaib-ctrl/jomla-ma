@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-23",
+  "environment": "Windows loopback; disposable MongoDB 5.0.19; synthetic fixtures only",
+  "collections": 19,
+  "documents": 10,
+  "mediaFiles": 1,
+  "byteExactDocuments": true,
+  "indexesMatched": true,
+  "restoredBuyerAndSupplierLogin": true,
+  "restoredMediaRead": true,
+  "backupRestoreAndComparisonMs": 1511,
+  "performance": {
+    "requests": 24,
+    "concurrency": 2,
+    "failures": 0,
+    "p50Ms": 12.7,
+    "p95Ms": 27.3,
+    "maxMs": 41.4
+  },
+  "limits": "Light API smoke on tiny synthetic data, test mode. Not production capacity, browser performance, physical phones, real mail delivery or final hosting acceptance."
+}
