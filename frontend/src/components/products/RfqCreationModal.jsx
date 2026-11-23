@@ -1,3 +1,4 @@
+import BuyerContactGate from '../auth/BuyerContactGate';
 import { localizeCopy } from '../../i18n/useLabels';
 import { useEffect, useRef, useState } from 'react'
 import { apiRequest } from '../../api/config'
@@ -22,7 +23,7 @@ function creationKey() {
 
 export default function RFQModal(props) {
   const token = useSessionToken()
-  return <RfqSession key={token + ':' + props.product._id + ':' + (props.opportunity?._id || '')} {...props} token={token} />
+  return <BuyerContactGate key={token + ':' + (props.user?._id || props.user?.id || '')} user={props.user} token={token} onClose={props.onClose}>{account => <RfqSession key={token + ':' + props.product._id + ':' + (props.opportunity?._id || '')} {...props} user={account} token={token} />}</BuyerContactGate>
 }
 function RfqSession({ product, opportunity, onClose, onSuccess, onRequireLogin, user, token }) {
   const { lang } = useTranslation(), c = localizeCopy(copy, lang)

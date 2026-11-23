@@ -78,3 +78,7 @@
   .chalk-truck > use { animation: none; }
 }
 @media (prefers-reduced-motion: reduce) { .auth-chalk * { animation: none !important; } .auth-motion { display: none; } }
+
+.auth-onboarding-actions { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: stretch; gap: 12px; margin-block: 24px; }
+.auth-card .auth-onboarding-actions .auth-submit { margin-top: 0; min-height: 64px; }
+.auth-onboarding-actions button { white-space: normal; overflow-wrap: anywhere; }

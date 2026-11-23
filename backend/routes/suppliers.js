@@ -24,6 +24,7 @@ function accountPayload(user, identity = {}) {
   return {
     id: String(user._id), _id: String(user._id), name: user.name, email: user.email,
     city: user.city, phone: user.phone, description: user.description, avatar: user.avatar,
+    profilePending: Boolean(user.profilePending),
     role: user.role, ownerId: identity.ownerId || String(user._id),
     organization: user.organization, organizationId: Object.prototype.hasOwnProperty.call(identity, 'organizationId') ? identity.organizationId : (user.organizationId || null),
     permissions: identity.permissions || (['supplier', 'admin'].includes(user.role) ? ['all'] : []),
@@ -63,7 +64,9 @@ router.post('/register', validateSupplierRegister, asyncHandler(async (req, res)
   const normalizedEmail = String(email).trim().toLowerCase()
   if (await Supplier.exists({ email: normalizedEmail })) return res.status(409).json({ message: 'البريد الإلكتروني موجود بالفعل' })
   const supplier = new Supplier({
-    name, city, phone, description: description || '', email: normalizedEmail,
+    name: name || 'مشتري جديد', city, phone, description: description || '', email: normalizedEmail,
+    profilePending: role === 'buyer' && !require('../services/buyerProfile').contactComplete({ name, city, phone }),
+    gender: req.body.gender || 'undisclosed',
     password: await bcrypt.hash(password, 12), role,
     organization: role === 'supplier' ? String(organization || name).trim() : '',
     permissions: [], products: []
@@ -367,10 +370,15 @@ router.put('/:id', authenticate, validateMongoId, asyncHandler(async (req, res) 
   }
   if (req.body.name !== undefined && !req.body.name.trim()) return res.status(400).json({ message: 'الاسم مطلوب' })
   for (const key of allowed) if (req.body[key]?.length > (key === 'description' ? 3000 : 500)) return res.status(400).json({ message: 'بيانات الملف أطول من الحد المسموح' })
+  const changes = { ...req.body }
+  if (req.account.role === 'buyer' && req.account.profilePending) {
+    // The placeholder is not a supplied contact name. Completion must include it.
+    changes.profilePending = !(typeof changes.name === 'string' && require('../services/buyerProfile').contactComplete({ ...req.account.toObject(), ...changes }))
+  }
   const { result } = await auditedChange({
     action: 'ACCOUNT_PROFILE_UPDATED', targetType: 'Supplier', targetId: req.supplier.id,
     actor: req.supplier, details: { fields: Object.keys(req.body) }
-  }, () => Supplier.findByIdAndUpdate(req.supplier.id, { $set: req.body }, { new: true, runValidators: true }))
+  }, () => Supplier.findByIdAndUpdate(req.supplier.id, { $set: changes }, { new: true, runValidators: true }))
   res.json({ message: 'تم التحديث', supplier: accountPayload(result, req.supplier) })
 }))
 

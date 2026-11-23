@@ -12,7 +12,7 @@ const sourcingDecisions = require('../services/sourcingDecision')
 router.use(authenticate)
 const ownerId = req => String(req.supplier.ownerId || req.supplier.id)
 const cleanText = (v, max = 5000) => typeof v === 'string' ? v.trim().slice(0, max) : ''
-router.post('/', requireRole('buyer'), asyncHandler(async (req, res) => {
+router.post('/', requireRole('buyer'), require('../services/buyerProfile').requireBuyerContact, asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'no-store')
   try {
     const { sourcing, replayed } = await sourcingCreation.create(req)

@@ -1,3 +1,4 @@
+import BuyerContactGate from '../auth/BuyerContactGate';
 import { localizeCopy } from '../../i18n/useLabels';
 import { useEffect, useRef, useState } from 'react'
 import { apiRequest } from '../../api/config'
@@ -18,7 +19,7 @@ export default function SourcingModal(props) {
   const token = useSessionToken()
   const buyerId = String(props.user?._id || props.user?.id || '')
   const allowed = Boolean(token && token === props.sessionToken && buyerId && props.user?.role === 'buyer')
-  return <SourcingForm {...props} key={token + ':' + buyerId + ':' + allowed} token={token} buyerId={buyerId} allowed={allowed} />
+  return <BuyerContactGate key={token + ':' + buyerId} user={allowed ? props.user : null} token={token} onClose={props.onClose}>{account => <SourcingForm {...props} user={account || props.user} key={token + ':' + buyerId + ':' + allowed} token={token} buyerId={buyerId} allowed={allowed} />}</BuyerContactGate>
 }
 function SourcingForm({ initialData = {}, onClose, onSuccess, onRequireLogin, user, token, buyerId, allowed }) {
   const { lang } = useTranslation()

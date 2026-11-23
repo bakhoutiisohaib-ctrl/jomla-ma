@@ -2,6 +2,8 @@ const mongoose = require('mongoose')
 
 const SupplierSchema = new mongoose.Schema({
   name:               { type: String, required: true },
+  profilePending:     { type: Boolean, default: false },
+  gender:             { type: String, enum: ['female', 'male', 'undisclosed'], default: 'undisclosed', select: false },
   city:               String,
   phone:              String,
   description:        String,
