@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-23",
+  "archive": "project-private-verified.tar.gz",
+  "bytes": 345733453,
+  "sha256": "0cd6b45e4ae5b767dc9b3c7af921a0cec8a633b25309848cf0485e653776b660",
+  "remoteHashMatched": true,
+  "archiveEntries": 20029,
+  "databaseRestoreTested": false,
+  "containsPrivateRuntimeMaterial": true
+}
