@@ -139,3 +139,28 @@ test('a withdrawn cart product stays selected for review but cannot be sent', as
   expect(screen.queryByRole('button', { name: 'مراجعة وإرسال الطلب' })).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'سلة طلبات العروض (1)' })).toBeInTheDocument();
 });
+
+test('catalog price range follows the completed search response and preserves the quantity-specific price', async () => {
+  const original = fetch.getMockImplementation();
+  const priced = { ...product, price: 50, pricingMode: 'fixed', priceTiers: [{ minQty: 10, maxQty: 29, price: 40 }, { minQty: 30, price: 20 }] };
+  fetch.mockImplementation((url, options) => {
+    const parsed = new URL(url, 'http://localhost');
+    if (!parsed.pathname.endsWith('/products/search')) return original(url, options);
+    const quantity = Number(parsed.searchParams.get('quantity'));
+    return reply({ data: [{ ...priced, effectiveUnitPrice: quantity >= 30 ? 20 : quantity >= 10 ? 40 : 50 }], pagination: { total: 1, pages: 1 } });
+  });
+  render(<App />);
+  const card = (await screen.findByRole('button', { name: 'معاينة سريعة: ' + product.name })).closest('article');
+  expect(card.querySelector('[data-price-kind]')).toHaveAttribute('data-price-kind', 'range');
+  expect(within(card).getByText('حسب الكمية')).toBeInTheDocument();
+  expect(card.querySelector('[data-price-kind]')).toHaveTextContent('20 – 40');
+  expect(card.querySelector('[data-price-kind]')).not.toHaveTextContent('20,00');
+  fireEvent.change(screen.getByLabelText('الكمية المطلوبة'), { target: { value: '50' } });
+  await screen.findByText('للكمية المطلوبة: 50 قطعة');
+  expect(screen.getByRole('button', { name: 'معاينة سريعة: ' + product.name }).closest('article').querySelector('[data-price-kind]')).toHaveAttribute('data-price-kind', 'quantity');
+  fireEvent.change(screen.getByLabelText('الكمية المطلوبة'), { target: { value: '' } });
+  await screen.findByText('حسب الكمية');
+  fireEvent.change(screen.getByLabelText('أعلى سعر'), { target: { value: '60' } });
+  await screen.findByText('السعر الأساسي للبحث');
+  expect(screen.getByRole('button', { name: 'معاينة سريعة: ' + product.name }).closest('article').querySelector('[data-price-kind]')).toHaveAttribute('data-price-kind', 'base');
+});

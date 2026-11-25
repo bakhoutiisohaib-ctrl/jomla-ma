@@ -68,3 +68,12 @@
   .atlas-compact-card .atlas-card-image-badges .atlas-card-rating,
   .atlas-compact-card .atlas-card-image-badges .atlas-card-trust { font-size: 9px; padding: 3px; }
 }
+
+/* Gate 1B: real quantity prices and explicit price context. */
+.atlas-public .atlas-compact-card .atlas-card-price { overflow-wrap: anywhere; }
+.atlas-compact-card .atlas-card-price bdi { display: inline; white-space: normal; overflow-wrap: anywhere; }
+.atlas-public .atlas-compact-card .atlas-card-price[data-price-kind="range"] { font-size: 16px; line-height: 1.35; }
+.atlas-public .atlas-compact-card .atlas-card-price-context { color: #505a52; font-size: 11px; line-height: 1.4; margin: 2px 0; overflow-wrap: anywhere; }
+@media (max-width: 360px) {
+  .atlas-public .atlas-compact-card .atlas-card-price[data-price-kind="range"] { font-size: 14px; }
+}

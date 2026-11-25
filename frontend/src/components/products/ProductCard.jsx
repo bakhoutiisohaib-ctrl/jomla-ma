@@ -6,10 +6,18 @@ import ProductPreview from './ProductPreview';
 import { MarketIcon } from '../common/MarketLayout';
 import AddToQuoteCart from '../cart/AddToQuoteCart';
 import SupplierRating from './SupplierRating';
+import { cardPrice } from './cardPrice';
 import '../../styles/atlas-cards.css';
 import { Link, productPath, storePath, supplierPath } from '../../navigation';
 import { useTranslation } from '../../i18n/LanguageContext';
-import { useLabels, formatMoney } from '../../i18n/useLabels';
+import { useLabels, formatMoney, localeFor } from '../../i18n/useLabels';
+function RangePrice({ min, max, currency, lang }) {
+  const formatter = new Intl.NumberFormat(localeFor(lang), { style: 'currency', currency, currencyDisplay: 'code', minimumFractionDigits: 0 });
+  const amount = value => formatter.formatToParts(value)
+    .filter(part => ['integer','group','decimal','fraction'].includes(part.type))
+    .map(part => part.value).join('');
+  return <><bdi dir="ltr">{amount(min)} – {amount(max)}</bdi> <bdi>{currency === 'MAD' && lang === 'ar' ? 'د.م.' : currency}</bdi></>;
+}
 export default function ProductCard({
   product,
   user,
@@ -17,7 +25,8 @@ export default function ProductCard({
   onView,
   onRequireLogin,
   onCompare,
-  compared = false
+  compared = false,
+  priceContext
 }) {
   const l = useLabels(),
     {
@@ -30,6 +39,7 @@ export default function ProductCard({
     supplierId = supplier?._id || supplier;
   const storeId = product.storeId?._id || product.storeId;
   const available = product.availability === 'in_stock' || product.inStock === true;
+  const price = cardPrice(product, priceContext);
   return <article className="product-card atlas-compact-card">
     <div className="atlas-card-media">
       <Link to={productPath(product._id)} aria-label={l('صورة المنتج: ', 'Image du produit : ', 'Product image: ') + product.name}><ProtectedImage value={product.imageUrl} alt={product.name} loading="lazy" /></Link>
@@ -42,7 +52,18 @@ export default function ProductCard({
     <div className="product-body">
       {['exact', 'similar'].includes(product.matchType) && <span className="badge">{product.matchBasis === 'exact_image' ? l('الصورة نفسها', 'Même fichier image') : product.matchType === 'exact' ? l('تطابق نصي', 'Correspondance textuelle') : l('مرشح مشابه', 'Résultat similaire')}</span>}
     <h3><Link to={productPath(product._id)} title={product.name}>{product.name}</Link></h3>
-    <p className="price">{product.pricingMode === 'on_request' ? l('السعر عند الطلب', 'Prix sur demande') : formatMoney(product.effectiveUnitPrice ?? product.price, product.currency, lang)}{product.pricingMode !== 'on_request' && <small> / {product.unit}</small>}</p>
+    <p className="price atlas-card-price" data-price-kind={price.kind}>
+      {price.kind === 'request' ? l('السعر عند الطلب', 'Prix sur demande', 'Price on request')
+        : price.kind === 'unknown' ? l('السعر غير متاح', 'Prix indisponible', 'Price unavailable')
+        : price.kind === 'range' ? <RangePrice min={price.min} max={price.max} currency={product.currency} lang={lang} />
+        : <bdi>{formatMoney(price.value, product.currency, lang)}</bdi>}
+      {!['request','unknown'].includes(price.kind) && <small> / {product.unit}</small>}
+    </p>
+    {['range','quantity','base'].includes(price.kind) && <p className="atlas-card-price-context">
+      {price.kind === 'range' ? l('حسب الكمية', 'Selon quantité', 'By quantity')
+        : price.kind === 'base' ? l('السعر الأساسي للبحث', 'Prix de base du filtre', 'Search base price')
+        : l('للكمية المطلوبة: ', 'Pour la quantité : ', 'For quantity: ') + price.quantity + ' ' + product.unit}
+    </p>}
     <p className="atlas-card-moq">{l('أقل طلب', 'Min.')}: <strong>{product.moq} {product.unit}</strong></p>
     {supplier?.name && <Link className="atlas-card-supplier" title={supplier.name} to={storeId ? storePath(storeId) : supplierPath(supplierId)}><MarketIcon name="store" /><span>{supplier.name}</span></Link>}
     <p className="atlas-card-city">{product.city || supplier?.city}{!available && <span> · {l('غير متوفر', 'Indisponible')}</span>}</p>
