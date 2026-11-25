@@ -36,3 +36,35 @@
 @media(max-width:359px) {
   .atlas-public .atlas-compact-card .product-footer .primary { font-size: 12px; white-space: nowrap; padding-inline: 3px; }
 }
+
+/* V4.9 integration, slice 1: compact catalog cards. Scoped to the real card
+   component; all existing commercial controls stay visible and functional. */
+.atlas-public .product-card.atlas-compact-card { border: 1px solid transparent; border-radius: 10px; background: transparent; box-shadow: none; overflow: visible; }
+.atlas-public .atlas-compact-card .atlas-card-media { position: relative; min-height: 0; border-radius: 10px; overflow: hidden; background: #eef0e9; }
+.atlas-public .atlas-compact-card .atlas-card-media > a { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; min-height: 0; }
+.atlas-public .atlas-compact-card .atlas-card-media > a img { width: 100%; height: 100%; object-fit: contain; }
+.atlas-public .atlas-compact-card .atlas-quick-view { top: 5px; bottom: auto; left: 5px; right: auto; inset-inline-start: auto; inset-inline-end: auto; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; background: white; border-radius: 50%; z-index: 2; }
+.atlas-public .atlas-compact-card .atlas-quick-view > span { display: none; }
+.atlas-card-image-badges { position: absolute; left: 5px; right: 5px; bottom: 6px; display: flex; align-items: center; justify-content: space-between; gap: 3px; direction: ltr; pointer-events: none; }
+.atlas-compact-card .atlas-card-image-badges .atlas-card-rating,
+.atlas-compact-card .atlas-card-image-badges .atlas-card-trust { display: inline-flex; align-items: center; gap: 3px; margin: 0; border-radius: 999px; padding: 3px 5px; background: #fff; color: #27372c; font-size: 10px; font-weight: 650; line-height: 1.3; white-space: nowrap; min-width: 0; }
+.atlas-compact-card .atlas-card-image-badges .atlas-card-rating { overflow: hidden; }
+.atlas-compact-card .atlas-card-rating bdi { overflow: hidden; text-overflow: ellipsis; }
+.atlas-compact-card .atlas-card-image-badges .atlas-card-trust { margin-left: auto; color: #28513b; background: #fffdf3; }
+.atlas-public .atlas-compact-card .product-body { padding: 5px 2px 3px; }
+.atlas-public .atlas-compact-card .product-body h3 { font-size: 13px; font-weight: 500; line-height: 1.45; min-height: 0; margin: 0 !important; }
+.atlas-public .atlas-compact-card h3 a { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-public .atlas-compact-card .product-body .price { font-size: 18px; font-weight: 800; line-height: 1.4; margin: 3px 0 0; color: #41634b; }
+.atlas-public .atlas-compact-card .price small { display: inline; font-size: 11px; }
+.atlas-public .atlas-compact-card .atlas-card-moq { margin: 2px 0; font-size: 11px; color: #505a52; }
+.atlas-public .atlas-compact-card .atlas-card-supplier { margin: 3px 0 0; font-size: 11px; min-width: 0; }
+.atlas-public .atlas-compact-card .atlas-card-city { margin: 1px 0 0; font-size: 11px; }
+.atlas-public .atlas-compact-card .product-footer { padding: 4px 2px 6px; background: transparent; }
+.atlas-public .atlas-compact-card .product-footer .actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.atlas-public .atlas-compact-card .product-footer .primary { font-size: 12px; min-height: 44px; padding-inline: 3px; }
+.atlas-public .atlas-compact-card .product-footer .atlas-add-cart-compact { flex: 0 0 44px; }
+@media (max-width: 360px) {
+  .atlas-card-image-badges { left: 3px; right: 3px; gap: 2px; }
+  .atlas-compact-card .atlas-card-image-badges .atlas-card-rating,
+  .atlas-compact-card .atlas-card-image-badges .atlas-card-trust { font-size: 9px; padding: 3px; }
+}

@@ -16,7 +16,7 @@ function readRating(id) {
   return pending.get(id);
 }
 
-export default function SupplierRating({ supplierId }) {
+export default function SupplierRating({ supplierId, compact = false }) {
   const l = useLabels(), [state, setState] = useState(null);
   useEffect(() => {
     if (!/^[a-f\d]{24}$/i.test(supplierId || '')) return;
@@ -37,5 +37,9 @@ export default function SupplierRating({ supplierId }) {
   }, [supplierId]);
   const stats = state && state.id === supplierId ? state.stats : null;
   if (!stats) return null;
+  if (compact) {
+    const label = l('تقييم المورد', 'Avis fournisseur', 'Supplier rating') + ': ' + stats.avg.toFixed(1) + '/5 (' + stats.total + ')';
+    return <span className="atlas-supplier-rating atlas-card-rating" role="img" aria-label={label} title={label}><span aria-hidden="true">★</span><bdi aria-hidden="true">{stats.avg.toFixed(1)}/5 ({stats.total})</bdi></span>;
+  }
   return <p className="atlas-supplier-rating"><span aria-hidden="true">★</span> <strong>{stats.avg.toFixed(1)}/5</strong> <span>{l('تقييم المورد', 'Avis fournisseur')} ({stats.total})</span></p>;
 }

@@ -56,3 +56,17 @@ test('invalid supplier identifiers do not start requests', async () => {
   await waitFor(() => expect(container).toBeEmptyDOMElement());
   expect(apiRequest).not.toHaveBeenCalled();
 });
+
+test('compact card rating keeps the supplier identity and real review count accessible', async () => {
+  apiRequest.mockResolvedValue({ stats: { avg: 4.2, total: 7 } });
+  const { container } = render(<SupplierRating supplierId={id} compact />);
+  expect(await screen.findByRole('img', { name: 'تقييم المورد: 4.2/5 (7)' })).toHaveClass('atlas-card-rating');
+  expect(container).toHaveTextContent('4.2/5 (7)');
+});
+
+test('compact card never invents a rating for an unrated supplier', async () => {
+  apiRequest.mockResolvedValue({ stats: { avg: 0, total: 0 } });
+  const { container } = render(<SupplierRating supplierId={id} compact />);
+  await act(async () => {});
+  expect(container).toBeEmptyDOMElement();
+});
