@@ -1,0 +1,709 @@
+[
+  {
+    "lang": "ar",
+    "width": 390,
+    "role": "guest",
+    "initial": {
+      "header": {
+        "x": 0,
+        "y": 0,
+        "w": 390,
+        "h": 123,
+        "right": 390,
+        "bottom": 123
+      },
+      "trigger": {
+        "x": 12,
+        "y": 8,
+        "w": 44,
+        "h": 44,
+        "right": 56,
+        "bottom": 52
+      },
+      "search": {
+        "x": 12,
+        "y": 58,
+        "w": 366,
+        "h": 56,
+        "right": 378,
+        "bottom": 114
+      },
+      "input": {
+        "x": 124.0625,
+        "y": 63,
+        "w": 215.9375,
+        "h": 46,
+        "right": 340,
+        "bottom": 109
+      },
+      "vw": 390,
+      "scroll": 390,
+      "oldNav": false,
+      "hidden": true,
+      "dir": "rtl"
+    },
+    "menu": {
+      "left": 12,
+      "right": 378,
+      "top": 58,
+      "bottom": 340,
+      "viewport": 390,
+      "links": [
+        "/",
+        "/opportunities",
+        "/stores",
+        "/favorites"
+      ],
+      "targets": [
+        44,
+        44,
+        44,
+        44,
+        44,
+        44
+      ]
+    }
+  },
+  {
+    "lang": "ar",
+    "width": 320,
+    "role": "guest",
+    "initial": {
+      "header": {
+        "x": 0,
+        "y": 0,
+        "w": 320,
+        "h": 123,
+        "right": 320,
+        "bottom": 123
+      },
+      "trigger": {
+        "x": 12,
+        "y": 8,
+        "w": 44,
+        "h": 44,
+        "right": 56,
+        "bottom": 52
+      },
+      "search": {
+        "x": 12,
+        "y": 58,
+        "w": 296,
+        "h": 56,
+        "right": 308,
+        "bottom": 114
+      },
+      "input": {
+        "x": 124.0625,
+        "y": 63,
+        "w": 145.9375,
+        "h": 46,
+        "right": 270,
+        "bottom": 109
+      },
+      "vw": 320,
+      "scroll": 320,
+      "oldNav": false,
+      "hidden": true,
+      "dir": "rtl"
+    },
+    "menu": {
+      "left": 12,
+      "right": 308,
+      "top": 58,
+      "bottom": 340,
+      "viewport": 320,
+      "links": [
+        "/",
+        "/opportunities",
+        "/stores",
+        "/favorites"
+      ],
+      "targets": [
+        44,
+        44,
+        44,
+        44,
+        44,
+        44
+      ]
+    }
+  },
+  {
+    "lang": "fr",
+    "width": 390,
+    "role": "guest",
+    "initial": {
+      "header": {
+        "x": 0,
+        "y": 0,
+        "w": 390,
+        "h": 123,
+        "right": 390,
+        "bottom": 123
+      },
+      "trigger": {
+        "x": 334,
+        "y": 8,
+        "w": 44,
+        "h": 44,
+        "right": 378,
+        "bottom": 52
+      },
+      "search": {
+        "x": 12,
+        "y": 58,
+        "w": 366,
+        "h": 56,
+        "right": 378,
+        "bottom": 114
+      },
+      "input": {
+        "x": 50,
+        "y": 63,
+        "w": 180.6875,
+        "h": 46,
+        "right": 230.6875,
+        "bottom": 109
+      },
+      "vw": 390,
+      "scroll": 390,
+      "oldNav": false,
+      "hidden": true,
+      "dir": "ltr"
+    },
+    "menu": {
+      "left": 12,
+      "right": 378,
+      "top": 58,
+      "bottom": 340,
+      "viewport": 390,
+      "links": [
+        "/",
+        "/opportunities",
+        "/stores",
+        "/favorites"
+      ],
+      "targets": [
+        44,
+        44,
+        44,
+        44,
+        44,
+        44
+      ]
+    }
+  },
+  {
+    "lang": "en",
+    "width": 1280,
+    "role": "guest",
+    "initial": {
+      "header": {
+        "x": 0,
+        "y": 0,
+        "w": 1265,
+        "h": 81.25,
+        "right": 1265,
+        "bottom": 81.25
+      },
+      "trigger": {
+        "x": 948.796875,
+        "y": 18.125,
+        "w": 75.390625,
+        "h": 44,
+        "right": 1024.1875,
+        "bottom": 62.125
+      },
+      "search": {
+        "x": 191.140625,
+        "y": 12,
+        "w": 520.265625,
+        "h": 56.25,
+        "right": 711.40625,
+        "bottom": 68.25
+      },
+      "input": {
+        "x": 236.140625,
+        "y": 18.125,
+        "w": 324.09375,
+        "h": 44,
+        "right": 560.234375,
+        "bottom": 62.125
+      },
+      "vw": 1265,
+      "scroll": 1265,
+      "oldNav": false,
+      "hidden": true,
+      "dir": "ltr"
+    },
+    "menu": {
+      "left": 754.1875,
+      "right": 1024.1875,
+      "top": 70.125,
+      "bottom": 308.125,
+      "viewport": 1265,
+      "links": [
+        "/",
+        "/opportunities",
+        "/stores",
+        "/favorites"
+      ],
+      "targets": [
+        44,
+        44,
+        44,
+        44,
+        44
+      ]
+    }
+  },
+  {
+    "lang": "ar",
+    "width": 1280,
+    "role": "guest",
+    "initial": {
+      "header": {
+        "x": 0,
+        "y": 0,
+        "w": 1265,
+        "h": 81.25,
+        "right": 1265,
+        "bottom": 81.25
+      },
+      "trigger": {
+        "x": 230.515625,
+        "y": 18.125,
+        "w": 76.578125,
+        "h": 44,
+        "right": 307.09375,
+        "bottom": 62.125
+      },
+      "search": {
+        "x": 551.515625,
+        "y": 12,
+        "w": 522.34375,
+        "h": 56.25,
+        "right": 1073.859375,
+        "bottom": 68.25
+      },
+      "input": {
+        "x": 688.828125,
+        "y": 18.125,
+        "w": 340.03125,
+        "h": 44,
+        "right": 1028.859375,
+        "bottom": 62.125
+      },
+      "vw": 1265,
+      "scroll": 1265,
+      "oldNav": false,
+      "hidden": true,
+      "dir": "rtl"
+    },
+    "menu": {
+      "left": 230.515625,
+      "right": 500.515625,
+      "top": 70.125,
+      "bottom": 308.125,
+      "viewport": 1265,
+      "links": [
+        "/",
+        "/opportunities",
+        "/stores",
+        "/favorites"
+      ],
+      "targets": [
+        44,
+        44,
+        44,
+        44,
+        44
+      ]
+    }
+  },
+  "guest_navigation_supplier_registration",
+  {
+    "lang": "ar",
+    "width": 390,
+    "role": "buyer",
+    "initial": {
+      "header": {
+        "x": 0,
+        "y": 0,
+        "w": 390,
+        "h": 123,
+        "right": 390,
+        "bottom": 123
+      },
+      "trigger": {
+        "x": 59,
+        "y": 8,
+        "w": 44,
+        "h": 44,
+        "right": 103,
+        "bottom": 52
+      },
+      "search": {
+        "x": 12,
+        "y": 58,
+        "w": 366,
+        "h": 56,
+        "right": 378,
+        "bottom": 114
+      },
+      "input": {
+        "x": 124.0625,
+        "y": 63,
+        "w": 215.9375,
+        "h": 46,
+        "right": 340,
+        "bottom": 109
+      },
+      "vw": 390,
+      "scroll": 390,
+      "oldNav": false,
+      "hidden": true,
+      "dir": "rtl"
+    },
+    "menu": {
+      "left": 12,
+      "right": 378,
+      "top": 58,
+      "bottom": 340,
+      "viewport": 390,
+      "links": [
+        "/",
+        "/opportunities",
+        "/stores",
+        "/favorites"
+      ],
+      "targets": [
+        44,
+        44,
+        44,
+        44,
+        44,
+        44
+      ]
+    }
+  },
+  {
+    "lang": "ar",
+    "width": 320,
+    "role": "buyer",
+    "initial": {
+      "header": {
+        "x": 0,
+        "y": 0,
+        "w": 320,
+        "h": 123,
+        "right": 320,
+        "bottom": 123
+      },
+      "trigger": {
+        "x": 59,
+        "y": 8,
+        "w": 44,
+        "h": 44,
+        "right": 103,
+        "bottom": 52
+      },
+      "search": {
+        "x": 12,
+        "y": 58,
+        "w": 296,
+        "h": 56,
+        "right": 308,
+        "bottom": 114
+      },
+      "input": {
+        "x": 124.0625,
+        "y": 63,
+        "w": 145.9375,
+        "h": 46,
+        "right": 270,
+        "bottom": 109
+      },
+      "vw": 320,
+      "scroll": 320,
+      "oldNav": false,
+      "hidden": true,
+      "dir": "rtl"
+    },
+    "menu": {
+      "left": 12,
+      "right": 308,
+      "top": 58,
+      "bottom": 340,
+      "viewport": 320,
+      "links": [
+        "/",
+        "/opportunities",
+        "/stores",
+        "/favorites"
+      ],
+      "targets": [
+        44,
+        44,
+        44,
+        44,
+        44,
+        44
+      ]
+    }
+  },
+  {
+    "lang": "en",
+    "width": 1280,
+    "role": "buyer",
+    "initial": {
+      "header": {
+        "x": 0,
+        "y": 0,
+        "w": 1265,
+        "h": 81.25,
+        "right": 1265,
+        "bottom": 81.25
+      },
+      "trigger": {
+        "x": 906.25,
+        "y": 18.125,
+        "w": 75.390625,
+        "h": 44,
+        "right": 981.640625,
+        "bottom": 62.125
+      },
+      "search": {
+        "x": 191.140625,
+        "y": 12,
+        "w": 477.71875,
+        "h": 56.25,
+        "right": 668.859375,
+        "bottom": 68.25
+      },
+      "input": {
+        "x": 236.140625,
+        "y": 18.125,
+        "w": 281.546875,
+        "h": 44,
+        "right": 517.6875,
+        "bottom": 62.125
+      },
+      "vw": 1265,
+      "scroll": 1265,
+      "oldNav": false,
+      "hidden": true,
+      "dir": "ltr"
+    },
+    "menu": {
+      "left": 711.640625,
+      "right": 981.640625,
+      "top": 70.125,
+      "bottom": 308.125,
+      "viewport": 1265,
+      "links": [
+        "/",
+        "/opportunities",
+        "/stores",
+        "/favorites"
+      ],
+      "targets": [
+        44,
+        44,
+        44,
+        44,
+        44
+      ]
+    }
+  },
+  {
+    "typeGeometry": "ar",
+    "width": 320,
+    "geometry": {
+      "buttons": [
+        {
+          "x": 211.34375,
+          "w": 92.65625,
+          "h": 64,
+          "right": 304
+        },
+        {
+          "x": 113.671875,
+          "w": 92.671875,
+          "h": 64,
+          "right": 206.34375
+        },
+        {
+          "x": 16.015625,
+          "w": 92.65625,
+          "h": 64,
+          "right": 108.671875
+        },
+        {
+          "x": 211.34375,
+          "w": 92.65625,
+          "h": 64,
+          "right": 304
+        },
+        {
+          "x": 113.671875,
+          "w": 92.671875,
+          "h": 64,
+          "right": 206.34375
+        },
+        {
+          "x": 16.015625,
+          "w": 92.65625,
+          "h": 64,
+          "right": 108.671875
+        }
+      ],
+      "vw": 320,
+      "scroll": 320
+    }
+  },
+  {
+    "typeGeometry": "fr",
+    "width": 390,
+    "geometry": {
+      "buttons": [
+        {
+          "x": 16,
+          "w": 116,
+          "h": 64,
+          "right": 132
+        },
+        {
+          "x": 137,
+          "w": 116,
+          "h": 64,
+          "right": 253
+        },
+        {
+          "x": 258,
+          "w": 116,
+          "h": 64,
+          "right": 374
+        },
+        {
+          "x": 16,
+          "w": 116,
+          "h": 67.78125,
+          "right": 132
+        },
+        {
+          "x": 137,
+          "w": 116,
+          "h": 67.78125,
+          "right": 253
+        },
+        {
+          "x": 258,
+          "w": 116,
+          "h": 67.78125,
+          "right": 374
+        }
+      ],
+      "vw": 390,
+      "scroll": 390
+    }
+  },
+  {
+    "typeGeometry": "en",
+    "width": 1280,
+    "geometry": {
+      "buttons": [
+        {
+          "x": 20,
+          "w": 198.328125,
+          "h": 64,
+          "right": 218.328125
+        },
+        {
+          "x": 225.328125,
+          "w": 198.328125,
+          "h": 64,
+          "right": 423.65625
+        },
+        {
+          "x": 430.65625,
+          "w": 198.328125,
+          "h": 64,
+          "right": 628.984375
+        },
+        {
+          "x": 635.984375,
+          "w": 198.34375,
+          "h": 64,
+          "right": 834.328125
+        },
+        {
+          "x": 841.328125,
+          "w": 198.328125,
+          "h": 64,
+          "right": 1039.65625
+        },
+        {
+          "x": 1046.65625,
+          "w": 198.328125,
+          "h": 64,
+          "right": 1244.984375
+        }
+      ],
+      "vw": 1265,
+      "scroll": 1265
+    }
+  },
+  {
+    "typeGeometry": "ar",
+    "width": 390,
+    "geometry": {
+      "buttons": [
+        {
+          "x": 258,
+          "w": 116,
+          "h": 64,
+          "right": 374
+        },
+        {
+          "x": 137,
+          "w": 116,
+          "h": 64,
+          "right": 253
+        },
+        {
+          "x": 16,
+          "w": 116,
+          "h": 64,
+          "right": 132
+        },
+        {
+          "x": 258,
+          "w": 116,
+          "h": 64,
+          "right": 374
+        },
+        {
+          "x": 137,
+          "w": 116,
+          "h": 64,
+          "right": 253
+        },
+        {
+          "x": 16,
+          "w": 116,
+          "h": 64,
+          "right": 132
+        }
+      ],
+      "vw": 390,
+      "scroll": 390
+    }
+  },
+  "declared_activity_catalog_store_empty_reset_registration",
+  "owner_saved_farmer_and_artisan_public_filters",
+  "owner_activity_saved_and_public_importer_filter",
+  "reset_response_and_images_completed_before_teardown",
+  "mobile_logout_and_search_reset"
+]

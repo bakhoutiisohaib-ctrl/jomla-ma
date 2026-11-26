@@ -1,4 +1,4 @@
-const BUSINESS_TYPES = Object.freeze(['manufacturer', 'importer', 'distributor', 'wholesaler'])
+const BUSINESS_TYPES = Object.freeze(['manufacturer', 'importer', 'distributor', 'wholesaler', 'farmer', 'artisan'])
 const validBusinessTypes = values => Array.isArray(values) && values.length <= BUSINESS_TYPES.length &&
   values.every(value => typeof value === 'string' && BUSINESS_TYPES.includes(value)) &&
   new Set(values).size === values.length

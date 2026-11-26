@@ -100,3 +100,23 @@ test('late owner response cannot populate a replacement session',async()=>{
  expect(screen.getByRole('checkbox',{name:'مصنّع'})).not.toBeChecked();
  act(()=>clearSession());
 });
+
+test('new reference groups reach the catalog and category directory with the declared keys',async()=>{
+ render(<App/>);await loadItem(legacy.name);
+ for(const [label,key] of [['فلاحون ومنتجون','farmer'],['حرفيون وتعاونيات','artisan']]){
+  choose(label);
+  await waitFor(()=>expect(fetch.mock.calls.some(([u])=>String(u).includes('/products/search')&&String(u).includes('businessType='+key))).toBe(true));
+  await waitFor(()=>expect(fetch.mock.calls.some(([u])=>String(u).includes('/products/categories')&&String(u).includes('businessType='+key))).toBe(true));
+  expect(screen.getByRole('button',{name:label})).toHaveAttribute('aria-pressed','true');
+ }
+})
+test('owner reads and saves all six explicitly declared activities',async()=>{
+ const all=['manufacturer','importer','distributor','wholesaler','farmer','artisan'];
+ declaration=all.slice(0,4);setSession('synthetic-six-activities');wrap(<BusinessTypeEditor/>);
+ expect(await screen.findByRole('checkbox',{name:'مصنّع'})).toBeChecked();
+ expect(screen.getAllByRole('checkbox')).toHaveLength(6);
+ fireEvent.click(screen.getByRole('checkbox',{name:'فلاح أو منتج فلاحي'}));
+ fireEvent.click(screen.getByRole('checkbox',{name:'حرفي أو تعاونية'}));
+ choose('حفظ النشاط التجاري');await screen.findByText('تم حفظ النشاط التجاري');expect(declaration).toEqual(all);
+ act(()=>clearSession());
+})

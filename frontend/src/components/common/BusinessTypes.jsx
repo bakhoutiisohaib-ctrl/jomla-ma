@@ -6,7 +6,9 @@ export const BUSINESS_TYPES = [
   ['manufacturer', 'factory', 'المصنعون', 'Fabricants', 'Manufacturers', 'مصنّع', 'Fabricant', 'Manufacturer'],
   ['importer', 'ship', 'المستوردون', 'Importateurs', 'Importers', 'مستورد', 'Importateur', 'Importer'],
   ['distributor', 'truck', 'الموزعون', 'Distributeurs', 'Distributors', 'موزع', 'Distributeur', 'Distributor'],
-  ['wholesaler', 'warehouse', 'تجار الجملة', 'Grossistes', 'Wholesalers', 'تاجر جملة', 'Grossiste', 'Wholesaler']
+  ['wholesaler', 'warehouse', 'تجار الجملة', 'Grossistes', 'Wholesalers', 'تاجر جملة', 'Grossiste', 'Wholesaler'],
+  ['farmer', 'farm', 'فلاحون ومنتجون', 'Agriculteurs et producteurs', 'Farmers & growers', 'فلاح أو منتج فلاحي', 'Agriculteur ou producteur', 'Farmer or grower'],
+  ['artisan', 'pottery', 'حرفيون وتعاونيات', 'Artisans et coopératives', 'Artisans & co-ops', 'حرفي أو تعاونية', 'Artisan ou coopérative', 'Artisan or co-op']
 ];
 export const canonicalTypes = values => BUSINESS_TYPES.map(([key]) => key).filter(key => Array.isArray(values) && values.includes(key));
 export function validTypes(values) {

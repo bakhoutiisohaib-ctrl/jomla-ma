@@ -103,8 +103,8 @@ test('image search applies the declared activity before ranking and pagination',
 })
 test('registration accepts optional declaration for suppliers only, preserves unknown legacy default',async()=>{
  const payload={name:'Synthetic registered',email:'new-types@types.test',password:'SyntheticOnly123!',city:'Fes',phone:'+212611111111',role:'supplier'}
- const r=await request(app).post('/api/suppliers/register').send({...payload,businessTypes:['wholesaler']})
- expect(r.status).toBe(201);expect(r.body.supplier.businessTypes).toEqual(['wholesaler']);expect(r.body.supplier.isVerified).toBe(false)
+ const r=await request(app).post('/api/suppliers/register').send({...payload,businessTypes:['artisan','wholesaler','farmer']})
+ expect(r.status).toBe(201);expect(r.body.supplier.businessTypes).toEqual(['wholesaler','farmer','artisan']);expect(r.body.supplier.isVerified).toBe(false)
  expect((await request(app).post('/api/suppliers/register').send({...payload,email:'bad-buyer@types.test',role:'buyer',businessTypes:['manufacturer']})).status).toBe(400)
  expect((await request(app).post('/api/suppliers/register').send({...payload,email:'invalid-types@types.test',businessTypes:['invalid']})).status).toBe(400)
 })
@@ -121,4 +121,32 @@ test('visual search exact category excludes a partial-name match while contains 
   const partial=await request(app).post('/api/image-search').field('category','Synthetic').attach('image',bytes,{filename:'synthetic.png',contentType:'image/png'})
   expect(partial.status).toBe(200);expect(partial.body.products.map(p=>p._id)).toContain(String(item._id))
  }finally{await Product.updateOne({_id:legacyItem._id},{$set:{category:'Synthetic footwear'}})}
+})
+
+test('new reference groups preserve all six declarations and public search scopes',async()=>{
+ const all=['manufacturer','importer','distributor','wholesaler','farmer','artisan']
+ const r=await change(owner,{businessTypes:[...all].reverse()})
+ expect(r.status).toBe(200);expect(r.body.businessTypes).toEqual(all)
+ expect((await Supplier.findById(owner._id)).isVerified).toBe(false)
+ await indexProduct(item._id);await indexProduct(legacyItem._id)
+ const bytes=await fs.readFile(path.join(process.env.UPLOADS_DIR,path.basename(imageUrl)))
+ for(const type of ['farmer','artisan']){
+  const p=await list({businessType:type})
+  expect(p.status).toBe(200);expect(ids(p)).toEqual([String(item._id)])
+  expect(p.body.data[0].supplierId.businessTypes).toEqual(all)
+  const categories=await request(app).get('/api/products/categories').query({businessType:type})
+  expect(categories.status).toBe(200);expect(categories.body.data).toEqual([{category:'Synthetic footwear',count:1}])
+  const stores=await request(app).get('/api/stores').query({businessType:type})
+  expect(stores.status).toBe(200);expect(ids(stores)).toEqual([String(store._id)])
+  const result=await request(app).post('/api/ai-search').send({query:'Synthetic shoe',businessType:type})
+  expect(result.status).toBe(200);expect(result.body.products.map(p=>p._id)).toEqual([String(item._id)])
+  const visual=await request(app).post('/api/image-search').field('businessType',type).attach('image',bytes,{filename:'synthetic.png',contentType:'image/png'})
+  expect(visual.status).toBe(200);expect(visual.body.products.map(p=>p._id)).toEqual([String(item._id)])
+ }
+ expect((await change(owner,{businessTypes:[...all,'farmer']})).status).toBe(400)
+ expect((await change(buyer,{businessTypes:['artisan']})).status).toBe(403)
+ expect((await change(owner,{businessTypes:['farmer']})).status).toBe(200)
+ expect(ids(await list({businessType:'artisan'}))).toEqual([])
+ expect(ids(await list({}))).toHaveLength(2)
+ expect((await Supplier.collection.findOne({_id:legacy._id})).businessTypes).toBeUndefined()
 })
