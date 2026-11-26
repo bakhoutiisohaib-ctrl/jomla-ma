@@ -19,7 +19,7 @@ export function MarketIcon({ name, ...props }) {
     store: 'M3 10h18L19 3H5zM5 10v11h14V10M9 21v-7h6v7',
     user: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M4 21v-2a8 8 0 0 1 16 0v2',
     heart: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l8.9 8.9 8.8-8.9a5.5 5.5 0 0 0 0-7.8', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
-    package: 'm3 7 9-5 9 5v10l-9 5-9-5zm0 0 9 5 9-5M12 12v10M8 4l9 5v5',
+    factory: 'M3 21V10l6 4V8l6 4V3h4l2 18zM6 18h2m3 0h2m4 0h2', ship: 'M3 14l9-4 9 4-3 6H6zM8 11V6h8v5M12 6V3M2 22h20', truck: 'M3 5h12v12H3zM15 9h4l3 4v4h-7M7 20a2 2 0 1 1 0-4 2 2 0 0 1 0 4M18 20a2 2 0 1 1 0-4 2 2 0 0 1 0 4', warehouse: 'M3 9l9-6 9 6v12H3zM7 21V11h10v10M7 15h10M7 18h10', package: 'm3 7 9-5 9 5v10l-9 5-9-5zm0 0 9 5 9-5M12 12v10M8 4l9 5v5',
     message: 'M4 3h16v14H9l-5 4zM8 7h8M8 11h6',
     menu: 'M4 6h16M4 12h16M4 18h16', logout: 'M10 4H4v16h6M10 12h11m-4-4 4 4-4 4', arrow: 'M5 12h14m-6-6 6 6-6 6', filter: 'M4 6h16M7 12h10M10 18h4' };
   return <svg {...props} className="atlas-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d={paths[name] || paths.grid} /></svg>;

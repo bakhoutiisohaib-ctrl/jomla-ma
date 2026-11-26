@@ -3,6 +3,7 @@ import { apiRequest } from '../../api/config';
 import { useLabels, statusLabel } from '../../i18n/useLabels';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { Field, Notice } from '../common/WorkspaceUI';
+import BusinessTypeEditor from './BusinessTypeEditor';
 export default function OrganizationPanel({
   profile,
   onChanged
@@ -73,7 +74,7 @@ export default function OrganizationPanel({
           })} />)}</div><button className="primary" disabled={busy} style={{
           marginTop: 12
         }}>{l('حفظ الشركة', 'Enregistrer l’entreprise')}</button>
-      </form><hr /><h3>{l('دعوة موظف', 'Inviter un collaborateur')}</h3><form onSubmit={e => {
+      </form><BusinessTypeEditor onChanged={onChanged}/><hr /><h3>{l('دعوة موظف', 'Inviter un collaborateur')}</h3><form onSubmit={e => {
         e.preventDefault();
         action(async () => {
           const data = await apiRequest('/suppliers/me/staff-invitations', {

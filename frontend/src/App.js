@@ -27,6 +27,7 @@ import './styles/atlas-public.css';
 import './styles/private-pilot.css';
 import { HomeIntroduction, HomeCategories } from './components/common/HomeIntroduction';
 import './styles/atlas-home.css';
+import { BusinessTypeFilter, DeclaredBusinessTypes } from './components/common/BusinessTypes';
 function AppContent() {
   const {
       t,
@@ -48,6 +49,7 @@ function AppContent() {
     minPrice: '',
     maxPrice: '',
     supplier: '',
+    businessType: '',
     order: ''
   });
   const [number, setNumber] = useState(1),
@@ -58,6 +60,8 @@ function AppContent() {
   const [priceContext, setPriceContext] = useState({});
   const [products, setProducts] = useState([]),
     [stores, setStores] = useState([]),
+    [storeLoading, setStoreLoading] = useState(false),
+    [storeError, setStoreError] = useState(''),
     [loading, setLoading] = useState(false);
   const [error, setError] = useState(''),
     [image, setImage] = useState(null),
@@ -130,7 +134,7 @@ function AppContent() {
       });
       if (signal?.aborted) return;
       if (image) setVisual(data.detectedProduct || (labelFor(lang, "بحث بالصورة", "Recherche visuelle")));
-      if (data.externalDiscovery?.enabled) setExternal(data.externalDiscovery);
+      if (!filters.businessType && data.externalDiscovery?.enabled) setExternal(data.externalDiscovery);
       const latestProducts = data.data || data.products || [];
       // Associate price labels with the successful response, not the next
       // filter value while its request is still pending.
@@ -147,7 +151,7 @@ function AppContent() {
         total: data.total || 0
       });
     } catch (e) {
-      if (e.name !== 'AbortError') {
+      if (!signal?.aborted && e.name !== 'AbortError') {
         setError(e.message);
         setProducts([]);
       }
@@ -164,13 +168,22 @@ function AppContent() {
   useEffect(() => {
     if (page !== 'stores') return;
     const c = new AbortController();
-    apiRequest('/stores?limit=100', {
-      signal: c.signal
-    }).then(d => setStores(d.data || [])).catch(e => {
-      if (e.name !== 'AbortError') setError(e.message);
-    });
+    setStoreLoading(true); setStoreError(''); setStores([]);
+    const params = new URLSearchParams({ limit: '100' });
+    if (filters.businessType) params.set('businessType', filters.businessType);
+    apiRequest('/stores?' + params.toString(), { signal: c.signal }).then(d => {
+      if (!c.signal.aborted) setStores(d.data || []);
+    }).catch(e => {
+      if (!c.signal.aborted && e.name !== 'AbortError') setStoreError(e.message);
+    }).finally(() => { if (!c.signal.aborted) setStoreLoading(false); });
     return () => c.abort();
-  }, [page]);
+  }, [page, filters.businessType, refresh]);
+  function selectBusinessType(businessType) {
+    if (businessType === filters.businessType) return;
+    setProducts([]); setStores([]); setExternal(null); setVisual(null); setError(''); setStoreError('');
+    setLoading(page === 'home'); setStoreLoading(page === 'stores');
+    setFilters(current => ({ ...current, businessType })); setNumber(1);
+  }
   async function logout() {
     const token = getSessionToken();
     clearSession(token);
@@ -245,8 +258,12 @@ function AppContent() {
     {page === 'home' && !term && !image && !Object.values(filters).some(Boolean) && number === 1 && <HomeIntroduction user={user}
       onSupplier={() => user ? dashboard() : registerAs('supplier')}
       onSourcing={() => user ? setSourcing(true) : requireLogin()} />}
-    <main className="container" id="market-main" tabIndex="-1"><Notice error>{error}</Notice>
-      {page === 'stores' ? <section className="panel"><h2>{l('المتاجر المعتمدة', 'Boutiques approuvées')}</h2><div className="product-grid">{stores.map(s => <article className="panel" key={s._id}><h3>{s.name}</h3><p>{s.city}</p><p>{s.description}</p><Link to={storePath(s._id)}>{l('فتح المتجر', 'Voir la boutique')}</Link></article>)}</div>{!stores.length && <p>{l('لا توجد متاجر معتمدة بعد', 'Aucune boutique approuvée pour le moment')}</p>}</section> : <>
+    <main className="container" id="market-main" tabIndex="-1"><Notice error>{page === 'stores' ? storeError : error}</Notice>
+      <BusinessTypeFilter selected={filters.businessType} onSelect={selectBusinessType} />
+      {page === 'stores' ? <section className="panel"><h2>{l('المتاجر المعتمدة', 'Boutiques approuvées')}</h2>
+      {storeLoading ? <p role="status">{l('جاري تحميل المتاجر…', 'Chargement des boutiques…', 'Loading stores…')}</p> : storeError ? <button onClick={() => setRefresh(n => n + 1)}>{l('إعادة المحاولة', 'Réessayer', 'Retry')}</button> :
+      <><div className="product-grid">{stores.map(s => <article className="panel" key={s._id}><h3>{s.name}</h3><p>{s.city}</p><p>{s.description}</p><DeclaredBusinessTypes values={s.supplierId?.businessTypes}/><Link to={storePath(s._id)}>{l('فتح المتجر', 'Voir la boutique')}</Link></article>)}</div>
+      {!stores.length && <p>{filters.businessType ? l('لا توجد متاجر مطابقة لهذا النشاط حالياً.', 'Aucune boutique pour cette activité actuellement.', 'No stores for this activity currently.') : l('لا توجد متاجر معتمدة بعد', 'Aucune boutique approuvée pour le moment')}</p>}</>}</section> : <>
       <HomeCategories products={products} selected={filters.category} loading={loading}
         onSelect={category => { setFilters(current => ({ ...current, category })); setNumber(1); }} />
       <section className="panel atlas-filters" aria-label={l('فلاتر البحث', 'Filtres de recherche')}><div className="atlas-section-heading"><h2>{l('اكتشف ما يناسب تجارتك', 'Trouvez ce qui vous convient')}</h2></div><details className="atlas-filter-disclosure"><summary><MarketIcon name="filter" />{l('تصفية النتائج', 'Filtrer les résultats')}<span>{Object.values(filters).filter(value => value !== '').length || ''}</span></summary><div className="filters">
@@ -265,7 +282,7 @@ function AppContent() {
                 setNumber(1);
               }}><option value="">{l('الأقرب للبحث', 'Pertinence')}</option><option value="price_asc">{l('السعر تصاعدياً', 'Prix croissant')}</option><option value="price_desc">{l('السعر تنازلياً', 'Prix décroissant')}</option></select></Field>
       </div></details></section>
-      <div className="atlas-catalog-tools">{(term || image || Object.values(filters).some(Boolean)) && <button className="atlas-clear-filters" onClick={() => { setQuery(''); setTerm(''); setImage(null); setFilters(current => Object.fromEntries(Object.keys(current).map(key => [key, '']))); setNumber(1); }}>{l('إعادة ضبط البحث', 'Réinitialiser la recherche')}</button>}</div>
+      <div className="atlas-catalog-tools">{(term || image || Object.values(filters).some(Boolean)) && <button className="atlas-clear-filters" onClick={() => { setProducts([]); setExternal(null); setLoading(true); setQuery(''); setTerm(''); setImage(null); setFilters(current => Object.fromEntries(Object.keys(current).map(key => [key, '']))); setNumber(1); }}>{l('إعادة ضبط البحث', 'Réinitialiser la recherche')}</button>}</div>
       {visual && <Notice>{l('الصورة نفسها تعني تطابق الملف فقط. النتائج المشابهة تحتاج مراجعة هوية المنتج ومواصفاته.', 'Même image signifie uniquement le même fichier. Vérifiez l’identité et les caractéristiques des résultats similaires.')}</Notice>}
       {loading ? <p role="status">{l('جاري تحميل النتائج…', 'Chargement…')}</p> : <><p className="muted">{pagination.total} {l('نتيجة', 'résultat(s)')}</p><div className="product-grid">{products.map(p => <ProductCard key={p._id} product={p} priceContext={priceContext} user={user} onRfqCreated={() => setPage('buyer')} onRequireLogin={requireLogin} onCompare={toggleCompare} compared={compare.some(c => c._id === p._id)} />)}</div></>}
       {!loading && !products.length && !error && <section className="panel empty"><h2>{t('product_not_found')}</h2><p>{t('product_not_found_desc')}</p><button className="primary" onClick={() => user ? setSourcing(true) : requireLogin()}>{t('submit_sourcing_btn')}</button></section>}

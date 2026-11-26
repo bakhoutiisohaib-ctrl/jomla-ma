@@ -6,10 +6,12 @@ import { Field, Notice } from '../common/WorkspaceUI';
 import { MarketIcon } from '../common/MarketLayout';
 import { BuyerContactForm } from './BuyerContactGate';
 import AuthScene from './AuthScene';
+import { BusinessTypeChoices } from '../common/BusinessTypes';
 export default function RegisterPage({ onBack, onRegister, onGoLogin, initialRole = 'buyer' }) {
   const l = useLabels();
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', phone: '', city: '', organization: '', gender: 'undisclosed', role: ['buyer', 'supplier', 'staff'].includes(initialRole) ? initialRole : 'buyer' });
   const [error, setError] = useState(''), [busy, setBusy] = useState(false), [created, setCreated] = useState(null), [details, setDetails] = useState(false);
+  const [businessTypes, setBusinessTypes] = useState([]);
   const buyer = form.role === 'buyer';
   function proceed(account) { if (onRegister) onRegister(account, { browse: account.role === 'buyer' }); else onBack(); }
   async function submit(e) {
@@ -17,7 +19,7 @@ export default function RegisterPage({ onBack, onRegister, onGoLogin, initialRol
     if (form.password !== form.confirmPassword) { setError(l('كلمتا المرور غير متطابقتين', 'Les mots de passe ne correspondent pas', 'Passwords do not match')); return; }
     setBusy(true);
     try {
-      const body = buyer ? { role: 'buyer', email: form.email, password: form.password, confirmPassword: form.confirmPassword, gender: form.gender } : form;
+      const body = buyer ? { role: 'buyer', email: form.email, password: form.password, confirmPassword: form.confirmPassword, gender: form.gender } : form.role === 'supplier' ? { ...form, businessTypes } : form;
       const data = await apiRequest('/suppliers/register', { method: 'POST', body, token: '' });
       setSession(data.token); setForm(previous => ({ ...previous, password: '', confirmPassword: '' }));
       const account = { ...data.supplier, _id: data.supplier._id || data.supplier.id };
@@ -40,7 +42,7 @@ export default function RegisterPage({ onBack, onRegister, onGoLogin, initialRol
       <Field label={l('نوع الحساب', 'Type de compte', 'Account type')}><select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}><option value="buyer">{l('مشتري', 'Acheteur', 'Buyer')}</option><option value="supplier">{l('مورد', 'Fournisseur', 'Supplier')}</option><option value="staff">{l('موظف مورد (يتطلب دعوة)', 'Collaborateur (invitation requise)', 'Staff (invitation required)')}</option></select></Field>
       {fields.map(([key, label, type, autoComplete]) => <Field key={key} label={label} name={key} type={type} dir={['email', 'password', 'tel'].includes(type) ? 'ltr' : undefined} autoCapitalize="none" required={key !== 'organization'} minLength={type === 'password' ? 8 : undefined} autoComplete={autoComplete} value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} />)}
       {buyer && <Field label={l('الجنس (اختياري)', 'Genre (facultatif)', 'Gender (optional)')}><select value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })}><option value="undisclosed">{l('أفضل عدم الإفصاح', 'Je préfère ne pas préciser', 'Prefer not to say')}</option><option value="female">{l('أنثى', 'Femme', 'Female')}</option><option value="male">{l('ذكر', 'Homme', 'Male')}</option></select></Field>}
-    </div><Notice error>{error}</Notice><button className="primary auth-submit" disabled={busy}>{busy ? l('جاري إنشاء الحساب…', 'Création du compte…', 'Creating account…') : l('إنشاء الحساب', 'Créer mon compte', 'Create account')}<MarketIcon name="arrow" /></button></form>
+    </div>{form.role === 'supplier' && <BusinessTypeChoices values={businessTypes} onChange={setBusinessTypes} disabled={busy}/>}<Notice error>{error}</Notice><button className="primary auth-submit" disabled={busy}>{busy ? l('جاري إنشاء الحساب…', 'Création du compte…', 'Creating account…') : l('إنشاء الحساب', 'Créer mon compte', 'Create account')}<MarketIcon name="arrow" /></button></form>
     {onGoLogin && <div className="auth-create"><span>{l('عندك حساب؟', 'Déjà inscrit ?', 'Already have an account?')}</span><button type="button" onClick={onGoLogin}>{l('دخول الحساب', 'Se connecter', 'Sign in')}</button></div>}
   </AuthScene>;
 }
