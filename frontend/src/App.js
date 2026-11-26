@@ -21,6 +21,8 @@ import { getSessionToken, useSessionToken } from './api/session';
 import MarketLayout, { MarketIcon } from './components/common/MarketLayout';
 import { QuoteCartProvider } from './components/cart/QuoteCartContext';
 import QuoteCartPage from './components/cart/QuoteCartPage';
+import { FavoritesProvider } from './components/favorites/FavoritesContext';
+import FavoritesPage from './components/favorites/FavoritesPage';
 import './styles/atlas-public.css';
 import './styles/private-pilot.css';
 import { HomeIntroduction, HomeCategories } from './components/common/HomeIntroduction';
@@ -220,11 +222,11 @@ function AppContent() {
     <input type="file" aria-label={l('صورة البحث', 'Image de recherche')} accept="image/jpeg,image/png,image/webp" onChange={event => {
       const file = event.target.files?.[0]; if (file) { setImage(file); setNumber(1); setPage('home'); } event.target.value = '';
     }} /></label>;
-  const publicPage = content => <MarketLayout page={page} user={user} query={query} onQueryChange={setQuery} onSearch={searchMarket} loading={loading}
+  const publicPage = content => <FavoritesProvider token={sessionToken} user={user}><MarketLayout page={page} user={user} query={query} onQueryChange={setQuery} onSearch={searchMarket} loading={loading}
     onAccount={dashboard} onLogout={logout} onLogin={() => requireLogin(route.href)} onRegister={() => registerAs('supplier')}
     onSourcing={() => { setPage('home'); user ? setSourcing(true) : requireLogin(); }} imageControl={imageControl}>
     {content}
-  </MarketLayout>;
+  </MarketLayout></FavoritesProvider>;
   if (page === 'login') return <LoginPage onLogin={authenticated} onBack={back} onForgotPassword={() => navigate('/forgot-password')} onCreateAccount={() => registerAs('buyer')} onBecomeSupplier={() => registerAs('supplier')} />;
   if (page === 'forgotPassword' || page === 'resetPassword') return <RecoveryPage key={page} reset={page === 'resetPassword'} onBack={back} onLogin={() => navigate('/login')} onRequest={() => navigate('/forgot-password')} />;
   if (page === 'register') return <RegisterPage key={route.search} initialRole={new URLSearchParams(route.search).get('role') || 'buyer'} onRegister={authenticated} onBack={back} onGoLogin={() => navigate('/login' + route.search)} />;
@@ -233,6 +235,7 @@ function AppContent() {
   if (page === 'supplier' && user && ['supplier', 'staff'].includes(user.role)) return <SupplierDashboard key={sessionToken} supplier={user} onBack={back} onLogout={logout} onGoAdmin={() => setPage('admin')} />;
   if (page === 'buyer' && user?.role === 'buyer') return <BuyerDashboard key={sessionToken} user={user} onBack={back} onLogout={logout} />;
   if (page === 'product') return publicPage(<ProductPage key={route.id} id={route.id} search={route.search} user={user} sessionLoading={sessionLoading} onBack={back} onRequireLogin={requireLogin} onRfqCreated={() => navigate('/buyer')} />);
+  if (page === 'favorites') return publicPage(<FavoritesPage key={sessionToken || 'guest'} user={user} token={sessionToken} onRequireLogin={requireLogin} onRfqCreated={() => navigate('/buyer')} />);
   if (page === 'cart') return publicPage(<QuoteCartPage key={sessionToken || 'guest'} user={user} sessionLoading={sessionLoading} onRequireLogin={requireLogin} />);
   if (['opportunities','opportunity'].includes(page)) return publicPage(<WholesalePage key={route.id || 'list'} id={route.id} search={route.search} user={user} sessionLoading={sessionLoading} onRequireLogin={requireLogin} onRfqCreated={() => navigate('/buyer')} />);
   if (page === 'store') return publicPage(<StorePage key={route.id} id={route.id} search={route.search} user={user} onBack={back} onRequireLogin={requireLogin} onRfqCreated={() => navigate('/buyer')} />);

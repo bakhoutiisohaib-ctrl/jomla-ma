@@ -6,6 +6,7 @@ import ProductPreview from './ProductPreview';
 import { MarketIcon } from '../common/MarketLayout';
 import AddToQuoteCart from '../cart/AddToQuoteCart';
 import SupplierRating from './SupplierRating';
+import FavoriteButton from '../favorites/FavoriteButton';
 import { cardPrice } from './cardPrice';
 import '../../styles/atlas-cards.css';
 import { Link, productPath, storePath, supplierPath } from '../../navigation';
@@ -44,6 +45,7 @@ export default function ProductCard({
     <div className="atlas-card-media">
       <Link to={productPath(product._id)} aria-label={l('صورة المنتج: ', 'Image du produit : ', 'Product image: ') + product.name}><ProtectedImage value={product.imageUrl} alt={product.name} loading="lazy" /></Link>
       <button type="button" className="atlas-quick-view" aria-label={l('معاينة سريعة: ', 'Aperçu rapide : ') + product.name} onClick={() => setShowPreview(true)}><MarketIcon name="eye" /><span>{l('معاينة', 'Aperçu')}</span></button>
+      <FavoriteButton product={product} />
       <div className="atlas-card-image-badges">
         <SupplierRating supplierId={supplierId} compact />
         {supplier?.isVerified && supplier.verificationStatus === 'verified' && <span className="atlas-supplier-verified atlas-card-trust" aria-label={l('راجعته المنصة', 'Vérifié par la plateforme')} title={l('راجعته المنصة', 'Vérifié par la plateforme')}><span aria-hidden="true">✓</span> {l('مورد موثق', 'Vérifié', 'Verified')}</span>}

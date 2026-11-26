@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 const EVENT = 'jomla:navigate';
 const pages = { '/': 'home', '/stores': 'stores', '/login': 'login', '/register': 'register',
   '/forgot-password': 'forgotPassword', '/reset-password': 'resetPassword',
-  '/opportunities': 'opportunities', '/cart': 'cart',
+  '/opportunities': 'opportunities', '/cart': 'cart', '/favorites': 'favorites',
   '/buyer': 'buyer', '/supplier': 'supplier', '/admin': 'admin' };
 export const productPath = id => '/products/' + encodeURIComponent(id);
 export const storePath = id => '/stores/' + encodeURIComponent(id);
@@ -49,6 +49,7 @@ export function safeReturnTo(search, role) {
   if (route.page === 'product') return productPath(route.id) + (url.searchParams.get('rfq') === '1' ? '?rfq=1' : '');
   if (route.page === 'opportunity') return opportunityPath(route.id) + (url.searchParams.get('rfq') === '1' ? '?rfq=1' : '');
   if (['home', 'stores', 'store', 'supplierPublic', 'opportunities', 'cart'].includes(route.page)) return route.path + url.search;
+  if (route.page === 'favorites' && role === 'buyer') return '/favorites';
   if (route.path === dashboardPath(role)) return route.path;
   return '';
 }

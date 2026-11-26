@@ -1,0 +1,19 @@
+/* Gate 1C-2 — real favorite action, preserving preview and commercial controls. */
+.atlas-public .atlas-compact-card .atlas-favorite-heart {
+  position:absolute; top:5px; left:5px; right:auto; z-index:2;
+  display:grid; place-items:center; width:44px; height:44px; min-width:44px; min-height:44px;
+  padding:0; margin:0; border-radius:50%; background:#fff; color:#355640;
+  border:1px solid #dce3d3;
+}
+.atlas-favorite-heart .atlas-icon { width:18px; height:18px; }
+.atlas-favorite-heart[aria-pressed=true] .atlas-icon { fill:#355640; }
+.atlas-public .atlas-compact-card:has(.atlas-favorite-heart) .atlas-quick-view { left:auto; right:5px; }
+.atlas-favorite-heart:focus-visible { outline:3px solid #8c6e2c; outline-offset:1px; }
+.atlas-favorite-notice { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.atlas-favorites-page h1 { color:#355640; }
+.atlas-favorites-page .product-grid { margin-top:16px; }
+.atlas-favorite-unavailable { overflow-wrap:anywhere; }
+@media(max-width:600px) {
+  .atlas-public .atlas-mobile-nav { grid-template-columns:repeat(5,minmax(0,1fr)); }
+  .atlas-public .atlas-mobile-nav a, .atlas-public .atlas-mobile-nav button { font-size:11px; }
+}
