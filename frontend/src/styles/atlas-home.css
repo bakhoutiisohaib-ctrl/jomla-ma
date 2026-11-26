@@ -87,3 +87,10 @@
  .atlas-public[data-page=home] .atlas-filters { padding-block: 7px; }
  .atlas-public[data-page=home] .atlas-filters + .atlas-catalog-tools + .muted { margin-block: 7px 9px; }
 }
+
+/* Gate 1D-4B: independent directory, keep the established compact rail. */
+.atlas-home-category-list button { min-height: 44px; }
+.atlas-category-count { font-size: 11px; color: #58664f; line-height: 1.2; }
+.atlas-category-feedback { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12px; color: #58664f; margin: 3px 0; overflow-wrap: anywhere; }
+.atlas-category-pager { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; font-size: 12px; }
+.atlas-public .atlas-category-pager button, .atlas-public .atlas-category-feedback button { min-height: 44px; font-size: 12px; padding: 6px 10px; }

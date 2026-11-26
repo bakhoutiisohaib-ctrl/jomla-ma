@@ -45,6 +45,7 @@ function AppContent() {
   const [filters, setFilters] = useState({
     city: '',
     category: '',
+    categoryMode: '',
     quantity: '',
     minPrice: '',
     maxPrice: '',
@@ -57,6 +58,7 @@ function AppContent() {
       pages: 1,
       total: 0
     });
+  const [categoryRevision, setCategoryRevision] = useState(0);
   const [priceContext, setPriceContext] = useState({});
   const [products, setProducts] = useState([]),
     [stores, setStores] = useState([]),
@@ -134,7 +136,7 @@ function AppContent() {
       });
       if (signal?.aborted) return;
       if (image) setVisual(data.detectedProduct || (labelFor(lang, "بحث بالصورة", "Recherche visuelle")));
-      if (!filters.businessType && data.externalDiscovery?.enabled) setExternal(data.externalDiscovery);
+      if (!filters.businessType && filters.categoryMode !== 'exact' && data.externalDiscovery?.enabled) setExternal(data.externalDiscovery);
       const latestProducts = data.data || data.products || [];
       // Associate price labels with the successful response, not the next
       // filter value while its request is still pending.
@@ -264,13 +266,19 @@ function AppContent() {
       {storeLoading ? <p role="status">{l('جاري تحميل المتاجر…', 'Chargement des boutiques…', 'Loading stores…')}</p> : storeError ? <button onClick={() => setRefresh(n => n + 1)}>{l('إعادة المحاولة', 'Réessayer', 'Retry')}</button> :
       <><div className="product-grid">{stores.map(s => <article className="panel" key={s._id}><h3>{s.name}</h3><p>{s.city}</p><p>{s.description}</p><DeclaredBusinessTypes values={s.supplierId?.businessTypes}/><Link to={storePath(s._id)}>{l('فتح المتجر', 'Voir la boutique')}</Link></article>)}</div>
       {!stores.length && <p>{filters.businessType ? l('لا توجد متاجر مطابقة لهذا النشاط حالياً.', 'Aucune boutique pour cette activité actuellement.', 'No stores for this activity currently.') : l('لا توجد متاجر معتمدة بعد', 'Aucune boutique approuvée pour le moment')}</p>}</>}</section> : <>
-      <HomeCategories products={products} selected={filters.category} loading={loading}
-        onSelect={category => { setFilters(current => ({ ...current, category })); setNumber(1); }} />
-      <section className="panel atlas-filters" aria-label={l('فلاتر البحث', 'Filtres de recherche')}><div className="atlas-section-heading"><h2>{l('اكتشف ما يناسب تجارتك', 'Trouvez ce qui vous convient')}</h2></div><details className="atlas-filter-disclosure"><summary><MarketIcon name="filter" />{l('تصفية النتائج', 'Filtrer les résultats')}<span>{Object.values(filters).filter(value => value !== '').length || ''}</span></summary><div className="filters">
+      <HomeCategories key={(filters.businessType || 'all') + ':' + categoryRevision} businessType={filters.businessType} selected={filters.category} exact={filters.categoryMode === 'exact'}
+        onSelect={category => {
+          const categoryMode = category ? 'exact' : '';
+          if (category === filters.category && categoryMode === filters.categoryMode) return;
+          setProducts([]); setExternal(null); setLoading(true);
+          setFilters(current => ({ ...current, category, categoryMode })); setNumber(1);
+        }} />
+      <section className="panel atlas-filters" aria-label={l('فلاتر البحث', 'Filtres de recherche')}><div className="atlas-section-heading"><h2>{l('اكتشف ما يناسب تجارتك', 'Trouvez ce qui vous convient')}</h2></div><details className="atlas-filter-disclosure"><summary><MarketIcon name="filter" />{l('تصفية النتائج', 'Filtrer les résultats')}<span>{Object.entries(filters).filter(([key, value]) => key !== 'categoryMode' && value !== '').length || ''}</span></summary><div className="filters">
         {[['city', l('المدينة', 'Ville'), 'text'], ['category', l('الفئة', 'Catégorie'), 'text'], ['quantity', l('الكمية المطلوبة', 'Quantité souhaitée'), 'number'], ['minPrice', l('أقل سعر', 'Prix minimum'), 'number'], ['maxPrice', l('أعلى سعر', 'Prix maximum'), 'number'], ['supplier', l('اسم المورد', 'Nom du fournisseur'), 'text']].map(([key, label, type]) => <Field key={key} label={label} type={type} min={type === 'number' ? 0 : undefined} value={filters[key]} onChange={e => {
               setFilters({
                 ...filters,
-                [key]: e.target.value
+                [key]: e.target.value,
+                ...(key === 'category' ? { categoryMode: '' } : {})
               });
               setNumber(1);
             }} />)}
@@ -282,7 +290,7 @@ function AppContent() {
                 setNumber(1);
               }}><option value="">{l('الأقرب للبحث', 'Pertinence')}</option><option value="price_asc">{l('السعر تصاعدياً', 'Prix croissant')}</option><option value="price_desc">{l('السعر تنازلياً', 'Prix décroissant')}</option></select></Field>
       </div></details></section>
-      <div className="atlas-catalog-tools">{(term || image || Object.values(filters).some(Boolean)) && <button className="atlas-clear-filters" onClick={() => { setProducts([]); setExternal(null); setLoading(true); setQuery(''); setTerm(''); setImage(null); setFilters(current => Object.fromEntries(Object.keys(current).map(key => [key, '']))); setNumber(1); }}>{l('إعادة ضبط البحث', 'Réinitialiser la recherche')}</button>}</div>
+      <div className="atlas-catalog-tools">{(term || image || Object.values(filters).some(Boolean)) && <button className="atlas-clear-filters" onClick={() => { setProducts([]); setExternal(null); setLoading(true); setQuery(''); setTerm(''); setImage(null); setFilters(current => Object.fromEntries(Object.keys(current).map(key => [key, '']))); setNumber(1); setCategoryRevision(n => n + 1); }}>{l('إعادة ضبط البحث', 'Réinitialiser la recherche')}</button>}</div>
       {visual && <Notice>{l('الصورة نفسها تعني تطابق الملف فقط. النتائج المشابهة تحتاج مراجعة هوية المنتج ومواصفاته.', 'Même image signifie uniquement le même fichier. Vérifiez l’identité et les caractéristiques des résultats similaires.')}</Notice>}
       {loading ? <p role="status">{l('جاري تحميل النتائج…', 'Chargement…')}</p> : <><p className="muted">{pagination.total} {l('نتيجة', 'résultat(s)')}</p><div className="product-grid">{products.map(p => <ProductCard key={p._id} product={p} priceContext={priceContext} user={user} onRfqCreated={() => setPage('buyer')} onRequireLogin={requireLogin} onCompare={toggleCompare} compared={compare.some(c => c._id === p._id)} />)}</div></>}
       {!loading && !products.length && !error && <section className="panel empty"><h2>{t('product_not_found')}</h2><p>{t('product_not_found_desc')}</p><button className="primary" onClick={() => user ? setSourcing(true) : requireLogin()}>{t('submit_sourcing_btn')}</button></section>}
