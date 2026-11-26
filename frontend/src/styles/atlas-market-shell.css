@@ -1,0 +1,30 @@
+/* V4.9 Gate 1D-1: compact shared market shell, no duplicate nav strip. */
+.atlas-public .atlas-header-inner { gap: 14px; padding-block: 12px; min-height: 72px; }
+.atlas-public .atlas-account { gap: 3px; }
+.atlas-more { position: relative; flex: none; }
+.atlas-public .atlas-more-trigger { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; min-width: 44px; padding: 6px 8px; background: white; color: #355640; font-size: 13px; border: 1px solid #dce3d3; border-radius: 9px; }
+.atlas-public .atlas-more-trigger[aria-expanded=true] { background: #edf2e5; }
+.atlas-more-links { position: absolute; inset-inline-end: 0; top: calc(100% + 8px); z-index: 65; width: min(270px, calc(100vw - 24px)); padding: 8px; border: 1px solid #dce3d3; border-radius: 12px; background: #fff; box-shadow: 0 12px 30px #18342d20; white-space: normal; }
+.atlas-more-links[hidden] { display: none !important; }
+.atlas-public .atlas-more-links a, .atlas-public .atlas-more-links button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 9px 12px; text-align: start; text-decoration: none; background: transparent; border: 0; border-radius: 7px; font-size: 14px; color: #294b37; font-weight: 600; }
+.atlas-more-links .atlas-icon { flex: none; width: 20px; height: 20px; }
+.atlas-public .atlas-more-links [aria-current=page] { background: #edf2e5; }
+.atlas-public .atlas-more-links :is(a,button):hover { background: #f2f5ed; }
+.atlas-public .atlas-more :focus-visible { outline: 3px solid #8c6e2c; outline-offset: 1px; }
+.atlas-public .atlas-more-links .atlas-more-register { display: none; }
+@media(max-width:1100px) {
+ .atlas-public .atlas-header-inner { gap: 8px; }
+}
+@media(max-width:700px) {
+ .atlas-public .atlas-header-inner { padding: 9px 12px; min-height: 0; column-gap: 6px; }
+ .atlas-public .atlas-account { gap: 2px; flex-wrap: wrap; }
+ .atlas-public .atlas-account-action { min-width: 44px; min-height: 44px; padding: 0; justify-content: center; }
+ .atlas-public .atlas-account-action .atlas-icon { display: block; }
+ .atlas-public .atlas-account-action > span, .atlas-more-trigger > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+ .atlas-public .atlas-more-trigger { padding: 0; }
+ .atlas-more-links { position: fixed; top: 64px; inset-inline: 12px; margin-inline: auto; width: auto; max-width: 380px; max-height: calc(100dvh - 152px); overflow: auto; }
+ .atlas-public .atlas-more-links .atlas-more-register { display: flex; }
+ .atlas-public .atlas-search { border-radius: 12px; }
+ .atlas-public .atlas-image-search { width: 44px; height: 44px; }
+ .atlas-public .atlas-search>button { min-height: 44px; }
+}

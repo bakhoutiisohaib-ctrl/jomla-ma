@@ -1,5 +1,5 @@
 import LanguageSwitch from '../../i18n/LanguageSwitch';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, navigate } from '../../navigation';
 import { apiRequest } from '../../api/config';
 import { getSessionToken, useSessionToken } from '../../api/session';
@@ -9,6 +9,7 @@ import { useFavorites } from '../favorites/FavoritesContext';
 import '../../styles/atlas-favorites.css';
 import '../../styles/atlas-cart.css';
 import '../../styles/atlas-mobile-nav.css';
+import '../../styles/atlas-market-shell.css';
 
 export function MarketIcon({ name, ...props }) {
   const paths = { search: 'M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',
@@ -20,7 +21,7 @@ export function MarketIcon({ name, ...props }) {
     heart: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l8.9 8.9 8.8-8.9a5.5 5.5 0 0 0 0-7.8', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
     package: 'm3 7 9-5 9 5v10l-9 5-9-5zm0 0 9 5 9-5M12 12v10M8 4l9 5v5',
     message: 'M4 3h16v14H9l-5 4zM8 7h8M8 11h6',
-    arrow: 'M5 12h14m-6-6 6 6-6 6', filter: 'M4 6h16M7 12h10M10 18h4' };
+    menu: 'M4 6h16M4 12h16M4 18h16', logout: 'M10 4H4v16h6M10 12h11m-4-4 4 4-4 4', arrow: 'M5 12h14m-6-6 6 6-6 6', filter: 'M4 6h16M7 12h10M10 18h4' };
   return <svg {...props} className="atlas-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d={paths[name] || paths.grid} /></svg>;
 }
 
@@ -68,6 +69,26 @@ export function NotificationBell({ user, onAccount }) {
 export default function MarketLayout({ children, page, user, query = '', onQueryChange, onSearch, loading,
   onAccount, onLogout, onLogin, onRegister, onSourcing, imageControl }) {
   const l = useLabels(), cart = useQuoteCart(), favorites = useFavorites();
+  const more = useRef(null), moreTrigger = useRef(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMore = (restore = false) => {
+    setMenuOpen(false);
+    if (restore) moreTrigger.current?.focus();
+  };
+  // Profile hydration is not a navigation or session change. Keep the menu
+  // open while account details arrive, but close it on a real session change.
+  const sessionToken = useSessionToken();
+  useEffect(() => { setMenuOpen(false); }, [page, sessionToken]);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const outside = event => { if (!more.current?.contains(event.target)) setMenuOpen(false); };
+    const escape = event => {
+      if (event.key === 'Escape') { event.preventDefault(); setMenuOpen(false); moreTrigger.current?.focus(); }
+    };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
+  }, [menuOpen]);
   return <div className="atlas-public" data-page={page}>
     <a className="atlas-skip" href="#market-main">{l('تجاوز إلى المحتوى', 'Aller au contenu')}</a>
     <header className="atlas-header"><div className="atlas-header-inner">
@@ -80,15 +101,23 @@ export default function MarketLayout({ children, page, user, query = '', onQuery
       <nav className="atlas-account" aria-label={l('الحساب واللغة', 'Compte et langue')}>
         {cart && <Link to="/cart" className="atlas-cart-link" aria-label={l('سلة طلبات العروض', 'Sélection de devis') + ' (' + cart.items.length + ')'}><MarketIcon name="package" /><span className="atlas-cart-label">{l('سلة العروض', 'Sélection')}</span><span className="atlas-cart-count">{cart.items.length}</span></Link>}
         <LanguageSwitch />
-        {user ? <><NotificationBell user={user} onAccount={onAccount} /><button onClick={onAccount}><MarketIcon name="user" />{l('مساحتي', 'Mon espace')}</button><button onClick={onLogout}>{l('خروج', 'Déconnexion')}</button></> : <>
-          <button onClick={onLogin}><MarketIcon name="user" />{l('تسجيل الدخول', 'Connexion')}</button><button className="atlas-register" onClick={onRegister}>{l('سجل كمورد', 'Devenir Fournisseur')}</button></>}
+        <div className="atlas-more" ref={more}>
+          <button type="button" className="atlas-more-trigger" ref={moreTrigger} aria-expanded={menuOpen} aria-controls="market-more-links" aria-label={l('المزيد', 'Plus', 'More')} onClick={() => setMenuOpen(v => !v)}>
+            <MarketIcon name="menu" /><span>{l('المزيد', 'Plus', 'More')}</span>
+          </button>
+          <nav id="market-more-links" className="atlas-more-links" aria-label={l('التنقل العام', 'Navigation du marché', 'Market navigation')} hidden={!menuOpen}>
+            <Link to="/" aria-current={page === 'home' ? 'page' : undefined} onClick={() => closeMore()}><MarketIcon name="grid" />{l('كل المنتجات', 'Tous les produits')}</Link>
+            <Link to="/opportunities" aria-current={['opportunities','opportunity'].includes(page) ? 'page' : undefined} onClick={() => closeMore()}><MarketIcon name="package" />{l('فرص الجملة', 'Opportunités de gros')}</Link>
+            <Link to="/stores" aria-current={['stores','store'].includes(page) ? 'page' : undefined} onClick={() => closeMore()}><MarketIcon name="store" />{l('المتاجر', 'Boutiques')}</Link>
+            <Link to="/favorites" aria-current={page === 'favorites' ? 'page' : undefined} onClick={() => closeMore()}><MarketIcon name="heart" />{l('المفضلة', 'Favoris', 'Favorites')}</Link>
+            <button type="button" onClick={() => { closeMore(); onSourcing(); }}><MarketIcon name="message" />{l('طلب توريد خاص', 'Demande de sourcing')}</button>
+            {!user && <button type="button" className="atlas-more-register" onClick={() => { closeMore(); onRegister(); }}><MarketIcon name="store" />{l('سجل كمورد', 'Devenir Fournisseur')}</button>}
+          </nav>
+        </div>
+        {user ? <><NotificationBell user={user} onAccount={onAccount} /><button className="atlas-account-action" onClick={onAccount} aria-label={l('مساحتي', 'Mon espace')}><MarketIcon name="user" /><span>{l('مساحتي', 'Mon espace')}</span></button><button className="atlas-account-action" onClick={onLogout} aria-label={l('خروج', 'Déconnexion')}><MarketIcon name="logout" /><span>{l('خروج', 'Déconnexion')}</span></button></> : <>
+          <button className="atlas-account-action" onClick={onLogin} aria-label={l('تسجيل الدخول', 'Connexion')}><MarketIcon name="user" /><span>{l('تسجيل الدخول', 'Connexion')}</span></button><button className="atlas-register" onClick={onRegister}>{l('سجل كمورد', 'Devenir Fournisseur')}</button></>}
       </nav>
-    </div><nav className="atlas-nav" aria-label={l('التنقل العام', 'Navigation du marché')}>
-      <Link to="/" aria-current={page === 'home' ? 'page' : undefined}><MarketIcon name="grid" />{l('كل المنتجات', 'Tous les produits')}</Link>
-      <Link to="/opportunities" aria-current={['opportunities','opportunity'].includes(page) ? 'page' : undefined}><MarketIcon name="package" />{l('فرص الجملة', 'Opportunités de gros')}</Link>
-      <Link to="/stores" aria-current={['stores', 'store'].includes(page) ? 'page' : undefined}><MarketIcon name="store" />{l('المتاجر', 'Boutiques')}</Link><button onClick={onSourcing}><MarketIcon name="message" />{l('طلب توريد خاص', 'Demande de sourcing')}</button>
-      <Link to="/favorites" aria-current={page === 'favorites' ? 'page' : undefined}><MarketIcon name="heart" />{l('المفضلة', 'Favoris', 'Favorites')}</Link><span>{l('سوق الجملة المغربي', 'Le marché de gros marocain')}</span>
-    </nav></header>
+    </div></header>
     {favorites?.message && <div className="container atlas-favorite-notice" role="status"><p>{favorites.message === 'limit' ? l('بلغت الحد الأقصى للمفضلة. أزل منتجاً قبل إضافة آخر.', 'Limite des favoris atteinte.', 'Favorites limit reached.') : l('تعذر تأكيد الحفظ. أعد تحميل المفضلة للتحقق.', 'Enregistrement non confirmé. Rechargez vos favoris.', 'Save not confirmed. Reload favorites to verify.')}</p><button onClick={() => { favorites.dismiss(); favorites.refresh(); }}>{l('إعادة التحميل', 'Recharger', 'Reload')}</button></div>}
     {children}
     <footer className="atlas-footer"><Link to="/" className="atlas-brand"><strong dir="ltr">jomla<span>.</span><small>ma</small></strong></Link>

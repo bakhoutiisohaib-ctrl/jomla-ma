@@ -159,6 +159,7 @@ test('the real marketplace caller opens a buyer form without posting until an ex
   window.history.replaceState({}, '', '/'); apiRequest.mockImplementation(workspaceApi)
   render(<App />)
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith('/suppliers/me/profile'))
+  fireEvent.click(screen.getByRole('button', { name: 'المزيد' }))
   fireEvent.click(within(screen.getByRole('navigation', { name: 'التنقل العام' })).getByRole('button', { name: 'طلب توريد خاص' }))
   fireEvent.change(await screen.findByLabelText('المنتج المطلوب'), { target: { value: 'Marketplace creation' } })
   expect(apiRequest.mock.calls.some(([path, options]) => path === '/sourcing' && options?.method === 'POST')).toBe(false)
