@@ -111,10 +111,11 @@ export default function MarketLayout({ children, page, user, query = '', onQuery
             <Link to="/stores" aria-current={['stores','store'].includes(page) ? 'page' : undefined} onClick={() => closeMore()}><MarketIcon name="store" />{l('المتاجر', 'Boutiques')}</Link>
             <Link to="/favorites" aria-current={page === 'favorites' ? 'page' : undefined} onClick={() => closeMore()}><MarketIcon name="heart" />{l('المفضلة', 'Favoris', 'Favorites')}</Link>
             <button type="button" onClick={() => { closeMore(); onSourcing(); }}><MarketIcon name="message" />{l('طلب توريد خاص', 'Demande de sourcing')}</button>
+            {user && <button type="button" className="atlas-more-logout" onClick={() => { closeMore(); onLogout(); }}><MarketIcon name="logout" />{l('خروج', 'Déconnexion')}</button>}
             {!user && <button type="button" className="atlas-more-register" onClick={() => { closeMore(); onRegister(); }}><MarketIcon name="store" />{l('سجل كمورد', 'Devenir Fournisseur')}</button>}
           </nav>
         </div>
-        {user ? <><NotificationBell user={user} onAccount={onAccount} /><button className="atlas-account-action" onClick={onAccount} aria-label={l('مساحتي', 'Mon espace')}><MarketIcon name="user" /><span>{l('مساحتي', 'Mon espace')}</span></button><button className="atlas-account-action" onClick={onLogout} aria-label={l('خروج', 'Déconnexion')}><MarketIcon name="logout" /><span>{l('خروج', 'Déconnexion')}</span></button></> : <>
+        {user ? <><NotificationBell user={user} onAccount={onAccount} /><button className="atlas-account-action" onClick={onAccount} aria-label={l('مساحتي', 'Mon espace')}><MarketIcon name="user" /><span>{l('مساحتي', 'Mon espace')}</span></button><button className="atlas-account-action atlas-account-logout" onClick={onLogout} aria-label={l('خروج', 'Déconnexion')}><MarketIcon name="logout" /><span>{l('خروج', 'Déconnexion')}</span></button></> : <>
           <button className="atlas-account-action" onClick={onLogin} aria-label={l('تسجيل الدخول', 'Connexion')}><MarketIcon name="user" /><span>{l('تسجيل الدخول', 'Connexion')}</span></button><button className="atlas-register" onClick={onRegister}>{l('سجل كمورد', 'Devenir Fournisseur')}</button></>}
       </nav>
     </div></header>

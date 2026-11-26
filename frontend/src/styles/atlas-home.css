@@ -67,3 +67,23 @@
  .atlas-public[data-page=home] .atlas-filter-disclosure[open] { grid-column:1/-1; }
 }
 @media(max-width:359px) { .atlas-home-copy { padding:12px; } .atlas-home-copy h1 { font-size:21px; } .atlas-home-supplier button { max-width:155px; } }
+
+/* Keep the illustrated introduction; let the catalog, not the banner, lead. */
+.atlas-home-category-list button { flex: 0 0 124px; max-width: 124px; flex-direction: column; gap: 6px; padding: 8px; text-align: center; min-width: 0; overflow-wrap: anywhere; }
+.atlas-home-category-art { flex: 0 0 54px; width: 62px; height: 54px; max-width: 100%; }
+.atlas-public[data-page=home] .atlas-home-category-list { gap: 10px; }
+.atlas-public[data-page=home] .atlas-filters { margin-bottom: 4px; }
+.atlas-public[data-page=home] .atlas-filters + .atlas-catalog-tools { margin-block: 0; }
+@media(max-width:600px) {
+ .atlas-home-intro { padding-inline: 12px; margin-top: 10px; gap: 8px; }
+ .atlas-home-story { grid-template-columns: minmax(0,1fr) 39%; }
+ .atlas-home-copy { padding: 12px; }
+ .atlas-home-copy h1 { font-size: 20px; line-height: 1.35; margin-bottom: 6px; }
+ .atlas-home-copy p { margin-bottom: 7px; }
+ .atlas-home-supplier { padding: 8px 11px; }
+ .atlas-public[data-page=home] #market-main { padding-top: 12px; }
+ .atlas-home-category-list button { flex: 0 0 78px; max-width: 78px; padding: 5px; gap: 4px; }
+ .atlas-home-category-art { flex: 0 0 45px; height: 45px; width: 54px; }
+ .atlas-public[data-page=home] .atlas-filters { padding-block: 7px; }
+ .atlas-public[data-page=home] .atlas-filters + .atlas-catalog-tools + .muted { margin-block: 7px 9px; }
+}

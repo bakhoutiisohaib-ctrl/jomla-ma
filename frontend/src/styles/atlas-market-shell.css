@@ -28,3 +28,21 @@
  .atlas-public .atlas-image-search { width: 44px; height: 44px; }
  .atlas-public .atlas-search>button { min-height: 44px; }
 }
+
+/* Gate 1D-2a: the bottom bar already exposes cart and account on phones.
+   Keep the header compact, with the real logout action inside More. */
+.atlas-public .atlas-more-links .atlas-more-logout { display: none; }
+@media(max-width:600px) {
+ .atlas-public .atlas-header-inner { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: 6px; padding: 8px 12px; }
+ .atlas-public .atlas-header-inner > .atlas-brand { grid-column: 1; grid-row: 1; gap: 5px; }
+ .atlas-public .atlas-header-inner > .atlas-search { grid-column: 1/-1; grid-row: 2; width: 100%; min-width: 0; }
+ .atlas-public .atlas-header-inner > .atlas-account { grid-column: 2; grid-row: 1; display: flex; flex-wrap: nowrap; gap: 3px; justify-content: flex-end; margin: 0; min-width: 0; }
+ .atlas-public .atlas-account > .atlas-cart-link, .atlas-public .atlas-account > .atlas-account-action { display: none; }
+ .atlas-public .atlas-more-links .atlas-more-logout { display: flex; }
+ .atlas-public .atlas-account > .atlas-language-select { min-width: 76px; max-width: 96px; width: 76px; padding-inline: 5px; }
+ .atlas-public .atlas-header-inner .atlas-brand strong { font-size: 21px; }
+ .atlas-public .atlas-header-inner .atlas-brand small { font-size: 12px; }
+ .atlas-public .atlas-header-inner .atlas-brand-mark { width: 30px; height: 30px; font-size: 20px; }
+ .atlas-public .atlas-header-inner .atlas-notifications > summary { min-width: 44px; }
+ .atlas-more-links { top: 58px; }
+}

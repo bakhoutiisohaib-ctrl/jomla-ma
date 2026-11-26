@@ -242,7 +242,7 @@ function AppContent() {
   if (page === 'supplierPublic') return <SupplierPage key={route.id} supplierId={route.id} user={user} onBack={back} onRequireLogin={requireLogin} />;
   if (page === 'notFound') return publicPage(<main className="container panel" id="market-main" tabIndex="-1"><h1>{l('الرابط غير موجود', 'Page introuvable')}</h1><p>{l('تحقق من الرابط أو عد إلى السوق.', 'Vérifiez le lien ou revenez au catalogue.')}</p><Link to="/">{l('العودة للسوق', 'Retour au catalogue')}</Link></main>);
   return publicPage(<>
-    {page === 'home' && <HomeIntroduction user={user}
+    {page === 'home' && !term && !image && !Object.values(filters).some(Boolean) && number === 1 && <HomeIntroduction user={user}
       onSupplier={() => user ? dashboard() : registerAs('supplier')}
       onSourcing={() => user ? setSourcing(true) : requireLogin()} />}
     <main className="container" id="market-main" tabIndex="-1"><Notice error>{error}</Notice>

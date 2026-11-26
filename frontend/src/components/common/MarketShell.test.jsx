@@ -61,3 +61,13 @@ test('late profile hydration preserves an open menu, real session change closes 
     rendered.unmount(); clearSession(); global.fetch = previousFetch;
   }
 });
+
+test('the mobile More disclosure preserves explicit logout for the signed-in account', () => {
+  const onLogout = jest.fn();
+  draw({user:{_id:'buyer-a',role:'buyer'},onLogout});
+  fireEvent.click(trigger());
+  const action = within(nav()).getByRole('button',{name:'خروج'});
+  fireEvent.click(action);
+  expect(onLogout).toHaveBeenCalledTimes(1);
+  expect(trigger()).toHaveAttribute('aria-expanded','false');
+});

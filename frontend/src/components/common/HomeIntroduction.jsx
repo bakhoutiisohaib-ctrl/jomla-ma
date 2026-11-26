@@ -31,7 +31,7 @@ export function HomeIntroduction({ user, onSupplier, onSourcing }) {
     </div>
     <aside className="atlas-home-supplier" aria-labelledby="home-supplier-title">
       <MarketIcon name="store" />
-      <div><h2 id="home-supplier-title">{supplier ? l('متجرك يبدأ من مساحتك', 'Votre boutique, votre espace') : l('أنت مورد؟', 'Vous êtes fournisseur ?')}</h2>
+      <div><h2 id="home-supplier-title">{supplier ? l('متجرك يبدأ من مساحتك', 'Votre boutique, votre espace') : user ? l('مساحتك التجارية', 'Votre espace commercial', 'Your business workspace') : l('أنت مورد؟', 'Vous êtes fournisseur ?')}</h2>
         <p>{l('عرّف بمنتجاتك وتابع طلبات عروض الأسعار في مساحة واحدة.', 'Présentez vos produits et suivez vos demandes de devis au même endroit.')}</p></div>
       <button type="button" className="primary" onClick={onSupplier}>{supplier ? l('فتح مساحة المورد', 'Mon espace fournisseur') : user ? l('فتح مساحة حسابي', 'Ouvrir mon espace') : l('إنشاء حساب مورد', 'Créer mon compte')}<MarketIcon name="arrow" /></button>
       <small>{l('متجر · منتجات · طلبات عروض', 'Boutique · Produits · Demandes de devis')}</small>
