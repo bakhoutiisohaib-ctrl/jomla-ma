@@ -7,7 +7,9 @@ const { discoverExternally } = require('../services/externalDiscovery')
 router.post('/', asyncHandler(async (req, res) => {
   const result = await searchCatalog({ ...req.body, ...req.query, q: req.body.query ?? req.body.q ?? req.query.q ?? '' })
   const query = req.body.query ?? req.body.q ?? req.query.q ?? ''
-  const externalDiscovery = await discoverExternally(query, { internalTotal: result.total, category: req.body.category || req.query.category })
+  const externalDiscovery = ({ ...req.body, ...req.query }).taxonomyPath
+    ? { enabled: false, externalSources: [], reason: 'taxonomy_scope' }
+    : await discoverExternally(query, { internalTotal: result.total, category: req.body.category || req.query.category })
   res.json({
     ...result,
     message: 'تم البحث في المنتجات المنشورة والمتوفرة',

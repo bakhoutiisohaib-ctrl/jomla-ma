@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const { PATHS } = require('../utils/taxonomy')
 
 const requiredWhenPublished = function () { return this.isDraft === false }
 const PriceTierSchema = new mongoose.Schema({
@@ -10,6 +11,7 @@ const PriceTierSchema = new mongoose.Schema({
 const ProductSchema = new mongoose.Schema({
   name: { type: String, trim: true, maxlength: 160, required: requiredWhenPublished },
   category: { type: String, trim: true, maxlength: 100, required: requiredWhenPublished },
+  taxonomyPath: { type: String, enum: ['', ...PATHS] },
   pricingMode: { type: String, enum: ['fixed', 'on_request'], default: 'fixed' },
   price: { type: Number, min: 0, required: function () { return this.isDraft === false && this.pricingMode !== 'on_request' } },
   currency: { type: String, uppercase: true, trim: true, match: /^[A-Z]{3}$/, default: 'MAD' },

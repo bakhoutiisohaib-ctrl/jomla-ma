@@ -4,9 +4,10 @@ const Store = require('../models/Store')
 const Supplier = require('../models/Supplier')
 const { escapeRegex } = require('./constants')
 const { parseBusinessTypeInput, declaredBusinessTypes } = require('./businessTypes')
+const { parseTaxonomyPath, applyTaxonomyFilter } = require('./taxonomy')
 
 const badRequest = message => Object.assign(new Error(message), { status: 400 })
-const PUBLIC_FIELDS = 'name category pricingMode price currency country moq unit priceTiers inStock availability availabilityConfirmed city supplierId supplierPhone storeId views description images imageUrl createdAt matchType matchBasis effectiveUnitPrice'
+const PUBLIC_FIELDS = 'name category taxonomyPath pricingMode price currency country moq unit priceTiers inStock availability availabilityConfirmed city supplierId supplierPhone storeId views description images imageUrl createdAt matchType matchBasis effectiveUnitPrice'
 const PUBLIC_VISIBILITY = { isDraft: false, inStock: true, availability: 'in_stock', availabilityConfirmed: true, hasImageRights: true, 'imageRights.source': { $in: ['owned', 'licensed'] }, 'imageRights.declaredBy': { $type: 'objectId' }, 'imageRights.declaredAt': { $type: 'date' }, approvedBy: { $type: 'objectId' }, approvedAt: { $type: 'date' }, moderationStatus: { $ne: 'hidden' } }
 
 function imageUrlAllowed(value) {
@@ -29,6 +30,7 @@ function parseOptions(input = {}) {
   }
   const options = { q: text('q'), city: text('city', 100), category: text('category', 100), supplier: text('supplier', 100), currency: text('currency', 3).toUpperCase(), quantity: number('quantity', true), minPrice: number('minPrice'), maxPrice: number('maxPrice'), page: number('page', true) || 1, limit: Math.min(number('limit', true) || 20, 100), order: text('order', 20) || 'relevance' }
   options.businessType = parseBusinessTypeInput(input)
+  options.taxonomyPath = parseTaxonomyPath(input)
   if (Object.keys(input).some(key => /^(category|categoryMode)(?:\[|\.)/.test(key))) throw badRequest('قيمة الفئة غير صالحة')
   options.categoryMode = text('categoryMode', 10) || 'contains'
   if (!['contains', 'exact'].includes(options.categoryMode)) throw badRequest('طريقة تصفية الفئة غير صالحة')
@@ -65,10 +67,11 @@ function categoryPredicate(options) {
 async function catalogCategories(input = {}) {
   // This directory describes the published catalog for a declared activity,
   // independently of the current product page or search phrase.
-  const allowed = new Set(['businessType', 'page', 'limit'])
+  const allowed = new Set(['businessType', 'taxonomyPath', 'page', 'limit'])
   if (Object.keys(input).some(key => !allowed.has(key))) throw badRequest('معاملات دليل الفئات غير صالحة')
   const options = parseOptions(input)
   const filter = await publicCatalogFilter({ businessType: options.businessType })
+  applyTaxonomyFilter(filter, options.taxonomyPath)
   const [result] = await Product.aggregate([
     { $match: filter },
     { $match: { category: { $type: 'string', $regex: /\S/ } } },
@@ -107,6 +110,7 @@ async function searchCatalog(input, { words, visual = false, supplierId, storeId
     const regexes = terms.map(w => new RegExp(escapeRegex(w.slice(0, 120)), 'i'))
     filter.$or = [{ name: { $in: regexes } }, { category: { $in: regexes } }, { description: { $in: regexes } }]
   }
+  applyTaxonomyFilter(filter, options.taxonomyPath)
   const pipeline = [{ $match: filter }]
   if (options.quantity) {
     pipeline.push({ $addFields: { _tiers: { $filter: { input: { $ifNull: ['$priceTiers', []] }, as: 't', cond: { $and: [{ $lte: ['$$t.minQty', options.quantity] }, { $or: [{ $eq: [{ $ifNull: ['$$t.maxQty', null] }, null] }, { $gte: ['$$t.maxQty', options.quantity] }] }] } } } } })

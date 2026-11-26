@@ -13,8 +13,9 @@ const { auditedChange } = require('../utils/audit')
 const { assertProductImagesOwned } = require('../services/mediaPrivacy')
 const { enqueueJob, publicJob } = require('../services/jobQueue')
 const { createProductOnce, publicProduct } = require('../services/productCreation')
+const { parseTaxonomyPath, taxonomyDirectory } = require('../utils/taxonomy')
 
-const editFields = ['name', 'category', 'pricingMode', 'price', 'currency', 'country', 'moq', 'unit', 'priceTiers', 'availability', 'availabilityConfirmed', 'inStock', 'city', 'description', 'images', 'imageUrl', 'isDraft', 'storeId']
+const editFields = ['name', 'category', 'taxonomyPath', 'pricingMode', 'price', 'currency', 'country', 'moq', 'unit', 'priceTiers', 'availability', 'availabilityConfirmed', 'inStock', 'city', 'description', 'images', 'imageUrl', 'isDraft', 'storeId']
 
 async function queueIndex(product, req, receipt = null) {
   try {
@@ -31,6 +32,7 @@ async function queueIndex(product, req, receipt = null) {
 
 async function prepareProduct(product, req) {
   const body = req.body
+  parseTaxonomyPath(body)
   const ownerId = req.supplier.ownerId || req.supplier.id
   const imageChanged = body.imageUrl !== undefined && body.imageUrl !== product.imageUrl
   if (imageChanged) { product.hasImageRights = false; product.imageRights = undefined }
@@ -81,6 +83,10 @@ const publicList = asyncHandler(async (req, res) => {
 })
 router.get('/', publicList)
 router.get('/search', publicList)
+router.get('/taxonomy', (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  res.json(taxonomyDirectory())
+})
 router.get('/categories', asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'no-store')
   res.json(await catalogCategories(req.query))

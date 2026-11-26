@@ -2,7 +2,7 @@ const crypto = require('crypto')
 const Product = require('../models/Product')
 
 const INDEX_NAME = 'product_creation_owner_key'
-const INPUT_FIELDS = ['name', 'category', 'pricingMode', 'price', 'currency', 'country', 'moq', 'unit', 'priceTiers', 'availability', 'availabilityConfirmed', 'inStock', 'city', 'description', 'images', 'imageUrl', 'isDraft', 'storeId', 'hasImageRights', 'publishApproved']
+const INPUT_FIELDS = ['name', 'category', 'taxonomyPath', 'pricingMode', 'price', 'currency', 'country', 'moq', 'unit', 'priceTiers', 'availability', 'availabilityConfirmed', 'inStock', 'city', 'description', 'images', 'imageUrl', 'isDraft', 'storeId', 'hasImageRights', 'publishApproved']
 
 function failure(status, message) { return Object.assign(new Error(message), { status }) }
 function canonical(value, depth = 0) {

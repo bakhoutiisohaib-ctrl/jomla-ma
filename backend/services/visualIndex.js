@@ -148,6 +148,8 @@ function minScore() {
   return Number.isFinite(score) && score >= 0.5 && score <= 1 ? score : 0.82
 }
 
+const { applyTaxonomyFilter } = require('../utils/taxonomy')
+
 async function candidateFilter(options) {
   const filter = await publicCatalogFilter({ businessType: options.businessType })
   if (options.q) {
@@ -165,6 +167,7 @@ async function candidateFilter(options) {
       filter.$and = [{ supplierId: { $in: ids.map(s => s._id) } }]
     }
   }
+  applyTaxonomyFilter(filter, options.taxonomyPath)
   return filter
 }
 

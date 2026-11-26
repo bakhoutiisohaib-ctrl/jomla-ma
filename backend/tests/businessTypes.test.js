@@ -150,3 +150,24 @@ test('new reference groups preserve all six declarations and public search scope
  expect(ids(await list({}))).toHaveLength(2)
  expect((await Supplier.collection.findOne({_id:legacy._id})).businessTypes).toBeUndefined()
 })
+
+test('visual taxonomy scope combines with supplier and activity and never infers a leaf from a legacy category',async()=>{
+ await change(owner,{businessTypes:['farmer']})
+ await Product.updateOne({_id:item._id},{$set:{taxonomyPath:'textile/shoes'}})
+ await Product.updateOne({_id:legacyItem._id},{$set:{category:'نسيج'}})
+ try {
+  await indexProduct(item._id);await indexProduct(legacyItem._id)
+  const bytes=await fs.readFile(path.join(process.env.UPLOADS_DIR,path.basename(imageUrl)))
+  const image=(scope,type='',supplier='')=>request(app).post('/api/image-search').field('taxonomyPath',scope).field('businessType',type).field('supplier',supplier).attach('image',bytes,{filename:'synthetic.png',contentType:'image/png'})
+  const exact=await image('textile/shoes','farmer',String(owner._id))
+  expect(exact.status).toBe(200);expect(exact.body.products.map(p=>p._id)).toEqual([String(item._id)])
+  expect(exact.body.externalDiscovery).toMatchObject({enabled:false,reason:'taxonomy_scope'})
+  const none=await image('textile/kids')
+  expect(none.status).toBe(200);expect(none.body.total).toBe(0)
+  const wrong=await image('textile/shoes','farmer',String(legacy._id))
+  expect(wrong.status).toBe(200);expect(wrong.body.total).toBe(0)
+ }finally{
+  await Product.updateOne({_id:item._id},{$unset:{taxonomyPath:1}})
+  await Product.updateOne({_id:legacyItem._id},{$set:{category:'Synthetic footwear'}})
+ }
+})

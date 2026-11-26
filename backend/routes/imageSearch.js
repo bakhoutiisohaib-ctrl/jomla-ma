@@ -10,7 +10,8 @@ router.post('/', rateLimit({ windowMs: 60000, max: 20, standardHeaders: true, le
   const input = { ...req.body, ...req.query }
   const result = await searchImage(req.file.buffer, { filters: input })
   const q = typeof input.q === 'string' ? input.q.trim() : ''
-  const externalDiscovery = q ? await discoverExternally(q, { internalTotal: result.total, category: input.category }) :
+  const externalDiscovery = input.taxonomyPath ? { enabled: false, externalSources: [], reason: 'taxonomy_scope' }
+    : q ? await discoverExternally(q, { internalTotal: result.total, category: input.category }) :
     { enabled: false, externalSources: [], reason: 'text_query_required' }
   res.json({ ...result,
     message: 'تطابق الصورة يعني الملف نفسه؛ التشابه البصري لا يثبت هوية المنتج أو مواصفاته.',
