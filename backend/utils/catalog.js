@@ -3,6 +3,7 @@ const Product = require('../models/Product')
 const Store = require('../models/Store')
 const Supplier = require('../models/Supplier')
 const { escapeRegex } = require('./constants')
+const { parseBusinessTypeInput, declaredBusinessTypes } = require('./businessTypes')
 
 const badRequest = message => Object.assign(new Error(message), { status: 400 })
 const PUBLIC_FIELDS = 'name category pricingMode price currency country moq unit priceTiers inStock availability availabilityConfirmed city supplierId supplierPhone storeId views description images imageUrl createdAt matchType matchBasis effectiveUnitPrice'
@@ -27,6 +28,7 @@ function parseOptions(input = {}) {
     return n
   }
   const options = { q: text('q'), city: text('city', 100), category: text('category', 100), supplier: text('supplier', 100), currency: text('currency', 3).toUpperCase(), quantity: number('quantity', true), minPrice: number('minPrice'), maxPrice: number('maxPrice'), page: number('page', true) || 1, limit: Math.min(number('limit', true) || 20, 100), order: text('order', 20) || 'relevance' }
+  options.businessType = parseBusinessTypeInput(input)
   if (options.currency && !/^[A-Z]{3}$/.test(options.currency)) throw badRequest('رمز العملة غير صالح')
   if (options.minPrice != null && options.maxPrice != null && options.minPrice > options.maxPrice) throw badRequest('نطاق السعر غير صالح')
   if (!['relevance', 'price_asc', 'price_desc', 'newest'].includes(options.order)) throw badRequest('ترتيب البحث غير صالح')
@@ -42,9 +44,9 @@ function searchWords(q) {
   return [...new Set(words)].slice(0, 15)
 }
 
-async function publicCatalogFilter({ supplierId } = {}) {
+async function publicCatalogFilter({ supplierId, businessType } = {}) {
   const suppliers = await Supplier.find({ role: 'supplier', isActive: { $ne: false },
-    ...(supplierId ? { _id: supplierId } : {}) }).select('_id').lean()
+    ...(supplierId ? { _id: supplierId } : {}), ...(businessType ? { businessTypes: businessType } : {}) }).select('_id').lean()
   const supplierIds = suppliers.map(s => s._id)
   const stores = await Store.find({ supplierId: { $in: supplierIds }, reviewStatus: 'approved', isActive: true, adminSuspended: { $ne: true } }).select('_id').lean()
   return { ...PUBLIC_VISIBILITY, supplierId: { $in: supplierIds }, storeId: { $in: stores.map(s => s._id) } }
@@ -52,7 +54,7 @@ async function publicCatalogFilter({ supplierId } = {}) {
 
 async function searchCatalog(input, { words, visual = false, supplierId, storeId } = {}) {
   const options = parseOptions(input)
-  const filter = await publicCatalogFilter({ supplierId })
+  const filter = await publicCatalogFilter({ supplierId, businessType: options.businessType })
   if (storeId) filter.$and = [{ storeId }]
   if (options.city) filter.city = new RegExp(escapeRegex(options.city), 'i')
   if (options.category) filter.category = new RegExp(escapeRegex(options.category), 'i')
@@ -93,7 +95,8 @@ async function searchCatalog(input, { words, visual = false, supplierId, storeId
     const { _rank, ...product } = p
     return { ...product, matchType: options.q || visual ? (_rank === 0 ? 'exact' : 'similar') : 'catalog', matchBasis: _rank === 0 ? 'title_text' : (visual ? 'image_description_keywords' : 'text_keywords') }
   })
-  products = await Product.populate(products, { path: 'supplierId', select: 'name city phone isVerified verificationStatus' })
+  products = await Product.populate(products, { path: 'supplierId', select: 'name city phone isVerified verificationStatus businessTypes', options: { lean: true } })
+  products = products.map(product => ({ ...product, supplierId: product.supplierId ? { ...product.supplierId, businessTypes: declaredBusinessTypes(product.supplierId.businessTypes) } : null }))
   return { products, total: totals.total, exactCount: totals.exactCount, similarCount: totals.total - totals.exactCount, page: options.page, limit: options.limit, pagination: { page: options.page, limit: options.limit, total: totals.total, pages: Math.ceil(totals.total / options.limit), hasNextPage: options.page * options.limit < totals.total, hasPrevPage: options.page > 1 } }
 }
 

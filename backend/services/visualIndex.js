@@ -7,6 +7,7 @@ const VisualEmbedding = require('../models/VisualEmbedding')
 const { uploadsDirectory, localImagePath } = require('./mediaStorage')
 const { ownedAsset, readAssetBytes } = require('./mediaPrivacy')
 const { PUBLIC_FIELDS, publicCatalogFilter, parseOptions, searchWords, badRequest } = require('../utils/catalog')
+const { declaredBusinessTypes } = require('../utils/businessTypes')
 const { escapeRegex } = require('../utils/constants')
 
 const VERSION = 'local-color-spatial-edge-v1'
@@ -148,7 +149,7 @@ function minScore() {
 }
 
 async function candidateFilter(options) {
-  const filter = await publicCatalogFilter()
+  const filter = await publicCatalogFilter({ businessType: options.businessType })
   if (options.q) {
     const words = searchWords(options.q).map(word => new RegExp(escapeRegex(word), 'i'))
     filter.$or = [{ name: { $in: words } }, { category: { $in: words } }, { description: { $in: words } }]
@@ -219,7 +220,8 @@ async function searchImage(buffer, { filters = {}, pagination = {} } = {}) {
   const exactCount = matches.filter(p => p.matchType === 'exact').length
   let products = matches.slice(options.skip, options.skip + options.limit)
   // Populate only the same explicitly public supplier fields as text search.
-  products = await Product.populate(products, { path: 'supplierId', select: 'name city phone isVerified verificationStatus', options: { lean: true } })
+  products = await Product.populate(products, { path: 'supplierId', select: 'name city phone isVerified verificationStatus businessTypes', options: { lean: true } })
+  products = products.map(product => ({ ...product, supplierId: product.supplierId ? { ...product.supplierId, businessTypes: declaredBusinessTypes(product.supplierId.businessTypes) } : null }))
   return {
     products, total, exactCount, similarCount: total - exactCount, page: options.page, limit: options.limit,
     pagination: { page: options.page, limit: options.limit, total, pages: Math.ceil(total / options.limit), hasNextPage: options.page * options.limit < total, hasPrevPage: options.page > 1 },

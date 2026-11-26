@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const { BUSINESS_TYPES, validBusinessTypes } = require('../utils/businessTypes')
 
 const SupplierSchema = new mongoose.Schema({
   name:               { type: String, required: true },
@@ -12,6 +13,7 @@ const SupplierSchema = new mongoose.Schema({
   email:              { type: String, unique: true, required: true, trim: true, lowercase: true },
   password:           { type: String, required: true, select: false },
   role:               { type: String, enum: ['supplier', 'admin', 'buyer', 'staff'], default: 'supplier' },
+  businessTypes:      { type: [String], enum: BUSINESS_TYPES, default: [], validate: validBusinessTypes },
   organization:       { type: String, default: '' }, // اسم الشركة أو المنظمة
   permissions:        [{ type: String }],            // صلاحيات الموظف (manage_products, manage_rfq, etc.)
   parentSupplierId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' }, // للموظف التابع لمنظمة مورد

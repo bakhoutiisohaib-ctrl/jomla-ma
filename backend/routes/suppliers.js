@@ -16,6 +16,7 @@ const { auditedChange } = require('../utils/audit')
 const { PUBLIC_FIELDS: PRODUCT_PUBLIC_FIELDS, PUBLIC_VISIBILITY } = require('../utils/catalog')
 
 const PUBLIC_FIELDS = 'name city phone description avatar isVerified verificationStatus createdAt'
+const { validBusinessTypes, declaredBusinessTypes } = require('../utils/businessTypes')
 const ownerOnly = requireRole('supplier')
 const httpError = (status, message) => Object.assign(new Error(message), { status })
 const permissionsValid = values => Array.isArray(values) && values.every(v => Membership.STAFF_PERMISSIONS.includes(v))
@@ -25,6 +26,7 @@ function accountPayload(user, identity = {}) {
     id: String(user._id), _id: String(user._id), name: user.name, email: user.email,
     city: user.city, phone: user.phone, description: user.description, avatar: user.avatar,
     profilePending: Boolean(user.profilePending),
+    businessTypes: user.role === 'supplier' ? declaredBusinessTypes(user.businessTypes) : [],
     role: user.role, ownerId: identity.ownerId || String(user._id),
     organization: user.organization, organizationId: Object.prototype.hasOwnProperty.call(identity, 'organizationId') ? identity.organizationId : (user.organizationId || null),
     permissions: identity.permissions || (['supplier', 'admin'].includes(user.role) ? ['all'] : []),
@@ -61,6 +63,9 @@ router.post('/register', validateSupplierRegister, asyncHandler(async (req, res)
   if (req.body.permissions !== undefined || req.body.parentSupplierId !== undefined || req.body.organizationId !== undefined) {
     return res.status(400).json({ message: 'تعيين الموظف وصلاحياته يتم بدعوة من مالك الشركة' })
   }
+  if (req.body.businessTypes !== undefined && (role !== 'supplier' || !validBusinessTypes(req.body.businessTypes))) {
+    return res.status(400).json({ message: 'أنواع نشاط المورد غير صالحة' })
+  }
   const normalizedEmail = String(email).trim().toLowerCase()
   if (await Supplier.exists({ email: normalizedEmail })) return res.status(409).json({ message: 'البريد الإلكتروني موجود بالفعل' })
   const supplier = new Supplier({
@@ -69,6 +74,7 @@ router.post('/register', validateSupplierRegister, asyncHandler(async (req, res)
     gender: req.body.gender || 'undisclosed',
     password: await bcrypt.hash(password, 12), role,
     organization: role === 'supplier' ? String(organization || name).trim() : '',
+    businessTypes: role === 'supplier' ? declaredBusinessTypes(req.body.businessTypes) : [],
     permissions: [], products: []
   })
   await auditedChange({
@@ -92,6 +98,21 @@ router.post('/login', validateSupplierLogin, asyncHandler(async (req, res) => {
 
 router.get('/me/profile', authenticate, asyncHandler(async (req, res) => {
   res.json(accountPayload(req.account, req.supplier))
+}))
+
+router.put('/me/business-types', authenticate, ownerOnly, asyncHandler(async (req, res) => {
+  if (!req.body || Object.keys(req.body).length !== 1 || !validBusinessTypes(req.body.businessTypes)) {
+    return res.status(400).json({ message: 'أنواع نشاط المورد غير صالحة' })
+  }
+  const businessTypes = declaredBusinessTypes(req.body.businessTypes)
+  await auditedChange({
+    action: 'SUPPLIER_BUSINESS_TYPES_UPDATED', targetType: 'Supplier', targetId: req.supplier.id,
+    actor: req.supplier, details: { businessTypes }
+  }, async () => {
+    const result = await Supplier.updateOne({ _id: req.supplier.id, role: 'supplier', isActive: { $ne: false } }, { $set: { businessTypes } }, { runValidators: true })
+    if (!result.matchedCount) throw httpError(403, 'حساب المورد غير متاح')
+  })
+  res.set('Cache-Control', 'private, no-store').json({ businessTypes })
 }))
 
 async function logout(req, res) {

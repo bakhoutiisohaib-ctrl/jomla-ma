@@ -9,6 +9,7 @@ const { asyncHandler } = require('../middleware/errorHandler')
 const { getPaginationParams, formatPaginationResponse } = require('../utils/constants')
 const { auditedChange } = require('../utils/audit')
 const { searchCatalog } = require('../utils/catalog')
+const { parseBusinessTypeInput } = require('../utils/businessTypes')
 const { assertProductImagesOwned } = require('../services/mediaPrivacy')
 const { STORE_VISIBLE, STORE_FIELDS, supplierPopulation, publicStoreDto, getPublicStore } = require('../services/publicStore')
 
@@ -33,7 +34,8 @@ router.get('/mine', authenticate, requirePermission('manage_store', 'manage_prod
 
 router.get('/', asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationParams(req)
-  const owners = await Supplier.find({ role: 'supplier', isActive: { $ne: false } }).distinct('_id')
+  const businessType = parseBusinessTypeInput(req.query)
+  const owners = await Supplier.find({ role: 'supplier', ...(businessType ? { businessTypes: businessType } : {}), isActive: { $ne: false } }).distinct('_id')
   const filter = { ...STORE_VISIBLE, supplierId: { $in: owners } }
   if (typeof req.query.city === 'string') filter.city = req.query.city
   if (typeof req.query.category === 'string') filter.categories = req.query.category
