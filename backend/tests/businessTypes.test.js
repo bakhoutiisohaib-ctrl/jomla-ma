@@ -108,3 +108,17 @@ test('registration accepts optional declaration for suppliers only, preserves un
  expect((await request(app).post('/api/suppliers/register').send({...payload,email:'bad-buyer@types.test',role:'buyer',businessTypes:['manufacturer']})).status).toBe(400)
  expect((await request(app).post('/api/suppliers/register').send({...payload,email:'invalid-types@types.test',businessTypes:['invalid']})).status).toBe(400)
 })
+
+test('visual search exact category excludes a partial-name match while contains stays compatible',async()=>{
+ await Product.updateOne({_id:legacyItem._id},{$set:{category:'Synthetic footwear accessories'}})
+ try{
+  await indexProduct(item._id);await indexProduct(legacyItem._id)
+  const bytes=await fs.readFile(path.join(process.env.UPLOADS_DIR,path.basename(imageUrl)))
+  const exact=await request(app).post('/api/image-search').field('category','Synthetic footwear').field('categoryMode','exact').attach('image',bytes,{filename:'synthetic.png',contentType:'image/png'})
+  expect(exact.status).toBe(200);expect(exact.body.products.map(p=>p._id)).toEqual([String(item._id)])
+  const noMatch=await request(app).post('/api/image-search').field('category','Synthetic').field('categoryMode','exact').attach('image',bytes,{filename:'synthetic.png',contentType:'image/png'})
+  expect(noMatch.status).toBe(200);expect(noMatch.body.total).toBe(0)
+  const partial=await request(app).post('/api/image-search').field('category','Synthetic').attach('image',bytes,{filename:'synthetic.png',contentType:'image/png'})
+  expect(partial.status).toBe(200);expect(partial.body.products.map(p=>p._id)).toContain(String(item._id))
+ }finally{await Product.updateOne({_id:legacyItem._id},{$set:{category:'Synthetic footwear'}})}
+})

@@ -8,7 +8,7 @@ const { authenticate, requirePermission } = require('../middleware/auth')
 const { validateProduct, validateProductUpdate, validateMongoId } = require('../middleware/validators')
 const { asyncHandler } = require('../middleware/errorHandler')
 const { formatPaginationResponse } = require('../utils/constants')
-const { badRequest, parseOptions, searchCatalog, PUBLIC_FIELDS, PUBLIC_VISIBILITY } = require('../utils/catalog')
+const { badRequest, parseOptions, searchCatalog, catalogCategories, PUBLIC_FIELDS, PUBLIC_VISIBILITY } = require('../utils/catalog')
 const { auditedChange } = require('../utils/audit')
 const { assertProductImagesOwned } = require('../services/mediaPrivacy')
 const { enqueueJob, publicJob } = require('../services/jobQueue')
@@ -81,6 +81,10 @@ const publicList = asyncHandler(async (req, res) => {
 })
 router.get('/', publicList)
 router.get('/search', publicList)
+router.get('/categories', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  res.json(await catalogCategories(req.query))
+}))
 
 // Editor reads remain on /mine; public details never expose a draft to an
 // owner/admin simply because a session or a known id was supplied.

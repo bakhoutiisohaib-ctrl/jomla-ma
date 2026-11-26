@@ -29,6 +29,9 @@ function parseOptions(input = {}) {
   }
   const options = { q: text('q'), city: text('city', 100), category: text('category', 100), supplier: text('supplier', 100), currency: text('currency', 3).toUpperCase(), quantity: number('quantity', true), minPrice: number('minPrice'), maxPrice: number('maxPrice'), page: number('page', true) || 1, limit: Math.min(number('limit', true) || 20, 100), order: text('order', 20) || 'relevance' }
   options.businessType = parseBusinessTypeInput(input)
+  if (Object.keys(input).some(key => /^(category|categoryMode)(?:\[|\.)/.test(key))) throw badRequest('قيمة الفئة غير صالحة')
+  options.categoryMode = text('categoryMode', 10) || 'contains'
+  if (!['contains', 'exact'].includes(options.categoryMode)) throw badRequest('طريقة تصفية الفئة غير صالحة')
   if (options.currency && !/^[A-Z]{3}$/.test(options.currency)) throw badRequest('رمز العملة غير صالح')
   if (options.minPrice != null && options.maxPrice != null && options.minPrice > options.maxPrice) throw badRequest('نطاق السعر غير صالح')
   if (!['relevance', 'price_asc', 'price_desc', 'newest'].includes(options.order)) throw badRequest('ترتيب البحث غير صالح')
@@ -48,8 +51,40 @@ async function publicCatalogFilter({ supplierId, businessType } = {}) {
   const suppliers = await Supplier.find({ role: 'supplier', isActive: { $ne: false },
     ...(supplierId ? { _id: supplierId } : {}), ...(businessType ? { businessTypes: businessType } : {}) }).select('_id').lean()
   const supplierIds = suppliers.map(s => s._id)
-  const stores = await Store.find({ supplierId: { $in: supplierIds }, reviewStatus: 'approved', isActive: true, adminSuspended: { $ne: true } }).select('_id').lean()
-  return { ...PUBLIC_VISIBILITY, supplierId: { $in: supplierIds }, storeId: { $in: stores.map(s => s._id) } }
+  const stores = await Store.find({ supplierId: { $in: supplierIds }, reviewStatus: 'approved', isActive: true, adminSuspended: { $ne: true } }).select('_id supplierId').lean()
+  // Membership in two independent ID lists is not proof of store ownership.
+  // Keep this expression separate from caller-specific supplier/search predicates.
+  return { ...PUBLIC_VISIBILITY, supplierId: { $in: supplierIds }, storeId: { $in: stores.map(s => s._id) },
+    $expr: { $in: [['$supplierId', '$storeId'], { $literal: stores.map(s => [s.supplierId, s._id]) }] } }
+}
+
+function categoryPredicate(options) {
+  return options.categoryMode === 'exact' ? options.category : new RegExp(escapeRegex(options.category), 'i')
+}
+
+async function catalogCategories(input = {}) {
+  // This directory describes the published catalog for a declared activity,
+  // independently of the current product page or search phrase.
+  const allowed = new Set(['businessType', 'page', 'limit'])
+  if (Object.keys(input).some(key => !allowed.has(key))) throw badRequest('معاملات دليل الفئات غير صالحة')
+  const options = parseOptions(input)
+  const filter = await publicCatalogFilter({ businessType: options.businessType })
+  const [result] = await Product.aggregate([
+    { $match: filter },
+    { $match: { category: { $type: 'string', $regex: /\S/ } } },
+    { $match: { $expr: { $cond: [
+      { $eq: [{ $type: '$category' }, 'string'] },
+      { $and: [{ $lte: [{ $strLenCP: '$category' }, 100] }, { $eq: ['$category', { $trim: { input: '$category' } }] }] },
+      false
+    ] } } },
+    { $group: { _id: '$category', count: { $sum: 1 } } },
+    { $facet: {
+      data: [{ $sort: { count: -1, _id: 1 } }, { $skip: options.skip }, { $limit: options.limit }, { $project: { _id: 0, category: '$_id', count: 1 } }],
+      total: [{ $count: 'value' }]
+    } }
+  ]).option({ maxTimeMS: 10000 })
+  const total = result?.total?.[0]?.value || 0
+  return { data: result?.data || [], pagination: { page: options.page, limit: options.limit, total, pages: Math.ceil(total / options.limit), hasNextPage: options.page * options.limit < total, hasPrevPage: options.page > 1 } }
 }
 
 async function searchCatalog(input, { words, visual = false, supplierId, storeId } = {}) {
@@ -57,7 +92,7 @@ async function searchCatalog(input, { words, visual = false, supplierId, storeId
   const filter = await publicCatalogFilter({ supplierId, businessType: options.businessType })
   if (storeId) filter.$and = [{ storeId }]
   if (options.city) filter.city = new RegExp(escapeRegex(options.city), 'i')
-  if (options.category) filter.category = new RegExp(escapeRegex(options.category), 'i')
+  if (options.category) filter.category = categoryPredicate(options)
   if (options.currency) filter.currency = options.currency
   if (options.supplier) {
     if (mongoose.isValidObjectId(options.supplier)) filter.$and = [...(filter.$and || []), { supplierId: new mongoose.Types.ObjectId(options.supplier) }]
@@ -100,4 +135,4 @@ async function searchCatalog(input, { words, visual = false, supplierId, storeId
   return { products, total: totals.total, exactCount: totals.exactCount, similarCount: totals.total - totals.exactCount, page: options.page, limit: options.limit, pagination: { page: options.page, limit: options.limit, total: totals.total, pages: Math.ceil(totals.total / options.limit), hasNextPage: options.page * options.limit < totals.total, hasPrevPage: options.page > 1 } }
 }
 
-module.exports = { PUBLIC_FIELDS, PUBLIC_VISIBILITY, imageUrlAllowed, badRequest, parseOptions, publicCatalogFilter, searchWords, searchCatalog }
+module.exports = { PUBLIC_FIELDS, PUBLIC_VISIBILITY, imageUrlAllowed, badRequest, parseOptions, publicCatalogFilter, searchWords, searchCatalog, catalogCategories, categoryPredicate }

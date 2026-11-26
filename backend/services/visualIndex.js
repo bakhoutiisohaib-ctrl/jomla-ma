@@ -6,7 +6,7 @@ const Supplier = require('../models/Supplier')
 const VisualEmbedding = require('../models/VisualEmbedding')
 const { uploadsDirectory, localImagePath } = require('./mediaStorage')
 const { ownedAsset, readAssetBytes } = require('./mediaPrivacy')
-const { PUBLIC_FIELDS, publicCatalogFilter, parseOptions, searchWords, badRequest } = require('../utils/catalog')
+const { PUBLIC_FIELDS, publicCatalogFilter, parseOptions, searchWords, badRequest, categoryPredicate } = require('../utils/catalog')
 const { declaredBusinessTypes } = require('../utils/businessTypes')
 const { escapeRegex } = require('../utils/constants')
 
@@ -155,7 +155,7 @@ async function candidateFilter(options) {
     filter.$or = [{ name: { $in: words } }, { category: { $in: words } }, { description: { $in: words } }]
   }
   if (options.city) filter.city = new RegExp(escapeRegex(options.city), 'i')
-  if (options.category) filter.category = new RegExp(escapeRegex(options.category), 'i')
+  if (options.category) filter.category = categoryPredicate(options)
   if (options.currency) filter.currency = options.currency
   if (options.quantity) filter.moq = { $lte: options.quantity }
   if (options.supplier) {

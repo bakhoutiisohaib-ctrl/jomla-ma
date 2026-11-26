@@ -180,3 +180,76 @@ test('deactivated supplier catalog disappears immediately and deletion records c
   expect(event.phase).toBe('completed')
   expect(String(event.performedBy.id)).toBe(String(owner._id))
 })
+
+test('category directory groups all public products independently of product page and paginates categories', async () => {
+  const first = await create(published({ name: 'First synthetic item', category: 'Textile' }))
+  expect(first.status).toBe(201)
+  const source = await Product.collection.findOne({ _id: new mongoose.Types.ObjectId(first.body.product._id) })
+  const copies = []
+  for(let i=0;i<14;i++) { const {_id,...rest}=source; copies.push({...rest, name:'Synthetic textile '+i, category:'Textile', views:100+i}) }
+  const {_id,...rest}=source
+  copies.push({...rest, name:'Late category synthetic', category:'Textile accessories', views:0})
+  copies.push({...rest, name:'Third category synthetic', category:'Electronics', views:0})
+  await Product.collection.insertMany(copies)
+  const firstPage=await request(app).get('/api/products/search?limit=12')
+  expect(firstPage.body.data).toHaveLength(12)
+  expect(firstPage.body.data.every(p=>p.category==='Textile')).toBe(true)
+  const all=await request(app).get('/api/products/categories')
+  expect(all.status).toBe(200)
+  expect(all.headers['cache-control']).toBe('no-store')
+  expect(all.body.data).toEqual([{category:'Textile',count:15},{category:'Electronics',count:1},{category:'Textile accessories',count:1}])
+  expect(all.body.pagination.total).toBe(3)
+  const page=await request(app).get('/api/products/categories?page=2&limit=1')
+  expect(page.body.data).toEqual([{category:'Electronics',count:1}])
+  expect(page.body.pagination).toMatchObject({page:2,pages:3,hasNextPage:true,hasPrevPage:true})
+  expect((await request(app).get('/api/products/search').query({category:'Textile'})).body.pagination.total).toBe(16)
+  expect((await request(app).get('/api/products/search').query({category:'Textile',categoryMode:'exact'})).body.pagination.total).toBe(15)
+  const text=await request(app).post('/api/ai-search').send({query:'Synthetic',category:'Textile accessories',categoryMode:'exact'})
+  expect(text.status).toBe(200);expect(text.body.total).toBe(1)
+})
+test('category directory and catalog exclude private, invalid ownership, inactive and malformed legacy data', async()=>{
+  const r=await create(published({category:'Public category'}));expect(r.status).toBe(201)
+  const {_id,...source}=await Product.collection.findOne({_id:new mongoose.Types.ObjectId(r.body.product._id)})
+  const otherProduct=await create(published({storeId:String(otherStore._id),imageUrl:otherImage,category:'Other public'}),otherToken)
+  expect(otherProduct.status).toBe(201)
+  await Supplier.updateOne({_id:owner._id},{$set:{businessTypes:['manufacturer']}})
+  await Product.collection.insertMany([
+    {...source,category:'Private category',isDraft:true},
+    {...source,category:'Hidden category',moderationStatus:'hidden'},
+    {...source,category:'Unavailable category',inStock:false},
+    {...source,category:'Foreign store category',storeId:otherStore._id},
+    {...source,category:'Foreign supplier category',supplierId:other._id},
+    {...source,category:['Malformed legacy category']},
+    {...source,category:'   '},
+    {...source,category:' padded '}
+  ])
+  try {
+    const general=await request(app).get('/api/products/categories')
+    expect(general.status).toBe(200);expect(general.body.data).toEqual([{category:'Other public',count:1},{category:'Public category',count:1}])
+    const typed=await request(app).get('/api/products/categories?businessType=manufacturer')
+    expect(typed.body.data).toEqual([{category:'Public category',count:1}])
+    expect((await request(app).get('/api/products/categories?businessType=importer')).body.data).toEqual([])
+    const list=await request(app).get('/api/products/search')
+    expect(list.body.data.some(p=>String(p.storeId)===String(otherStore._id)&&String(p.supplierId?._id)===String(owner._id))).toBe(false)
+    expect(list.body.data.some(p=>p.category==='Foreign supplier category')).toBe(false)
+    const foreign=await Product.findOne({category:'Foreign store category'})
+    expect((await request(app).get('/api/products/'+foreign._id)).status).toBe(404)
+    expect((await request(app).post('/api/tracking/view/'+foreign._id)).status).toBe(404)
+    await Store.updateOne({_id:store._id},{$set:{isActive:false}})
+    expect((await request(app).get('/api/products/categories?businessType=manufacturer')).body.data).toEqual([])
+    expect((await Supplier.updateOne({_id:other._id},{$set:{isActive:false}})).matchedCount).toBe(1)
+    expect((await request(app).get('/api/products/categories')).body.data).toEqual([])
+  } finally {
+    await Store.updateOne({_id:store._id},{$set:{isActive:true}})
+    await Supplier.updateOne({_id:owner._id},{$set:{businessTypes:[]}})
+    await Supplier.updateOne({_id:other._id},{$set:{isActive:true}})
+  }
+})
+test('category directory and exact category option reject invalid query shapes',async()=>{
+  for(const suffix of ['?businessType=invalid','?page=0','?limit=-1','?category=private','?businessType%5B%24ne%5D=x','?page=1&page=2']){
+    expect((await request(app).get('/api/products/categories'+suffix)).status).toBe(400)
+  }
+  for(const suffix of ['?categoryMode=invalid','?categoryMode=exact&categoryMode=contains','?category%5B%24ne%5D=x','?categoryMode%5B%24ne%5D=x']){
+    expect((await request(app).get('/api/products/search'+suffix)).status).toBe(400)
+  }
+})
