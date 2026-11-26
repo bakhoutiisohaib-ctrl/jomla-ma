@@ -117,6 +117,7 @@ app.get('/', (req, res) => {
 // ربط Routes
 const productRoutes = require('./routes/products')
 app.use('/api/products', productRoutes)
+app.use('/api/favorites', require('./routes/favorites'))
 app.use('/api/wholesale-opportunities', require('./routes/wholesaleOpportunities'))
 
 const supplierRoutes = require('./routes/suppliers')
