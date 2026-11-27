@@ -219,3 +219,34 @@ test('supplier action region has no buyer cart and cannot launch RFQ', async () 
   expect(region.querySelector('.atlas-add-cart')).toBeNull();
   expect(region.querySelector('.atlas-detail-store-action')).toHaveAttribute('href', storePath(sid));
 });
+
+test('forgot-password round trip preserves a guest commercial intent without issuing a request', async () => {
+  openProduct(); await screen.findByRole('heading', {name:product.name,level:1});
+  fireEvent.change(screen.getByLabelText('اختر الكمية'), {target:{value:'50'}});
+  fireEvent.click(screen.getByRole('button',{name:'طلب عرض سعر',exact:true}));
+  fireEvent.click(await screen.findByRole('button',{name:'نسيت كلمة المرور؟'}));
+  await screen.findByRole('heading',{name:'استرجاع حسابك'});
+  expect(new URLSearchParams(window.location.search).get('returnTo')).toBe(productPath(pid)+'?rfq=1&qty=50');
+  fireEvent.click(screen.getByRole('button',{name:'العودة للدخول'}));
+  await screen.findByRole('heading',{name:'مرحباً بعودتك'});
+  expect(new URLSearchParams(window.location.search).get('returnTo')).toBe(productPath(pid)+'?rfq=1&qty=50');
+  expect(fetch.mock.calls.filter(([url,options])=>String(url).endsWith('/rfq') && options.method==='POST')).toHaveLength(0);
+});
+
+test('duplicate login submission is blocked and a late login response after leaving cannot establish a session', async () => {
+  let finish;
+  fetch.mockImplementation((url,options)=>String(url).endsWith('/suppliers/login')?new Promise(resolve=>{finish=resolve;}):api(url,options));
+  window.history.replaceState({}, '', '/login'); render(<App />);
+  fireEvent.change(screen.getByLabelText('البريد الإلكتروني'),{target:{value:'buyer@synthetic.test'}});
+  fireEvent.change(screen.getByLabelText('كلمة المرور'),{target:{value:'Synthetic-only123!'}});
+  const form=screen.getByRole('button',{name:'دخول',exact:true}).closest('form');
+  fireEvent.submit(form);fireEvent.submit(form);
+  const calls=fetch.mock.calls.filter(([url])=>String(url).endsWith('/suppliers/login'));
+  expect(calls).toHaveLength(1);
+  act(()=>navigate('/forgot-password'));
+  await screen.findByRole('heading',{name:'استرجاع حسابك'});
+  expect(calls[0][1].signal.aborted).toBe(true);
+  await act(async()=>{finish(await response({token:jwt,supplier:buyer}));});
+  expect(localStorage.getItem('supplierToken')).toBeNull();
+  expect(window.location.pathname).toBe('/forgot-password');
+});

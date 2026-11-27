@@ -41,7 +41,8 @@ export function useRoute() {
 }
 export const dashboardPath = role => role === 'buyer' ? '/buyer' : role === 'admin' ? '/admin' : '/supplier';
 export function safeReturnTo(search, role) {
-  const raw = new URLSearchParams(search).get('returnTo');
+  const values = new URLSearchParams(search).getAll('returnTo');
+  const raw = values.length === 1 ? values[0] : '';
   if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '';
   let url;
   try { url = new URL(raw, window.location.origin); } catch { return ''; }
@@ -60,6 +61,17 @@ export function safeReturnTo(search, role) {
   if (route.page === 'favorites' && role === 'buyer') return '/favorites';
   if (route.path === dashboardPath(role)) return route.path;
   return '';
+}
+// Carry only validated navigation intent between authentication screens.
+// The authenticated role is still checked by safeReturnTo at completion.
+export function authContinuationPath(page, search, role) {
+  if (!['/login', '/register', '/forgot-password'].includes(page)) throw new Error('Invalid authentication destination');
+  const params = new URLSearchParams();
+  const target = ['buyer', 'supplier', 'admin'].map(candidate => safeReturnTo(search, candidate)).find(Boolean);
+  if (target) params.set('returnTo', target);
+  if (page === '/register' && ['buyer', 'supplier', 'staff'].includes(role)) params.set('role', role);
+  const query = params.toString();
+  return page + (query ? '?' + query : '');
 }
 export function loginPath(returnTo) {
   return '/login' + (typeof returnTo === 'string' ? '?returnTo=' + encodeURIComponent(returnTo) : '');

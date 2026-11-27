@@ -8,7 +8,7 @@ import SupplierPage from './components/suppliers/SupplierPage';
 import StorePage from './components/suppliers/StorePage';
 import ProductPage from './components/products/ProductPage';
 import WholesalePage from './components/wholesale/WholesalePage';
-import { Link, useRoute, navigate, pagePath, storePath, dashboardPath, loginPath, safeReturnTo } from './navigation';
+import { Link, useRoute, navigate, pagePath, storePath, dashboardPath, loginPath, safeReturnTo, authContinuationPath } from './navigation';
 import SupplierDashboard from './components/suppliers/SupplierDashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
 import BuyerDashboard from './components/buyer/BuyerDashboard';
@@ -241,9 +241,7 @@ function AppContent() {
   };
   const requireLogin = returnTo => navigate(loginPath(returnTo));
   const registerAs = role => {
-    const params = new URLSearchParams(route.search);
-    params.set('role', role);
-    navigate('/register?' + params.toString());
+    navigate(authContinuationPath('/register', route.search, role));
   };
   function toggleCompare(product) {
     setCompare(current => current.some(p => p._id === product._id) ? current.filter(p => p._id !== product._id) : current.length < 4 ? [...current, product] : current);
@@ -269,9 +267,9 @@ function AppContent() {
     onSourcing={() => { setPage('home'); user ? setSourcing(true) : requireLogin(); }} imageControl={imageControl}>
     {content}
   </MarketLayout></FavoritesProvider>;
-  if (page === 'login') return <LoginPage onLogin={authenticated} onBack={back} onForgotPassword={() => navigate('/forgot-password')} onCreateAccount={() => registerAs('buyer')} onBecomeSupplier={() => registerAs('supplier')} />;
-  if (page === 'forgotPassword' || page === 'resetPassword') return <RecoveryPage key={page} reset={page === 'resetPassword'} onBack={back} onLogin={() => navigate('/login')} onRequest={() => navigate('/forgot-password')} />;
-  if (page === 'register') return <RegisterPage key={route.search} initialRole={new URLSearchParams(route.search).get('role') || 'buyer'} onRegister={authenticated} onBack={back} onGoLogin={() => navigate('/login' + route.search)} />;
+  if (page === 'login') return <LoginPage key={route.search} onLogin={authenticated} onBack={back} onForgotPassword={() => navigate(authContinuationPath('/forgot-password', route.search))} onCreateAccount={() => registerAs('buyer')} onBecomeSupplier={() => registerAs('supplier')} />;
+  if (page === 'forgotPassword' || page === 'resetPassword') return <RecoveryPage key={page + route.search} reset={page === 'resetPassword'} onBack={back} onLogin={() => navigate(authContinuationPath('/login', route.search))} onRequest={() => navigate(authContinuationPath('/forgot-password', route.search))} />;
+  if (page === 'register') return <RegisterPage key={route.search} initialRole={new URLSearchParams(route.search).get('role') || 'buyer'} onRegister={authenticated} onBack={back} onGoLogin={() => navigate(authContinuationPath('/login', route.search))} />;
   if (['buyer', 'supplier'].includes(page) && (!user || (page === 'buyer' ? user.role !== 'buyer' : !['supplier', 'staff'].includes(user.role)))) return <><WorkspaceHeader title="Jomla.ma" onBack={back} /><main className="container"><p role="status">{l('جاري التحقق من الجلسة…', 'Vérification de la session…')}</p></main></>;
   if (page === 'admin') return <AdminDashboard key={sessionToken} user={user} onBack={back} onLogout={logout} onLogin={authenticated} />;
   if (page === 'supplier' && user && ['supplier', 'staff'].includes(user.role)) return <SupplierDashboard key={sessionToken} supplier={user} onBack={back} onLogout={logout} onGoAdmin={() => setPage('admin')} />;
