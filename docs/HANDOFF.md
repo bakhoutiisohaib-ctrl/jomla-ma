@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 - Gate 3D buyer trade safeguards scoped PASS: 81/81 focused, 436/436 full FE (42 suites), build PASS, 18/18 real browser records including actual RFQ negotiation, notification, buyer message and immutable agreement DB verification; 57/57 isolated BE contracts after lab configuration corrections. [Report](v49-gate3d-trade-2026-11-27.md). Gate 3 OPEN for integrated acceptance. No supplier UI acceptance or payment/delivery claim.
+
 2026-11-27 - Gate 3C buyer navigation/summary scoped PASS: 61/61 focused, 431/431 full FE (42 suites), build PASS, 15/15 final real browser records including seven buyer checks and RFQ DB verification. [Report](v49-gate3c-buyer-2026-11-27.md). Gate 3 OPEN; next 3D negotiation and notifications.
 
 2026-11-27 - Gate 3B registration/contact/recovery lifecycle automated scoped PASS: 85/85 focused, 428/428 full FE (42 suites), build PASS, 10/10 isolated actual BE contracts. [Report](v49-gate3b-contact-2026-11-27.md). New-account browser journey and live email remain open. Gate 3 OPEN; next 3C buyer dashboard/navigation.

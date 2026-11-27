@@ -19,7 +19,7 @@ export default function useBuyerWorkspace(c) {
   const [unread, setUnread] = useState(null), [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [opening, setOpening] = useState(false);
   const [selectedId, setSelectedId] = useState(null), [thread, setThread] = useState(null), [offers, setOffers] = useState([]);
   const [threadLoading, setThreadLoading] = useState(false), [threadError, setThreadError] = useState('');
-  const [error, setError] = useState(''), [loadErrors, setLoadErrors] = useState({}), [feedback, setFeedback] = useState(''), [uncertainId, setUncertainId] = useState(null);
+  const [error, setError] = useState(''), [loadErrors, setLoadErrors] = useState({}), [feedback, setFeedback] = useState(''), [uncertainIds, setUncertainIds] = useState([]);
   const dispose = useCallback(() => { alive.current = false; generation.current++; threadRevision.current++; Object.values(controllers.current).forEach(x => x.abort()); }, []);
   const cancelThread = useCallback(() => { controllers.current.thread?.abort();threadRevision.current++; }, []);
   useEffect(() => { alive.current = true; return dispose; }, [dispose]);
@@ -41,7 +41,7 @@ export default function useBuyerWorkspace(c) {
     result.forEach((r,i) => { if (r.status==='rejected') failures[paths[i]] = r.reason.message; });
     if (result[0].status==='fulfilled') {
       commitRows((result[0].value.data || []).map(r => latestRecord(rows.current.find(old => old._id===r._id),r)));
-      setUncertainId(null);
+      // A list read alone cannot resolve an uncertain decision.
     }
     if (result[1].status==='fulfilled') setSourcing(result[1].value.data || []);
     if (result[2].status==='fulfilled') {
@@ -57,8 +57,13 @@ export default function useBuyerWorkspace(c) {
     try {
       const result = await apiRequest('/rfq/'+id+'/thread',{token,signal:controller.signal,cache:'no-store'});
       if (!valid(controller) || id!==selectedRef.current || revision!==threadRevision.current) return;
+      if (result.rfq && result.rfq._id !== id) throw new Error(labels.current.unavailable);
+      if (result.thread?.rfqId && String(result.thread.rfqId) !== id) throw new Error(labels.current.unavailable);
+      const previous = rows.current.find(r => r._id === id);
+      const authoritative = result.rfq && latestRecord(previous, result.rfq) === result.rfq;
       setThread(result.thread); setOffers(result.offers || []); setThreadError('');
       if (result.rfq) mergeRecord(result.rfq);
+      if (authoritative) setUncertainIds(values => values.includes(id) ? values.filter(value => value !== id) : values);
     } catch (e) { if (valid(controller) && revision===threadRevision.current) setThreadError(e.message); }
     finally { if (valid(controller) && revision===threadRevision.current) setThreadLoading(false); }
   }, [mergeRecord, token, valid]);
@@ -84,7 +89,7 @@ export default function useBuyerWorkspace(c) {
       const result=await action({token,signal:controller.signal});
       if (!valid(controller)) return false;
       if (result?.rfq) mergeRecord(result.rfq);
-      if (decision && result?.processing && !result.rfq) setUncertainId(target);
+      if (decision && result?.processing && !result.rfq) setUncertainIds(values => [...new Set([...values,target])]);
       await refresh(); if (!valid(controller)) return false;
       if (selectedRef.current) await loadThread(selectedRef.current);
       if (valid(controller) && (!target || target===selectedRef.current)) {
@@ -93,7 +98,7 @@ export default function useBuyerWorkspace(c) {
       }
       return true;
     } catch (e) {
-      if (valid(controller)) { setError(e.message || labels.current.error); if (decision) setUncertainId(target); }
+      if (valid(controller)) { setError(e.message || labels.current.error); if (decision) setUncertainIds(values => [...new Set([...values,target])]); }
       return false;
     } finally { busyRef.current=false;if (valid(controller)) {setBusy(false);setThreadLoading(false);} }
   }
@@ -106,6 +111,7 @@ export default function useBuyerWorkspace(c) {
       if (n.resourceType==='rfq') {
         const record=await apiRequest('/rfq/'+n.resourceId,{token,signal:controller.signal,cache:'no-store'});
         if (!valid(controller)) return null;
+        if (record?._id !== n.resourceId) {setError(labels.current.unavailable);return null;}
         mergeRecord(record);chooseRequest(record._id);
       } else {
         // The authenticated buyer list is the allowed set; no guessed public URL.
@@ -119,5 +125,5 @@ export default function useBuyerWorkspace(c) {
     finally {openingRef.current=false;if (valid(controller))setOpening(false);}
   }
   return {rfqs,sourcing,notifications,unread,loading,busy,opening,selectedId,selected:rfqs.find(r=>r._id===selectedId),thread,offers,threadLoading,threadError,
-    error,loadErrors,feedback,uncertainId,refresh,loadThread,run,chooseRequest,verifiedNotificationTarget,setError,valid};
+    error,loadErrors,feedback,uncertainId:uncertainIds.includes(selectedId)?selectedId:null,refresh,loadThread,run,chooseRequest,verifiedNotificationTarget,setError,valid};
 }

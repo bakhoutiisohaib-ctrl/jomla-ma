@@ -15,7 +15,7 @@ beforeEach(() => {
     if (path === '/rfq/buyer') return { data: [rfq] }
     if (path === '/sourcing/buyer') return { data: [] }
     if (path === '/notifications') return { data: [{ _id: 'notice-1', type: 'offer_received', resourceType: 'rfq', resourceId: rfq._id, readAt: null, createdAt: new Date().toISOString() }], unreadCount: 1 }
-    if (path.endsWith('/thread')) return { thread: { messages: [] }, offers: [current, previous] }
+    if (path.endsWith('/thread')) return { rfq, thread: { messages: [], status:'open' }, offers: [current, previous] }
     return {}
   })
 })
@@ -250,3 +250,82 @@ test('failed requests load never claims zero or a confirmed empty list',async()=
   await screen.findByText('أحذية بالجملة')
   expect(screen.getByRole('button',{name:/تحتاج مراجعتك/})).toBeEnabled()
 })
+
+test('confirmation rechecks expiration at the actual click even if the UI has not rerendered', async()=>{
+  const base=apiRequest.getMockImplementation(), now=Date.now(), clock=jest.spyOn(Date,'now').mockReturnValue(now);
+  try {
+    apiRequest.mockImplementation((p,o)=>p.endsWith('/thread')?Promise.resolve({rfq,thread:{messages:[],status:'open'},offers:[{...current,validUntil:new Date(now+1000).toISOString()}]}):base(p,o));
+    renderBuyer();fireEvent.click(await screen.findByRole('button',{name:'العروض والمحادثة'}));
+    fireEvent.click(await screen.findByRole('button',{name:'قبول العرض'}));
+    const confirm=screen.getByRole('button',{name:'تأكيد قبول العرض'});
+    expect(confirm).toBeEnabled();
+    clock.mockReturnValue(now+2000);fireEvent.click(confirm);
+    expect(screen.getByRole('alert')).toHaveTextContent('لم يعد العرض صالحاً');
+    expect(apiRequest.mock.calls.filter(([p])=>p.endsWith('/action'))).toHaveLength(0);
+  } finally {clock.mockRestore()}
+});
+
+test('a successful list refresh without a confirmed thread cannot unlock an ambiguous decision or send', async()=>{
+  let failed=false, release=false;
+  const base=apiRequest.getMockImplementation();
+  apiRequest.mockImplementation((p,o)=>{
+    if(p.endsWith('/action')){failed=true;return Promise.reject(new Error('Synthetic interruption'))}
+    if(p.endsWith('/thread')&&failed&&!release)return Promise.resolve({thread:{messages:[],status:'open'},offers:[current]});
+    return base(p,o);
+  });
+  renderBuyer();fireEvent.click(await screen.findByRole('button',{name:'العروض والمحادثة'}));
+  fireEvent.click(await screen.findByRole('button',{name:'قبول العرض'}));fireEvent.click(screen.getByRole('button',{name:'تأكيد قبول العرض'}));
+  const refresh=await screen.findByRole('button',{name:'تحديث حالة الطلب'});
+  fireEvent.click(refresh);
+  await waitFor(()=>expect(apiRequest.mock.calls.filter(([p])=>p.endsWith('/thread')).length).toBeGreaterThan(1));
+  expect(screen.getByRole('button',{name:'رفض العرض'})).toBeDisabled();
+  const input=screen.getByLabelText('رسالتك للمورد');fireEvent.change(input,{target:{value:'Synthetic draft'}});
+  fireEvent.submit(input.closest('form'));
+  expect(apiRequest.mock.calls.filter(([p])=>p.endsWith('/messages'))).toHaveLength(0);
+  release=true;fireEvent.click(refresh);
+  await waitFor(()=>expect(screen.getByRole('button',{name:'رفض العرض'})).toBeEnabled());
+});
+
+test('a notification response for a different request is not opened or marked read',async()=>{
+  const base=apiRequest.getMockImplementation();
+  apiRequest.mockImplementation((p,o)=>p==='/rfq/rfq-1'?Promise.resolve({...rfq,_id:'unexpected'}):base(p,o));
+  renderBuyer();fireEvent.click(await screen.findByRole('button',{name:'الإشعارات (1)'}));fireEvent.click(screen.getByRole('button',{name:'فتح الطلب'}));
+  expect(await screen.findByRole('alert')).toHaveTextContent('الطلب غير متاح لهذا الحساب.');
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(apiRequest.mock.calls.filter(([p])=>p.endsWith('/read'))).toHaveLength(0);
+});
+
+test('a mismatched thread cannot replace the selected request or enable a decision', async()=>{
+  const base=apiRequest.getMockImplementation();
+  apiRequest.mockImplementation((p,o)=>p.endsWith('/thread')?Promise.resolve({rfq:{...rfq,_id:'other'},thread:{messages:[{_id:'foreign',content:'Foreign synthetic message'}]},offers:[current]}):base(p,o));
+  renderBuyer();fireEvent.click(await screen.findByRole('button',{name:'العروض والمحادثة'}));
+  expect(await screen.findByRole('alert')).toHaveTextContent('الطلب غير متاح لهذا الحساب.');
+  expect(screen.queryByText('Foreign synthetic message')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'قبول العرض'})).not.toBeInTheDocument();
+});
+
+test('uncertain decisions are retained separately for different requests', async()=>{
+  const second={...rfq,_id:'rfq-2',productId:{name:'Second synthetic request',unit:'piece'}};
+  const base=apiRequest.getMockImplementation();let failRead=false;
+  apiRequest.mockImplementation((p,o)=>{
+    if(p==='/rfq/buyer')return Promise.resolve({data:[rfq,second]});
+    if(p.endsWith('/action')){failRead=true;return Promise.reject(new Error('Synthetic decision interruption'))}
+    if(p.endsWith('/thread')){
+      const record=p.includes('rfq-2')?second:rfq;
+      return Promise.resolve({...(failRead?{}:{rfq:record}),thread:{messages:[],status:'open'},offers:[current]});
+    }
+    return base(p,o);
+  });
+  renderBuyer();
+  const buttons=await screen.findAllByRole('button',{name:'العروض والمحادثة'});
+  for(const button of buttons){
+    fireEvent.click(button);
+    fireEvent.click(await screen.findByRole('button',{name:'قبول العرض'}));
+    fireEvent.click(screen.getByRole('button',{name:'تأكيد قبول العرض'}));
+    await screen.findByRole('button',{name:'تحديث حالة الطلب'});
+    fireEvent.click(screen.getByRole('button',{name:'إغلاق'}));
+  }
+  fireEvent.click(buttons[0]);
+  await screen.findByRole('button',{name:'تحديث حالة الطلب'});
+  await waitFor(()=>expect(screen.getByRole('button',{name:'رفض العرض'})).toBeDisabled());
+});
