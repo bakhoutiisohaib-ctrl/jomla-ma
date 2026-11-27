@@ -241,3 +241,48 @@ test('invalid images collection and untrusted video fields never create media pl
   expect(document.querySelector('.atlas-gallery-counter')).toHaveTextContent('1 / 1');
   expect(fetch.mock.calls.some(([url]) => String(url).includes('untrusted.example') || String(url).includes('second.png'))).toBe(false);
 });
+
+test('quantity pricing selects a declared tier, estimates the total and blocks below-MOQ input', async () => {
+  await open();
+  const quantity = screen.getByLabelText('اختر الكمية');
+  expect(quantity).toHaveValue('10');
+  expect(screen.getByRole('button', { name: '10–49 قطعة' }).querySelector('bdi')).toHaveAttribute('dir', 'ltr');
+  expect(document.querySelector('.atlas-detail-price')).toHaveTextContent('35');
+  fireEvent.click(screen.getByRole('button', { name: 'ابتداءً من 50 قطعة' }));
+  expect(quantity).toHaveValue('50');
+  expect(document.querySelector('.atlas-detail-price')).toHaveTextContent('30');
+  expect(document.querySelector('.atlas-quantity-total strong').textContent).toBe(new Intl.NumberFormat('ar-MA', { style: 'currency', currency: 'MAD' }).format(1500));
+  expect(screen.getByRole('button', { name: 'ابتداءً من 50 قطعة' })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.change(quantity, { target: { value: '9' } });
+  expect(quantity).toHaveAttribute('aria-invalid', 'true');
+  expect(document.querySelector('.atlas-detail-request button')).toBeDisabled();
+  expect(document.querySelector('.atlas-quantity-total')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'زيادة الكمية' }));
+  expect(quantity).toHaveValue('10');
+  expect(document.querySelector('.atlas-detail-request button')).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', { name: 'زيادة الكمية' }));
+  expect(quantity).toHaveValue('11');
+  fireEvent.click(screen.getByRole('button', { name: 'تقليل الكمية' }));
+  expect(quantity).toHaveValue('10');
+});
+
+test('quote-only product permits valid quantity but never displays a stale total or tier', async () => {
+  product = { ...product, pricingMode: 'on_request' };
+  await open();
+  fireEvent.change(screen.getByLabelText('اختر الكمية'), { target: { value: '50' } });
+  expect(document.querySelector('.atlas-detail-price')).toHaveTextContent('السعر عند الطلب');
+  expect(document.querySelector('.atlas-quantity-total')).toBeNull();
+  expect(screen.queryByRole('table', { name: 'شرائح السعر حسب الكمية' })).not.toBeInTheDocument();
+  expect(document.querySelector('.atlas-detail-request button')).toBeEnabled();
+});
+
+test('quantity no longer meeting current MOQ on login return requires correction rather than opening a different request', async () => {
+  localStorage.setItem('supplierToken', 'test.' + btoa(JSON.stringify({ id: buyerId, exp: 9999999999 })) + '.signature');
+  window.history.replaceState({}, '', '/products/' + pid + '?rfq=1&qty=20');
+  product = { ...product, moq: 30, priceTiers: [] };
+  await open();
+  await waitFor(() => expect(window.location.search).toBe(''));
+  expect(screen.getByLabelText('اختر الكمية')).toHaveValue('20');
+  expect(document.querySelector('.atlas-detail-request button')).toBeDisabled();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});

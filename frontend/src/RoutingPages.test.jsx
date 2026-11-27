@@ -170,3 +170,27 @@ test('withdrawal revalidation clears previously loaded details, metadata and ima
     expect(URL.revokeObjectURL).toHaveBeenCalled();
   } finally { jest.useRealTimers(); }
 });
+
+test('guest chosen quantity is restored after login and sent once without turning an estimate into a target price', async () => {
+  const view = openProduct();
+  await screen.findByRole('heading', { name: product.name, level: 1 });
+  fireEvent.change(screen.getByLabelText('اختر الكمية'), { target: { value: '50' } });
+  fireEvent.click(screen.getByRole('button', { name: 'طلب عرض سعر', exact: true }));
+  await screen.findByRole('heading', { name: 'مرحباً بعودتك' });
+  expect(new URLSearchParams(window.location.search).get('returnTo')).toBe(productPath(pid) + '?rfq=1&qty=50');
+  view.unmount(); render(<App />);
+  fireEvent.change(screen.getByLabelText('البريد الإلكتروني'), { target: { value: 'buyer@synthetic.test' } });
+  fireEvent.change(screen.getByLabelText('كلمة المرور'), { target: { value: 'Synthetic-only123!' } });
+  profile = buyer;
+  fireEvent.click(screen.getByRole('button', { name: 'دخول', exact: true }));
+  await screen.findByRole('dialog', { name: 'طلب عرض سعر بالجملة' });
+  expect(screen.getByLabelText('الكمية المطلوبة')).toHaveValue(50);
+  expect(screen.getByLabelText('سعر مستهدف اختياري (MAD)')).toHaveValue(null);
+  expect(window.location.search).toBe('');
+  expect(fetch.mock.calls.filter(([url, options]) => String(url).endsWith('/rfq') && options.method === 'POST')).toHaveLength(0);
+  fireEvent.click(screen.getByRole('button', { name: 'إرسال طلب عرض السعر', exact: true }));
+  await screen.findByRole('heading', { name: 'Buyer workspace test' });
+  const sent = fetch.mock.calls.filter(([url, options]) => String(url).endsWith('/rfq') && options.method === 'POST');
+  expect(sent).toHaveLength(1);
+  expect(JSON.parse(sent[0][1].body)).toMatchObject({ productId: pid, quantity: 50, targetPrice: null });
+});

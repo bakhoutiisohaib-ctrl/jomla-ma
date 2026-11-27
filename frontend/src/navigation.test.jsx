@@ -24,3 +24,14 @@ test('programmatic navigation rejects an external origin', () => {
   expect(() => navigate('https://external.invalid')).toThrow();
   expect(window.location.pathname).toBe('/');
 });
+
+test.each([
+  ['?rfq=1&qty=50&token=never-copy', '?rfq=1&qty=50'],
+  ['?rfq=1&qty=1e2', ''],
+  ['?rfq=1&qty=9007199254740992', ''],
+  ['?rfq=1&qty=50&qty=60', ''],
+  ['?rfq=1&rfq=0&qty=50', ''],
+  ['?qty=50', '']
+])('sanitizes public quantity return intent %s', (query, expected) => {
+  expect(safeReturnTo('?returnTo=' + encodeURIComponent(productPath(id) + query), 'buyer')).toBe(productPath(id) + expected);
+});

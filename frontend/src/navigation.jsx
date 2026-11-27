@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { parseQuantity } from './components/products/detailPricing';
 
 const EVENT = 'jomla:navigate';
 const pages = { '/': 'home', '/stores': 'stores', '/login': 'login', '/register': 'register',
@@ -46,7 +47,14 @@ export function safeReturnTo(search, role) {
   try { url = new URL(raw, window.location.origin); } catch { return ''; }
   if (url.origin !== window.location.origin) return '';
   const route = parseRoute(url.href);
-  if (route.page === 'product') return productPath(route.id) + (url.searchParams.get('rfq') === '1' ? '?rfq=1' : '');
+  if (route.page === 'product') {
+    const path = productPath(route.id);
+    if (url.searchParams.getAll('rfq').length !== 1 || url.searchParams.get('rfq') !== '1') return path;
+    const quantities = url.searchParams.getAll('qty');
+    if (!quantities.length) return path + '?rfq=1';
+    const quantity = quantities.length === 1 ? parseQuantity(quantities[0]) : null;
+    return quantity === null ? path : path + '?rfq=1&qty=' + quantity;
+  }
   if (route.page === 'opportunity') return opportunityPath(route.id) + (url.searchParams.get('rfq') === '1' ? '?rfq=1' : '');
   if (['home', 'stores', 'store', 'supplierPublic', 'opportunities', 'cart'].includes(route.page)) return route.path + url.search;
   if (route.page === 'favorites' && role === 'buyer') return '/favorites';

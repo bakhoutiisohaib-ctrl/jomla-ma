@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 - Gate 2C quantity/estimate and direct RFQ intent scoped PASS: 132/132 focused, 410/410 full FE (42 suites), build PASS; final Chrome five records and isolated DB one RFQ qty50, targetPrice unset, correct product/buyer/supplier and one thread/message/notification. [Report](v49-gate2-price-2026-11-27.md). Cart still product-ID-only; video outstanding. Gate 2 OPEN; next fixed commercial bar.
+
 2026-11-27 — Gate 2B managed image gallery scoped PASS: RTL counter, directional swipe/keyboard, zoom and real favorite overlay; focused FE 66/66, full FE 378/378 (41 suites), build PASS, Chrome six records. [Report](v49-gate2-gallery-2026-11-27.md). Video NOT implemented; requires secure media contract. Gate 2 OPEN; next Gate 2C quantity/effective price/RFQ context.
 
 2026-11-27 — Gate 2A continuous product sections PASS: Overview/Details/Recommended sticky native fragment navigation, focused FE 41/41, full FE 374/374 (41 suites), build PASS; final Chrome 7 records incl. keyboard focus, legacy fragments, and back destination geometry. [Report](v49-gate2-nav-2026-11-27.md). Backend unchanged; Gate 2 OPEN. Next gallery/media, quantity pricing, commercial bar and recommendations.

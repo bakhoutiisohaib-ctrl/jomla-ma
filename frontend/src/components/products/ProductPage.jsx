@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useTranslation } from '../../i18n/LanguageContext';
-import { useLabels, formatMoney } from '../../i18n/useLabels';
+import { useLabels } from '../../i18n/useLabels';
 import { Link, productPath, storePath, supplierPath, navigate } from '../../navigation';
 import { Notice } from '../common/WorkspaceUI';
 import { usePublicMeta, usePublicResource } from '../common/usePublicPage';
 import ShareLink from '../common/ShareLink';
 import ProductGallery from './ProductGallery';
 import ProductSectionNav from './ProductSectionNav';
+import ProductQuantityPricing from './ProductQuantityPricing';
+import { parseQuantity, validOrderQuantity } from './detailPricing';
 import ProductSupplierReviews from './ProductSupplierReviews';
 import RelatedProducts from './RelatedProducts';
 import SupplierRating from './SupplierRating';
@@ -15,18 +16,28 @@ import AddToQuoteCart from '../cart/AddToQuoteCart';
 import '../../styles/atlas-product-detail.css';
 
 export default function ProductPage({ id, search, user, sessionLoading, onBack, onRequireLogin, onRfqCreated }) {
-  const l = useLabels(), { lang } = useTranslation();
+  const l = useLabels();
   const { data, error, loading } = usePublicResource('/products/' + id);
-  const [rfqProductId, setRfqProductId] = useState(null);
+  const [rfqIntent, setRfqIntent] = useState(null), [enteredQuantity, setEnteredQuantity] = useState(null);
   const product = data?.product, store = data?.store, supplier = product?.supplierId;
   usePublicMeta(product?.name, product?.description, product ? productPath(id) : '');
-  useEffect(() => {
-    if (product && user?.role === 'buyer' && new URLSearchParams(search).get('rfq') === '1') {
-      setRfqProductId(id); navigate(productPath(id), { replace: true });
-    }
-  }, [product, user?.role, search, id]);
   const supplierId = supplier?._id || supplier;
   const available = product?.availability === 'in_stock' || product?.inStock === true;
+  const rawQuantity = enteredQuantity ?? String(product?.moq ?? '');
+  const quantity = validOrderQuantity(product, rawQuantity);
+  function rfqPath(value) {
+    return productPath(id) + '?rfq=1' + (value !== null && (enteredQuantity !== null || value !== product.moq) ? '&qty=' + value : '');
+  }
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    if (!product || sessionLoading || user?.role !== 'buyer' || params.get('rfq') !== '1') return;
+    const values = params.getAll('qty');
+    const requested = values.length === 0 ? parseQuantity(product.moq) : values.length === 1 ? parseQuantity(values[0]) : null;
+    const valid = validOrderQuantity(product, requested);
+    if (values.length) setEnteredQuantity(requested === null ? '' : String(requested));
+    if (available && valid !== null && params.getAll('rfq').length === 1) setRfqIntent({ id, quantity: valid });
+    navigate(productPath(id), { replace: true });
+  }, [product, user?.role, sessionLoading, search, id, available]);
   return <>
     <main className="container atlas-product-page atlas-detail-page" id="market-main" tabIndex="-1">
       {loading && <p role="status">{l('جاري تحميل المنتج…', 'Chargement du produit…')}</p>}
@@ -38,10 +49,8 @@ export default function ProductPage({ id, search, user, sessionLoading, onBack, 
           <ProductGallery key={id} product={product} />
           <section className="atlas-detail-summary"><span className="atlas-eyebrow">{product.category}</span><h1>{product.name}</h1>
             <div className="atlas-detail-stock"><span className={'badge ' + (available ? 'green' : 'amber')}>{available ? l('متوفر بحسب المورد', 'Disponible selon le fournisseur') : l('غير متوفر', 'Indisponible')}</span><span>{product.city || supplier?.city}</span></div>
-            <div className="atlas-detail-pricing"><p className="atlas-detail-muted">{l('سعر الوحدة', 'Prix unitaire')}</p><p className="atlas-detail-price">{product.pricingMode === 'on_request' ? l('السعر عند الطلب', 'Prix sur demande') : <>{formatMoney(product.price, product.currency, lang)} <small>/ {product.unit}</small></>}</p><p className="atlas-detail-moq">{l('الحد الأدنى للطلب', 'Commande minimum')}: <strong>{product.moq} {product.unit}</strong></p>
-            {product.pricingMode !== 'on_request' && !!product.priceTiers?.length && <div className="table-wrap atlas-detail-tiers"><table><caption>{l('شرائح السعر حسب الكمية', 'Tarifs par quantité')}</caption><thead><tr><th>{l('الكمية', 'Quantité')}</th><th>{l('سعر الوحدة', 'Prix unitaire')}</th></tr></thead><tbody>{[...product.priceTiers].sort((a, b) => a.minQty - b.minQty).map((tier, index) => <tr key={index}><td>{tier.maxQty == null ? l('ابتداءً من ', 'À partir de ') + tier.minQty : tier.minQty + '–' + tier.maxQty} {product.unit}</td><td>{formatMoney(tier.price, product.currency, lang)}</td></tr>)}</tbody></table></div>}
-            </div>
-            <div className="atlas-detail-request"><button className="primary" disabled={sessionLoading || !available || Boolean(user && user.role !== 'buyer')} onClick={() => !user ? onRequireLogin(productPath(id) + '?rfq=1') : setRfqProductId(id)}>{l('طلب عرض سعر', 'Demander un devis')}</button>
+            <ProductQuantityPricing product={product} quantity={rawQuantity} onQuantityChange={setEnteredQuantity} />
+            <div className="atlas-detail-request"><button className="primary" disabled={sessionLoading || !available || quantity === null || Boolean(user && user.role !== 'buyer')} onClick={() => !user ? onRequireLogin(rfqPath(quantity)) : setRfqIntent({ id, quantity })}>{l('طلب عرض سعر', 'Demander un devis')}</button>
             {!sessionLoading && <AddToQuoteCart product={product} user={user} />}</div>
             {!user && <p className="muted atlas-rfq-note">{l('تصفح دون حساب. إرسال الطلب يتطلب دخول المشتري.', 'Consultation libre. Un compte acheteur est requis pour envoyer la demande.')}</p>}
             {user && user.role !== 'buyer' && <p>{l('إرسال طلب عرض السعر متاح لحساب المشتري.', 'L’envoi d’une demande de devis est réservé au compte acheteur.')}</p>}
@@ -60,6 +69,6 @@ export default function ProductPage({ id, search, user, sessionLoading, onBack, 
         </div>
         <RelatedProducts key={id} product={product} user={user} onRequireLogin={onRequireLogin} onRfqCreated={onRfqCreated} />
       </>}
-      {product && rfqProductId === id && <RFQModal key={id + ':' + (user?._id || 'visitor')} product={product} user={user} onClose={() => setRfqProductId(null)} onRequireLogin={() => onRequireLogin(productPath(id) + '?rfq=1')} onSuccess={onRfqCreated} />}
+      {product && available && rfqIntent?.id === id && <RFQModal key={id + ':' + (user?._id || 'visitor')} product={product} user={user} initialQuantity={rfqIntent.quantity} onClose={() => setRfqIntent(null)} onRequireLogin={() => onRequireLogin(rfqPath(rfqIntent.quantity))} onSuccess={onRfqCreated} />}
     </main></>;
 }

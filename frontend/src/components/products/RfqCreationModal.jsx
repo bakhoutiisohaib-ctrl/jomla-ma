@@ -5,6 +5,7 @@ import { apiRequest } from '../../api/config'
 import { getSessionToken, useSessionToken } from '../../api/session'
 import { useTranslation } from '../../i18n/LanguageContext'
 import AtlasDialog from '../common/AtlasDialog'
+import { validOrderQuantity } from './detailPricing'
 
 const copy = {
   ar: { title: 'طلب عرض سعر بالجملة', login: 'سجل الدخول كمشترٍ لإرسال الطلب ومتابعة العروض.', loginButton: 'دخول المشتري', phone: 'هاتف التواصل', city: 'مدينة التوصيل', quantity: 'الكمية المطلوبة', target: 'سعر مستهدف اختياري', notes: 'المواصفات والملاحظات', submit: 'إرسال طلب عرض السعر', busy: 'جاري الإرسال…', success: 'تم إرسال طلبك. يمكنك متابعة العرض والمراسلات من «طلباتي».', reference: 'رقم الطلب', minimum: 'الحد الأدنى', error: 'تعذر تأكيد نتيجة الطلب.',
@@ -25,14 +26,14 @@ export default function RFQModal(props) {
   const token = useSessionToken()
   return <BuyerContactGate key={token + ':' + (props.user?._id || props.user?.id || '')} user={props.user} token={token} onClose={props.onClose}>{account => <RfqSession key={token + ':' + props.product._id + ':' + (props.opportunity?._id || '')} {...props} user={account} token={token} />}</BuyerContactGate>
 }
-function RfqSession({ product, opportunity, onClose, onSuccess, onRequireLogin, user, token }) {
+function RfqSession({ product, opportunity, initialQuantity, onClose, onSuccess, onRequireLogin, user, token }) {
   const { lang } = useTranslation(), c = localizeCopy(copy, lang)
   const [form, setForm] = useState(() => {
     // A session event can arrive before App has loaded the replacement profile.
     // Never seed the new account's form with a stale previous profile.
     let current = false
     try { const encoded = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); current = String(JSON.parse(atob(encoded)).id) === String(user?._id || user?.id || '') } catch { /* no verified profile to prefill */ }
-    return { quantity: product.moq || 1, buyerPhone: current ? user?.phone || '' : '', buyerCity: current ? user?.city || '' : '', targetPrice: '', notes: '' }
+    return { quantity: initialQuantity == null ? (product.moq || 1) : (validOrderQuantity(product, initialQuantity) ?? ''), buyerPhone: current ? user?.phone || '' : '', buyerCity: current ? user?.city || '' : '', targetPrice: '', notes: '' }
   })
   const [loading, setLoading] = useState(false), [error, setError] = useState(''), [submitted, setSubmitted] = useState(null)
   const [uncertain, setUncertain] = useState(false), [pendingId, setPendingId] = useState(null)
@@ -79,7 +80,7 @@ function RfqSession({ product, opportunity, onClose, onSuccess, onRequireLogin, 
           <fieldset disabled={loading || uncertain} style={{ border: 0, margin: 0, padding: 0, display: 'grid', gap: 14, minWidth: 0 }}>
             <label>{c.phone}<input required type="tel" autoComplete="tel" maxLength={20} pattern="[+0-9 ()-]{8,20}" value={form.buyerPhone} onChange={e => setForm(f => ({ ...f, buyerPhone: e.target.value }))} style={inputStyle} /></label>
             <label>{c.city}<input maxLength={200} value={form.buyerCity} onChange={e => setForm(f => ({ ...f, buyerCity: e.target.value }))} style={inputStyle} /></label>
-            <label>{c.quantity}<input required type="number" step="1" min={product.moq || 1} value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} style={inputStyle} /></label>
+            <label>{c.quantity}<input required type="number" step="1" min={product.moq || 1} max={Number.MAX_SAFE_INTEGER} value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} style={inputStyle} /></label>
             <label>{c.target} ({product.currency || 'MAD'})<input type="number" min="0" step="0.01" value={form.targetPrice} onChange={e => setForm(f => ({ ...f, targetPrice: e.target.value }))} style={inputStyle} /></label>
             <label>{c.notes}<textarea maxLength={5000} rows={3} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={inputStyle} /></label>
           </fieldset>

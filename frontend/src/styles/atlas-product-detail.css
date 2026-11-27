@@ -116,3 +116,16 @@
 }
 .atlas-gallery-counter { unicode-bidi: isolate; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .atlas-zoom-toolbar output { direction: ltr; unicode-bidi: isolate; }
+
+/* Detail pricing uses declared tiers, not a binding checkout price. */
+.atlas-detail-page .atlas-detail-price small { white-space: normal; overflow-wrap: anywhere; }
+.atlas-detail-page .atlas-detail-moq, .atlas-detail-page .atlas-detail-tiers td { overflow-wrap: anywhere; }
+.atlas-public .atlas-tier-choice { min-height: 44px; width: 100%; text-align: start; border: 0; background: transparent; white-space: normal; overflow-wrap: anywhere; }
+.atlas-detail-tiers tr[data-selected-tier=true] { background: #dce8d4; }
+.atlas-quantity-panel { margin-block-start: 16px; min-width: 0; }
+.atlas-quantity-panel label { font-weight: 650; display: block; margin-block-end: 8px; }
+.atlas-quantity-stepper { display: grid; grid-template-columns: 44px minmax(0,1fr) 44px; gap: 6px; }
+.atlas-public .atlas-quantity-stepper button, .atlas-public .atlas-quantity-stepper input { min-height: 44px; min-width: 0; width: 100%; box-sizing: border-box; text-align: center; padding: 6px; margin: 0; }
+.atlas-quantity-stepper input[aria-invalid=true] { border-color: #a44731; }
+.atlas-quantity-total { overflow-wrap: anywhere; font-size: 16px; }
+.atlas-quantity-error { color: #a44731; font-size: 13px; }
