@@ -109,3 +109,25 @@ test('supplier editing retains existing path on load failure and can explicitly 
  await waitFor(()=>expect(saved).toHaveBeenCalledWith(true));
  expect(writes[0]).toMatchObject({method:'PUT',body:{taxonomyPath:'',category:'Original label'}});
 });
+
+test('all sectors directory opens the scoped subcategory dialog and restores focus',async()=>{
+ render(<App/>);
+ const all=await screen.findByRole('button',{name:'عرض جميع القطاعات'});
+ fireEvent.click(all);
+ const directoryDialog=screen.getByRole('dialog',{name:'عرض جميع القطاعات'});
+ expect(within(directoryDialog).getAllByRole('button').length).toBe(11);
+ fireEvent.click(within(directoryDialog).getByRole('button',{name:'النسيج والملابس'}));
+ const sub=screen.getByRole('dialog',{name:'النسيج والملابس'});
+ expect(within(sub).getByRole('button',{name:'كل فئات القطاع'})).toHaveFocus();
+ fireEvent.click(within(sub).getByRole('button',{name:'ملابس الأطفال'}));
+ expect(screen.queryByRole('dialog')).toBeNull();
+ expect(all).toHaveFocus();
+ await waitFor(()=>expect(requests('/products/search').some(([url])=>params(url).get('taxonomyPath')==='textile/kids')).toBe(true));
+ const trigger=screen.getByRole('button',{name:'المنزل والديكور'});
+ fireEvent.click(trigger);
+ expect(screen.getByRole('dialog',{name:'المنزل والديكور'})).toBeInTheDocument();
+ fireEvent.keyDown(document,{key:'Escape'});
+ expect(screen.queryByRole('dialog')).toBeNull();
+ expect(trigger).toHaveFocus();
+ await waitFor(()=>expect(requests('/products/search').some(([url])=>params(url).get('taxonomyPath')==='home')).toBe(true));
+});
