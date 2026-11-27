@@ -51,7 +51,7 @@ export default function SupplierDashboard({
   const [recoveredDraft, setRecoveredDraft] = useState(null);
   const [pendingTab, setPendingTab] = useState(null);
   const [offerCloseBlocked, setOfferCloseBlocked] = useState(false);
-  const [drafts, setDrafts] = useState([]), [draftLoading, setDraftLoading] = useState(false), [failedJobs, setFailedJobs] = useState(null);
+  const [drafts, setDrafts] = useState([]), [draftLoading, setDraftLoading] = useState(false), [draftReady, setDraftReady] = useState(false), [failedJobs, setFailedJobs] = useState(null);
   const [selected, setSelected] = useState(null),
     [thread, setThread] = useState(null),
     [text, setText] = useState('');
@@ -131,7 +131,8 @@ export default function SupplierDashboard({
     }));
     if (can('manage_store') || can('manage_products')) fetchInto('/stores/mine?limit=100', d => {setStores(d.data || []);setStoreTotal(Number.isSafeInteger(d.pagination?.total) && d.pagination.total>=0 ? d.pagination.total : null);}, 'stores');
     if (can('manage_products') && tab !== 'drafts') fetchInto('/products/mine?page=' + page + '&limit=12', d => {
-      setProducts(d.data || []);
+      if (!Array.isArray(d.data) || !Number.isSafeInteger(d.pagination?.pages) || d.pagination.pages<0) throw new Error('Invalid private product list');
+      setProducts(d.data);
       setPages(d.pagination?.pages || 1);
       setTotal(Number.isSafeInteger(d.pagination?.total) && d.pagination.total>=0 ? d.pagination.total : null);
     }, 'products');
@@ -175,20 +176,28 @@ export default function SupplierDashboard({
   useEffect(() => {
     if (tab !== 'drafts' || !can('manage_products')) return;
     const controller = new AbortController(); let active = true;
-    setDraftLoading(true); setDrafts([]);
+    const token = getSessionToken();
+    const current = () => active && !controller.signal.aborted && token === getSessionToken();
+    setDraftLoading(true); setDraftReady(false); setDrafts([]);
     async function load() {
-      const collected = []; let number = 1, count = 1;
+      const collected = []; let number = 1, count = null;
       do {
-        const result = await apiRequest('/products/mine?page=' + number + '&limit=100', { signal: controller.signal });
-        if (!active || controller.signal.aborted) return;
-        collected.push(...(result.data || []).filter(p => p.isDraft));
-        count = result.pagination?.pages || 1; number++;
+        const result = await apiRequest('/products/mine?page=' + number + '&limit=100', { token, signal: controller.signal, cache:'no-store' });
+        if (!current()) return;
+        const pages = result.pagination?.pages;
+        if (!Array.isArray(result.data) || !Number.isSafeInteger(pages) || pages<0 || (count!==null && count!==pages))
+          throw new Error('Unconfirmed private draft pagination');
+        collected.push(...result.data.filter(p => p.isDraft));
+        count = pages; number++;
       } while (number <= count);
-      if (active) setDrafts([...new Map(collected.map(p => [p._id, p])).values()]);
+      if (current()) {
+        setDrafts([...new Map(collected.map(p => [p._id, p])).values()]);
+        setDraftReady(true);
+      }
     }
-    load().catch(e => { if (active && e.name !== 'AbortError') setError(e.message); }).finally(() => { if (active) setDraftLoading(false); });
+    load().catch(e => { if (current() && e.name !== 'AbortError') setError(e.message); }).finally(() => { if (current()) setDraftLoading(false); });
     return () => { active = false; controller.abort(); };
-  }, [tab, revision, can]);
+  }, [tab, revision, can, liveSession]);
   async function action(fn, success) {
     setBusy(true);
     setError('');
@@ -260,8 +269,10 @@ export default function SupplierDashboard({
     setAdvanced(value);
     if (!value && advancedSupplierTabs.includes(tab)) moveTab('overview');
   }
-  const listProducts = tab === 'drafts' ? drafts.slice((page - 1) * 12, page * 12) : products;
+  const listReady = tab === 'drafts' ? draftReady && !draftLoading : Boolean(loadedMetrics.products);
+  const listProducts = !listReady ? [] : tab === 'drafts' ? drafts.slice((page - 1) * 12, page * 12) : products;
   const listPages = tab === 'drafts' ? Math.ceil(drafts.length / 12) : pages;
+  useEffect(()=>{if (['products','drafts'].includes(tab) && listReady && page>Math.max(1,listPages)) setPage(Math.max(1,listPages));},[tab,listReady,page,listPages]);
   return <div className="atlas-supplier"><SupplierHeader profile={profile} unread={unread} onNotifications={() => chooseTab('notifications')} onBack={() => chooseTab('market')} onLogout={onLogout}>{profile.role === 'admin' && <button onClick={onGoAdmin}>{l('الإشراف', 'Administration')}</button>}</SupplierHeader>
     <div className="supplier-shell"><SupplierSidebar tabs={tabs} tab={tab} onTab={chooseTab} advanced={advanced} onModeChange={changeMode} /><main id="supplier-main" tabIndex="-1" className="supplier-content">
     <div className="supplier-page-heading"><div><p className="supplier-eyebrow">{l('Jomla.ma · مساحة عملك', 'Jomla.ma · Votre espace')}</p><h1>{tabs.find(([key])=>key===tab)?.[1]}</h1></div><div className="actions">{tab!=='add' && <button disabled={busy} onClick={refresh}>{l('تحديث مساحة العمل','Actualiser l’espace')}</button>}{can('manage_products') && tab !== 'add' && <button className="primary" onClick={()=>chooseTab('add')}>{l('إضافة منتج جديد','Créer un produit')}</button>}</div></div>
@@ -287,7 +298,7 @@ export default function SupplierDashboard({
                   if (window.confirm(l('حذف هذا المنتج؟', 'Supprimer ce produit ?'))) action(() => apiRequest('/products/' + p._id, {
                     method: 'DELETE'
                   }));
-                }}>{l('حذف', 'Supprimer')}</button></div></div></article>)}</div>{!listProducts.length && !draftLoading && <p className="empty">{tab==='drafts'?l('لا توجد مسودات محفوظة.','Aucun brouillon enregistré.'):l('لا توجد منتجات بعد. أنشئ متجرك ثم أضف المنتج.', 'Aucun produit. Créez une boutique puis ajoutez votre produit.')}</p>}<div className="pager"><button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>{l('السابق', 'Précédent')}</button><span>{page}/{Math.max(1, listPages)}</span><button disabled={page >= listPages} onClick={() => setPage(p => p + 1)}>{l('التالي', 'Suivant')}</button></div></section>}
+                }}>{l('حذف', 'Supprimer')}</button></div></div></article>)}</div>{!listReady && !draftLoading && <p role="status">{l("قائمة المنتجات غير مؤكدة. حدّث مساحة العمل قبل التعديل.", "Liste des produits non confirmée. Actualisez avant de modifier.", "Product list unconfirmed. Refresh before editing.")}</p>}{listReady && !listProducts.length && <p className="empty">{tab==='drafts'?l('لا توجد مسودات محفوظة.','Aucun brouillon enregistré.'):l('لا توجد منتجات بعد. أنشئ متجرك ثم أضف المنتج.', 'Aucun produit. Créez une boutique puis ajoutez votre produit.')}</p>}<div className="pager"><button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>{l('السابق', 'Précédent')}</button><span>{page}/{Math.max(1, listPages)}</span><button disabled={page >= listPages} onClick={() => setPage(p => p + 1)}>{l('التالي', 'Suivant')}</button></div></section>}
     {tab === 'rfq' && can('manage_rfq') && <section className="panel"><div className="actions"><h2>{l('طلبات الأسعار الواردة', 'Demandes de devis reçues')}</h2><button onClick={refresh}>{l('تحديث', 'Actualiser')}</button></div>{rfqs.map(r => <article className="panel" key={r._id}><h3>{agreedProduct(r)?.name}</h3><p>{r.buyerName} · {r.decision?.agreement?.quantity ?? r.quantity} {agreedProduct(r)?.unit}</p><span className="badge">{statusLabel(r.status, lang)}</span>{r.offer && <p>{formatMoney(r.decision?.agreement?.unitPrice ?? r.offer.unitPrice, r.decision?.agreement?.currency || r.currency || 'MAD', lang)} × {r.decision?.agreement?.quantity ?? r.quantity}</p>}<button onClick={() => openThread(r)}>{l('تفاصيل ومحادثة', 'Détails et conversation')}</button></article>)}{!rfqs.length && <p className="empty">{l('لا توجد طلبات', 'Aucune demande')}</p>}</section>}
     {tab === 'sourcing' && can('manage_rfq') && <section className="panel"><h2>{l('طلبات توريد مفتوحة', 'Demandes de sourcing ouvertes')}</h2>{sourcing.map(s => <article className="panel" key={s._id}><h3>{s.productName}</h3><p>{s.quantity} {s.unit} · {s.buyerCity}</p><p>{s.notes}</p><p>{l('عدد العروض', 'Nombre d’offres')}: {s.quotesCount}</p><button onClick={() => openSourcing(s._id)}>{s.offerRecovery ? l('استكمال العرض المحفوظ', 'Reprendre l’offre enregistrée') : l('تقديم عرض محفوظ', 'Soumettre une offre')}</button></article>)}</section>}
     {tab === 'verification' && <form className="panel" onSubmit={e => {

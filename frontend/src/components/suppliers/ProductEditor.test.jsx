@@ -124,7 +124,7 @@ test('an upload response from the prior account is discarded after a session swi
 });
 
 test('back and next preserve all pricing inputs, tiers and private draft payload', async () => {
-  apiRequest.mockResolvedValue({}); const saved=jest.fn();
+  apiRequest.mockResolvedValue({product:{_id:'new-draft',isDraft:true}}); const saved=jest.fn();
   render(<LanguageProvider><ProductEditor stores={stores} onSaved={saved} onCancel={()=>{}} /></LanguageProvider>);
   fireEvent.change(screen.getByLabelText('عنوان المنتج'),{target:{value:'مسودة بخطوات'}});
   next();
@@ -156,7 +156,7 @@ test('a late save cannot complete the previous account or retain its text', asyn
 });
 
 test('explicit review publishes exactly once using existing contract; Enter never publishes', async () => {
-  apiRequest.mockResolvedValue({}); const saved=jest.fn();
+  apiRequest.mockResolvedValue({product:{_id:'product-a',isDraft:false}}); const saved=jest.fn();
   render(<LanguageProvider><ProductEditor product={completeProduct} stores={stores} onSaved={saved} onCancel={()=>{}} /></LanguageProvider>);
   fireEvent.click(screen.getByLabelText('أقر بأنني أملك حق استخدام هذه الصورة لهذا المنتج.'));
   fireEvent.submit(screen.getByLabelText('عنوان المنتج').closest('form'));
@@ -171,7 +171,7 @@ test('explicit review publishes exactly once using existing contract; Enter neve
 });
 
 test('unapproved store and missing license block publication without blocking drafts', async () => {
-  apiRequest.mockResolvedValue({});
+  apiRequest.mockResolvedValue({product:{_id:'product-a',isDraft:true}});
   render(<LanguageProvider><ProductEditor product={completeProduct} stores={[{...stores[0],reviewStatus:'pending'}]} onSaved={()=>{}} onCancel={()=>{}} /></LanguageProvider>);
   fireEvent.click(screen.getByLabelText('أقر بأنني أملك حق استخدام هذه الصورة لهذا المنتج.'));
   fireEvent.change(screen.getByLabelText('مصدر حق الصورة'),{target:{value:'licensed'}}); next();next();
@@ -426,4 +426,28 @@ test('an external upload result never becomes a managed product image',async()=>
  fireEvent.click(screen.getByRole('button',{name:'رفع الصورة'}));
  expect(await screen.findByRole('alert')).toHaveTextContent('تعذر تأكيد الصورة المرفوعة');
  expect(screen.queryByRole('button',{name:'إزالة الرئيسية'})).not.toBeInTheDocument();
+});
+
+test('missing creation acknowledgement retains the original key and cannot signal success',async()=>{
+ const saved=jest.fn();
+ apiRequest.mockResolvedValueOnce({}).mockResolvedValueOnce({product:{_id:'confirmed-on-replay',isDraft:true}});
+ render(<LanguageProvider><ProductEditor stores={[]} onSaved={saved} onCancel={()=>{}} /></LanguageProvider>);
+ fireEvent.change(screen.getByLabelText('عنوان المنتج'),{target:{value:'One draft'}});
+ fireEvent.click(screen.getByRole('button',{name:'حفظ مسودة خاصة'}));
+ const retry=await screen.findByRole('button',{name:'استكمال محاولة الحفظ'});
+ expect(saved).not.toHaveBeenCalled();
+ fireEvent.click(retry);await act(async()=>{});
+ expect(apiRequest.mock.calls[1][1].headers).toEqual(apiRequest.mock.calls[0][1].headers);
+ expect(apiRequest.mock.calls[1][1].body).toEqual(apiRequest.mock.calls[0][1].body);
+ expect(saved).toHaveBeenCalledTimes(1);
+});
+test.each([{_id:'other',isDraft:true},{_id:'product-a',isDraft:false}])('an inconsistent edit acknowledgement retains inputs: %j',async result=>{
+ const saved=jest.fn();apiRequest.mockResolvedValue({product:result});
+ render(<LanguageProvider><ProductEditor product={completeProduct} stores={stores} onSaved={saved} onCancel={()=>{}} /></LanguageProvider>);
+ fireEvent.change(screen.getByLabelText('عنوان المنتج'),{target:{value:'Edited but unconfirmed'}});
+ fireEvent.click(screen.getByRole('button',{name:'حفظ مسودة خاصة'}));
+ expect(await screen.findByRole('alert')).toHaveTextContent('تعذر تأكيد نتيجة حفظ المنتج.');
+ expect(saved).not.toHaveBeenCalled();
+ expect(screen.getByLabelText('عنوان المنتج')).toHaveValue('Edited but unconfirmed');
+ expect(screen.getByText(/قد يكون التعديل محفوظاً بالفعل/)).toBeInTheDocument();
 });

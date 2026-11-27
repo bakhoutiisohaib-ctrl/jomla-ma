@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 - Gate 4C.2 save acknowledgement/draft lifecycle scoped PASS: 54/54 focused, 454/454 full FE (43 suites), build PASS, 4/4 real browser + DB checks, same product private/public/private. [Report](v49-gate4c2-drafts-2026-11-27.md). Gate 4C local scope complete; next 4D supplier RFQ/negotiation. Declared limits remain open.
+
 2026-11-27 - Gate 4C.1 photo input/lifecycle scoped PASS: 71/71 focused after patch correction, 450/450 full FE (43 suites), build PASS, 3/3 repeated actual browser and DB proof (private media 401 -> public 200 for same explicitly published product). [Report](v49-gate4c1-photo-2026-11-27.md). Gate 4C OPEN; next save acknowledgement, draft listing and publication lifecycle.
 
 2026-11-27 - Gate 4B company/store/delegated access scoped PASS: 40/40 focused, 19/19 isolated BE, full FE 446/446 after unchanged favorites recheck, build PASS, 4/4 real owner/employee browser records and membership/store DB verification. [Report](v49-gate4b-company-2026-11-27.md). Gate 4 OPEN; next 4C product authoring/drafts/media.

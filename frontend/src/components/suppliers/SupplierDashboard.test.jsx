@@ -193,3 +193,23 @@ test('notification summary uses the server total, not the bounded inbox length',
  expect(await screen.findByRole('button',{name:'الإشعارات (125)'})).toBeInTheDocument();
  expect(screen.getByRole('button',{name:'تنبيهات الحساب: 125'})).toHaveTextContent('99+');
 });
+
+test('a failed second private draft page is not an empty catalog and retry confirms both pages',async()=>{
+ let failed=true;const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(p,o)=>{
+  if(p==='/products/mine?page=1&limit=100')return {data:[{_id:'draft-first',name:'First private draft',isDraft:true}],pagination:{pages:2,total:101}};
+  if(p==='/products/mine?page=2&limit=100'){
+   if(failed)throw Error('Synthetic draft page failure');
+   return {data:[{_id:'draft-second',name:'Second private draft',isDraft:true}],pagination:{pages:2,total:101}};
+  }
+  return base(p,o);
+ });
+ show();fireEvent.click(await screen.findByRole('button',{name:'المسودات',exact:true}));
+ await screen.findByText('Synthetic draft page failure');
+ expect(screen.queryByText('لا توجد مسودات محفوظة.')).not.toBeInTheDocument();
+ expect(screen.queryByRole('heading',{name:'First private draft'})).not.toBeInTheDocument();
+ failed=false;fireEvent.click(screen.getByRole('button',{name:'تحديث مساحة العمل'}));
+ expect(await screen.findByRole('heading',{name:'Second private draft'})).toBeInTheDocument();
+ expect(screen.getByRole('heading',{name:'First private draft'})).toBeInTheDocument();
+ expect(apiRequest.mock.calls.filter(([p])=>p.includes('limit=100')&&p.includes('/products/mine')).every(([,o])=>o.token==='s2-dashboard-synthetic-session')).toBe(true);
+});

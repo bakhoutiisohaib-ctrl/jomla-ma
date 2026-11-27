@@ -41,7 +41,7 @@ beforeEach(()=>{
   if((p.endsWith('/products')||p.endsWith('/products/'+item._id))&&['POST','PUT'].includes(opt.method)){
    writes.push({body:JSON.parse(opt.body),key:opt.headers['Idempotency-Key'],method:opt.method});
    if(failSave){failSave=false;return reply({},503)}
-   return reply({product:{isDraft:true}},201);
+   return reply({product:{_id:opt.method==='PUT'?item._id:'synthetic-taxonomy-draft',isDraft:true}},201);
   }
   return reply({data:[],unreadCount:0});
  });

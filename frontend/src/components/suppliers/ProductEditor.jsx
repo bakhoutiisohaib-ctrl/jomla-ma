@@ -188,9 +188,14 @@ function EditorSession({
         body, token: requestToken, signal: controller.signal
       });
       if (mounted.current && !controller.signal.aborted && requestToken === getSessionToken()) {
+        const confirmed = data?.product;
+        if (typeof confirmed?._id !== 'string' || !confirmed._id.trim() || confirmed.isDraft !== body.isDraft ||
+            (product && confirmed._id !== product._id)) {
+          throw new Error(l('تعذر تأكيد نتيجة حفظ المنتج.', 'Résultat de l’enregistrement non confirmé.', 'Product save result not confirmed.'));
+        }
         creationAttempt.current = null;
         setRecoveryPending(false);
-        onSaved(!product && typeof data.product?.isDraft === 'boolean' ? data.product.isDraft : body.isDraft);
+        onSaved(confirmed.isDraft);
       }
     } catch (e) {
       if (mounted.current && !controller.signal.aborted && requestToken === getSessionToken()) {
@@ -202,7 +207,9 @@ function EditorSession({
         } else {
           creationAttempt.current = null;
           setRecoveryPending(false);
-          setMessage(l('المدخلات محفوظة في هذه الصفحة. راجع الخطأ ثم أعد الحفظ صراحة.', 'Vos saisies sont conservées sur cette page. Vérifiez l’erreur, puis relancez explicitement l’enregistrement.'));
+          setMessage(product && !definitiveRejection
+            ? l('نتيجة تحديث المنتج غير مؤكدة. قد يكون التعديل محفوظاً بالفعل. تحقق من قائمة منتجاتك قبل إعادة المحاولة.', 'La mise à jour est incertaine. Elle peut déjà être enregistrée. Vérifiez vos produits avant de réessayer.', 'The update is unconfirmed and may already be saved. Check your products before retrying.')
+            : l('المدخلات محفوظة في هذه الصفحة. راجع الخطأ ثم أعد الحفظ صراحة.', 'Vos saisies sont conservées sur cette page. Vérifiez l’erreur, puis relancez explicitement l’enregistrement.'));
         }
       }
     } finally {
