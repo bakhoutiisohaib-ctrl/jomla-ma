@@ -41,7 +41,7 @@ export default function ProductCard({
   const storeId = product.storeId?._id || product.storeId;
   const available = product.availability === 'in_stock' || product.inStock === true;
   const price = cardPrice(product, priceContext);
-  return <article className="product-card atlas-compact-card">
+  return <article className="product-card atlas-compact-card atlas-density-card">
     <div className="atlas-card-media">
       <Link to={productPath(product._id)} aria-label={l('صورة المنتج: ', 'Image du produit : ', 'Product image: ') + product.name}><ProtectedImage value={product.imageUrl} alt={product.name} loading="lazy" /></Link>
       <button type="button" className="atlas-quick-view" aria-label={l('معاينة سريعة: ', 'Aperçu rapide : ') + product.name} onClick={() => setShowPreview(true)}><MarketIcon name="eye" /><span>{l('معاينة', 'Aperçu')}</span></button>
@@ -66,10 +66,10 @@ export default function ProductCard({
         : price.kind === 'base' ? l('السعر الأساسي للبحث', 'Prix de base du filtre', 'Search base price')
         : l('للكمية المطلوبة: ', 'Pour la quantité : ', 'For quantity: ') + price.quantity + ' ' + product.unit}
     </p>}
-    <p className="atlas-card-moq">{l('أقل طلب', 'Min.')}: <strong>{product.moq} {product.unit}</strong></p>
+    <div className="atlas-card-origin">
     {supplier?.name && <Link className="atlas-card-supplier" title={supplier.name} to={storeId ? storePath(storeId) : supplierPath(supplierId)}><MarketIcon name="store" /><span>{supplier.name}</span></Link>}
-    <p className="atlas-card-city">{product.city || supplier?.city}{!available && <span> · {l('غير متوفر', 'Indisponible')}</span>}</p>
-    </div><div className="product-footer"><div className="actions">
+    {(product.city || supplier?.city) && <span className="atlas-card-city" title={product.city || supplier?.city}>{product.city || supplier?.city}</span>}</div>{!available && <p className="atlas-card-unavailable">{l('غير متوفر', 'Indisponible', 'Unavailable')}</p>}
+    </div><div className="product-footer"><div className="actions"><p className="atlas-card-moq">{l('أقل طلب', 'Min.', 'MOQ')}: <strong>{product.moq} {product.unit}</strong></p>
       <button className="primary" aria-label={l('طلب عرض سعر', 'Demander un devis')} disabled={!available || Boolean(user && user.role !== 'buyer')} title={user && user.role !== 'buyer' ? l('طلب العرض متاح لحساب المشتري', 'Demande réservée aux acheteurs') : undefined} onClick={() => {
           onView?.(product._id);
           if (!localStorage.getItem('supplierToken')) onRequireLogin?.(productPath(product._id) + '?rfq=1');else setShowRFQ(true);

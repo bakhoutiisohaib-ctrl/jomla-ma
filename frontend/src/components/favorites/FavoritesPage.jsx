@@ -49,7 +49,7 @@ export default function FavoritesPage({ user, token, onRequireLogin, onRfqCreate
         <p>{ids.length} / 100 {l('منتج', 'produits', 'products')}</p>
         <button onClick={() => { favorites.refresh(); setRetry(n => n + 1); }} disabled={favorites.busy}>{l('تحديث المفضلة', 'Actualiser les favoris', 'Refresh favorites')}</button>
         {!rows ? <p role="status">{l('جاري التحقق من المنتجات…', 'Vérification des produits…', 'Checking products…')}</p> :
-          <div className="product-grid">{rows.map(row => row.product ?
+          <div className="product-grid atlas-dense-product-grid">{rows.map(row => row.product ?
             <ProductCard key={row.id} product={row.product} user={user} onRequireLogin={onRequireLogin} onRfqCreated={onRfqCreated} /> :
             <article className="panel atlas-favorite-unavailable" key={row.id}><h3>{l('تعذر عرض هذا المنتج', 'Produit non affichable', 'Product not displayable')}</h3>
               <p>{row.missing ? l('لم يعد متاحاً في الكتالوج.', 'Il n’est plus disponible dans le catalogue.') : l('تعذر الاتصال. حاول مجدداً.', 'Connexion impossible. Réessayez.', 'Unable to connect. Try again.')}</p>

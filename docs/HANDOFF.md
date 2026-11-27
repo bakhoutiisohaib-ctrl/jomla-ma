@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 — Card density refinement PASS: 5 desktop columns, 2 mobile, AR390 height 351.8 -> 298.64px, desktop 471.1 -> 359.53px. FE targeted 40/40; full 372/372 (41 suites); build PASS; final isolated Chrome 10 records, four 44px hit targets across five geometries, DB PASS. [Report](v49-card-density-2026-11-27.md). Remaining 24–31px reference difference from retained controls/metadata, final scope decisions and acceptance OPEN; Gate 2 locked.
+
 2026-11-27 — Gate 1 integrated regression checkpoint: Backend 230/230 in 15 suites (single run), prior full FE 372/372 and build at same runtime SHA, isolated Chrome 9 records and RFQ/favorite/thread/notification DB checks PASS. Actual local V4.9 visual audit reveals compactness/density gap (mobile 390 card 351.8 vs 271.7 px; desktop 4 vs 5 columns). [Report](v49-gate1-integrated-2026-11-27.md). Gate 1 remains OPEN; refine visual density without losing real controls and resolve remaining scope. Gate 2 locked.
 
 2026-11-27 — Verified supplier filter slice PASS: optional real administrative verification across catalog/categories/text/image/store directory. BE targeted recheck 72/72; final FE 372/372 (41 suites), build PASS, Chrome 8 records after empty-state correction. [Report and evidence](v49-supplier-trust-2026-11-27.md). Top-rated/fast response/supplier country remain unavailable pending verifiable data; Gate 1 OPEN, final integrated acceptance and scope decisions outstanding.
