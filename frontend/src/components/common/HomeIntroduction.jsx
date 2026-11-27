@@ -59,7 +59,7 @@ function parseDirectory(response, page) {
 
 // The parent keys this component by activity, so previous activity state is
 // never displayed during a transition. Page navigation is independent of products.
-export function HomeCategories({ businessType = '', taxonomyPath = '', selected, exact, onSelect }) {
+export function HomeCategories({ businessType = '', taxonomyPath = '', supplierTrust = '', selected, exact, onSelect }) {
   const l = useLabels();
   const [page, setPage] = useState(1), [retry, setRetry] = useState(0);
   const [result, setResult] = useState(null), [failed, setFailed] = useState(false);
@@ -70,6 +70,7 @@ export function HomeCategories({ businessType = '', taxonomyPath = '', selected,
     const params = new URLSearchParams({ page: String(page), limit: String(CATEGORY_LIMIT) });
     if (businessType) params.set('businessType', businessType);
     if (taxonomyPath) params.set('taxonomyPath', taxonomyPath);
+    if (supplierTrust) params.set('supplierTrust', supplierTrust);
     apiRequest('/products/categories?' + params.toString(), { token: '', cache: 'no-store', signal: controller.signal })
       .then(response => {
         if (controller.signal.aborted) return;
@@ -79,7 +80,7 @@ export function HomeCategories({ businessType = '', taxonomyPath = '', selected,
         setResult(next);
       }).catch(() => { if (!controller.signal.aborted) setFailed(true); });
     return () => controller.abort();
-  }, [businessType, taxonomyPath, page, retry]);
+  }, [businessType, taxonomyPath, supplierTrust, page, retry]);
   const changePage = value => { setResult(null); setFailed(false); setPage(value); };
   const categories = result?.data || [];
   const hasSelected = exact && categories.some(item => item.category === selected);

@@ -1,3 +1,4 @@
+require('./helpers/pilotIsolation')
 process.env.JWT_SECRET = 'synthetic-business-types-test-secret'
 const express = require('express')
 const request = require('supertest')
@@ -170,4 +171,63 @@ test('visual taxonomy scope combines with supplier and activity and never infers
   await Product.updateOne({_id:item._id},{$unset:{taxonomyPath:1}})
   await Product.updateOne({_id:legacyItem._id},{$set:{category:'Synthetic footwear'}})
  }
+})
+
+test('verified supplier scope is applied before paging across catalog, categories, stores, text and image search', async()=>{
+ await change(owner,{businessTypes:['manufacturer']})
+ await Product.updateOne({_id:item._id},{$set:{taxonomyPath:'textile/shoes'}})
+ await Product.updateOne({_id:legacyItem._id},{$set:{taxonomyPath:'textile/shoes'}})
+ await Supplier.updateOne({_id:owner._id},{$set:{isVerified:true,verificationStatus:'verified'}})
+ await Supplier.updateOne({_id:legacy._id},{$set:{isVerified:true,verificationStatus:'pending',businessTypes:['manufacturer']}})
+ try {
+  const verified={supplierTrust:'verified'}, scoped={...verified,businessType:'manufacturer',taxonomyPath:'textile/shoes'}
+  expect(ids(await list({}))).toHaveLength(2)
+  const filtered=await list({...scoped,limit:1,page:1})
+  expect(filtered.status).toBe(200);expect(ids(filtered)).toEqual([String(item._id)])
+  expect(filtered.body.pagination).toMatchObject({total:1,pages:1})
+  expect(ids(await list({...scoped,page:2,limit:1}))).toEqual([])
+  const categories=await request(app).get('/api/products/categories').query(scoped)
+  expect(categories.status).toBe(200);expect(categories.body.data).toEqual([{category:'Synthetic footwear',count:1}])
+  const stores=await request(app).get('/api/stores').query({...verified,businessType:'manufacturer',limit:1})
+  expect(stores.status).toBe(200);expect(ids(stores)).toEqual([String(store._id)])
+  expect(stores.body.pagination.total).toBe(1)
+  const text=await request(app).post('/api/ai-search').send({...verified,query:'Synthetic shoe'})
+  expect(text.status).toBe(200);expect(text.body.products.map(p=>p._id)).toEqual([String(item._id)])
+  expect(text.body.externalDiscovery).toMatchObject({enabled:false,reason:'supplier_trust_scope'})
+  await indexProduct(item._id);await indexProduct(legacyItem._id)
+  const bytes=await fs.readFile(path.join(process.env.UPLOADS_DIR,path.basename(imageUrl)))
+  const visual=await request(app).post('/api/image-search').field('supplierTrust','verified').field('businessType','manufacturer').attach('image',bytes,{filename:'synthetic.png',contentType:'image/png'})
+  expect(visual.status).toBe(200);expect(visual.body.products.map(p=>p._id)).toEqual([String(item._id)])
+  expect(visual.body.externalDiscovery).toMatchObject({enabled:false,reason:'supplier_trust_scope'})
+  for(const flags of [{isVerified:false,verificationStatus:'verified'},{isVerified:true,verificationStatus:'pending'},{isVerified:true,verificationStatus:'rejected'},{isVerified:true,verificationStatus:'verified',isActive:false}]){
+   await Supplier.updateOne({_id:owner._id},{$set:{isActive:true,...flags}})
+   expect(ids(await list(verified))).toEqual([])
+   expect(ids(await request(app).get('/api/stores').query(verified))).toEqual([])
+  }
+  await Supplier.updateOne({_id:owner._id},{$set:{isActive:true,isVerified:true,verificationStatus:'verified'}})
+  await Store.updateOne({_id:store._id},{$set:{adminSuspended:true}})
+  expect(ids(await list(verified))).toEqual([])
+  expect(ids(await request(app).get('/api/stores').query(verified))).toEqual([])
+  await Store.updateOne({_id:store._id},{$set:{adminSuspended:false}})
+  expect(ids(await list({supplierTrust:''}))).toHaveLength(2)
+ }finally{
+  await Supplier.updateOne({_id:owner._id},{$set:{isActive:true,isVerified:false,verificationStatus:'unverified'}})
+  await Supplier.updateOne({_id:legacy._id},{$set:{isVerified:false,verificationStatus:'unverified'},$unset:{businessTypes:1}})
+  await Store.updateOne({_id:store._id},{$set:{adminSuspended:false}})
+  await Product.updateMany({_id:{$in:[item._id,legacyItem._id]}},{$unset:{taxonomyPath:1}})
+ }
+})
+test('unsupported trust claims and malformed trust scope are rejected, not broadened',async()=>{
+ for(const value of ['top','fast','local','true','unknown',['verified','verified'],{$ne:''}]){
+  expect((await list({supplierTrust:value})).status).toBe(400)
+  expect((await request(app).get('/api/stores').query({supplierTrust:value})).status).toBe(400)
+  expect((await request(app).get('/api/products/categories').query({supplierTrust:value})).status).toBe(400)
+  expect((await request(app).post('/api/ai-search').send({supplierTrust:value})).status).toBe(400)
+ }
+ for(const route of ['/api/products/search','/api/stores','/api/products/categories']){
+  expect((await request(app).get(route+'?supplierTrust%5B%24ne%5D=verified')).status).toBe(400)
+  expect((await request(app).get(route+'?supplierTrust=verified&supplierTrust=verified')).status).toBe(400)
+ }
+ const bytes=await fs.readFile(path.join(process.env.UPLOADS_DIR,path.basename(imageUrl)))
+ expect((await request(app).post('/api/image-search').field('supplierTrust','fast').attach('image',bytes,{filename:'synthetic.png',contentType:'image/png'})).status).toBe(400)
 })

@@ -151,7 +151,7 @@ function minScore() {
 const { applyTaxonomyFilter } = require('../utils/taxonomy')
 
 async function candidateFilter(options) {
-  const filter = await publicCatalogFilter({ businessType: options.businessType })
+  const filter = await publicCatalogFilter({ businessType: options.businessType, supplierTrust: options.supplierTrust })
   if (options.q) {
     const words = searchWords(options.q).map(word => new RegExp(escapeRegex(word), 'i'))
     filter.$or = [{ name: { $in: words } }, { category: { $in: words } }, { description: { $in: words } }]

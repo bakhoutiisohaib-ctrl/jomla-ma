@@ -5,6 +5,7 @@ const Supplier = require('../models/Supplier')
 const { escapeRegex } = require('./constants')
 const { parseBusinessTypeInput, declaredBusinessTypes } = require('./businessTypes')
 const { parseTaxonomyPath, applyTaxonomyFilter } = require('./taxonomy')
+const { parseSupplierTrust, verifiedSupplierPredicate } = require('./supplierTrust')
 
 const badRequest = message => Object.assign(new Error(message), { status: 400 })
 const PUBLIC_FIELDS = 'name category taxonomyPath pricingMode price currency country moq unit priceTiers inStock availability availabilityConfirmed city supplierId supplierPhone storeId views description images imageUrl createdAt matchType matchBasis effectiveUnitPrice'
@@ -31,6 +32,7 @@ function parseOptions(input = {}) {
   const options = { q: text('q'), city: text('city', 100), category: text('category', 100), supplier: text('supplier', 100), currency: text('currency', 3).toUpperCase(), quantity: number('quantity', true), minPrice: number('minPrice'), maxPrice: number('maxPrice'), page: number('page', true) || 1, limit: Math.min(number('limit', true) || 20, 100), order: text('order', 20) || 'relevance' }
   options.businessType = parseBusinessTypeInput(input)
   options.taxonomyPath = parseTaxonomyPath(input)
+  options.supplierTrust = parseSupplierTrust(input)
   if (Object.keys(input).some(key => /^(category|categoryMode)(?:\[|\.)/.test(key))) throw badRequest('قيمة الفئة غير صالحة')
   options.categoryMode = text('categoryMode', 10) || 'contains'
   if (!['contains', 'exact'].includes(options.categoryMode)) throw badRequest('طريقة تصفية الفئة غير صالحة')
@@ -49,9 +51,9 @@ function searchWords(q) {
   return [...new Set(words)].slice(0, 15)
 }
 
-async function publicCatalogFilter({ supplierId, businessType } = {}) {
+async function publicCatalogFilter({ supplierId, businessType, supplierTrust } = {}) {
   const suppliers = await Supplier.find({ role: 'supplier', isActive: { $ne: false },
-    ...(supplierId ? { _id: supplierId } : {}), ...(businessType ? { businessTypes: businessType } : {}) }).select('_id').lean()
+    ...(supplierId ? { _id: supplierId } : {}), ...(businessType ? { businessTypes: businessType } : {}), ...verifiedSupplierPredicate(supplierTrust) }).select('_id').lean()
   const supplierIds = suppliers.map(s => s._id)
   const stores = await Store.find({ supplierId: { $in: supplierIds }, reviewStatus: 'approved', isActive: true, adminSuspended: { $ne: true } }).select('_id supplierId').lean()
   // Membership in two independent ID lists is not proof of store ownership.
@@ -67,10 +69,10 @@ function categoryPredicate(options) {
 async function catalogCategories(input = {}) {
   // This directory describes the published catalog for a declared activity,
   // independently of the current product page or search phrase.
-  const allowed = new Set(['businessType', 'taxonomyPath', 'page', 'limit'])
+  const allowed = new Set(['businessType', 'taxonomyPath', 'supplierTrust', 'page', 'limit'])
   if (Object.keys(input).some(key => !allowed.has(key))) throw badRequest('معاملات دليل الفئات غير صالحة')
   const options = parseOptions(input)
-  const filter = await publicCatalogFilter({ businessType: options.businessType })
+  const filter = await publicCatalogFilter({ businessType: options.businessType, supplierTrust: options.supplierTrust })
   applyTaxonomyFilter(filter, options.taxonomyPath)
   const [result] = await Product.aggregate([
     { $match: filter },
@@ -92,7 +94,7 @@ async function catalogCategories(input = {}) {
 
 async function searchCatalog(input, { words, visual = false, supplierId, storeId } = {}) {
   const options = parseOptions(input)
-  const filter = await publicCatalogFilter({ supplierId, businessType: options.businessType })
+  const filter = await publicCatalogFilter({ supplierId, businessType: options.businessType, supplierTrust: options.supplierTrust })
   if (storeId) filter.$and = [{ storeId }]
   if (options.city) filter.city = new RegExp(escapeRegex(options.city), 'i')
   if (options.category) filter.category = categoryPredicate(options)

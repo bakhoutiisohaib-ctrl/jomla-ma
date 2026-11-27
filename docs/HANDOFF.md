@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 — Verified supplier filter slice PASS: optional real administrative verification across catalog/categories/text/image/store directory. BE targeted recheck 72/72; final FE 372/372 (41 suites), build PASS, Chrome 8 records after empty-state correction. [Report and evidence](v49-supplier-trust-2026-11-27.md). Top-rated/fast response/supplier country remain unavailable pending verifiable data; Gate 1 OPEN, final integrated acceptance and scope decisions outstanding.
+
 2026-11-27 — Public store directory pagination PASS: FE focused 24/24, BE publicPages 23/23, full FE recheck 369/369 (40 suites), build PASS, real Chrome 106 unique stores over nine pages and five evidence records after mobile pager correction. [Report and evidence](v49-store-directory-2026-11-27.md). Gate 1 OPEN; real trust filters and final integrated acceptance remain.
 
 2026-11-27 — Sector browser refinement: distinct icons, all-sector directory and accessible subcategory dialog. Full FE 365/365 (39 suites), build PASS, isolated Chrome 12 records and DB PASS. [Report and evidence](v49-sector-browser-2026-11-27.md). Gate 1 OPEN; store pagination, real trust filters and final integrated acceptance remain.

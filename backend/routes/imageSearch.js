@@ -11,6 +11,7 @@ router.post('/', rateLimit({ windowMs: 60000, max: 20, standardHeaders: true, le
   const result = await searchImage(req.file.buffer, { filters: input })
   const q = typeof input.q === 'string' ? input.q.trim() : ''
   const externalDiscovery = input.taxonomyPath ? { enabled: false, externalSources: [], reason: 'taxonomy_scope' }
+    : input.supplierTrust ? { enabled: false, externalSources: [], reason: 'supplier_trust_scope' }
     : q ? await discoverExternally(q, { internalTotal: result.total, category: input.category }) :
     { enabled: false, externalSources: [], reason: 'text_query_required' }
   res.json({ ...result,

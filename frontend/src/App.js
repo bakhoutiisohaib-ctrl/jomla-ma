@@ -29,6 +29,7 @@ import { HomeIntroduction, HomeCategories } from './components/common/HomeIntrod
 import './styles/atlas-home.css';
 import { BusinessTypeFilter, DeclaredBusinessTypes } from './components/common/BusinessTypes';
 import { TaxonomyBrowser } from './components/common/ProductTaxonomy';
+import SupplierTrustFilter from './components/common/SupplierTrustFilter';
 function AppContent() {
   const {
       t,
@@ -53,6 +54,7 @@ function AppContent() {
     maxPrice: '',
     supplier: '',
     businessType: '',
+    supplierTrust: '',
     order: ''
   });
   const [number, setNumber] = useState(1),
@@ -140,7 +142,7 @@ function AppContent() {
       });
       if (signal?.aborted) return;
       if (image) setVisual(data.detectedProduct || (labelFor(lang, "بحث بالصورة", "Recherche visuelle")));
-      if (!filters.businessType && !filters.taxonomyPath && filters.categoryMode !== 'exact' && data.externalDiscovery?.enabled) setExternal(data.externalDiscovery);
+      if (!filters.businessType && !filters.taxonomyPath && !filters.supplierTrust && filters.categoryMode !== 'exact' && data.externalDiscovery?.enabled) setExternal(data.externalDiscovery);
       const latestProducts = data.data || data.products || [];
       // Associate price labels with the successful response, not the next
       // filter value while its request is still pending.
@@ -177,6 +179,7 @@ function AppContent() {
     setStoreLoading(true); setStoreError(''); setStores([]); setStorePagination(null);
     const params = new URLSearchParams({ page: String(storeNumber), limit: '12' });
     if (filters.businessType) params.set('businessType', filters.businessType);
+    if (filters.supplierTrust) params.set('supplierTrust', filters.supplierTrust);
     let correctingPage = false;
     apiRequest('/stores?' + params.toString(), { signal: c.signal }).then(d => {
       if (c.signal.aborted) return;
@@ -192,7 +195,7 @@ function AppContent() {
       if (!c.signal.aborted && e.name !== 'AbortError') setStoreError(e.message);
     }).finally(() => { if (!c.signal.aborted && !correctingPage) setStoreLoading(false); });
     return () => c.abort();
-  }, [page, filters.businessType, storeNumber, refresh, lang]);
+  }, [page, filters.businessType, filters.supplierTrust, storeNumber, refresh, lang]);
   function browseStores(next) {
     document.getElementById('store-directory-heading')?.focus();
     setStoreLoading(true); setStores([]); setStorePagination(null); setStoreError('');
@@ -203,6 +206,12 @@ function AppContent() {
     setProducts([]); setStores([]); setExternal(null); setVisual(null); setError(''); setStoreError('');
     setLoading(page === 'home'); setStoreLoading(page === 'stores');
     setFilters(current => ({ ...current, businessType })); setNumber(1); setStoreNumber(1); setStorePagination(null);
+  }
+  function selectSupplierTrust(supplierTrust) {
+    if (supplierTrust === filters.supplierTrust) return;
+    setProducts([]); setStores([]); setExternal(null); setVisual(null); setError(''); setStoreError('');
+    setLoading(page === 'home'); setStoreLoading(page === 'stores');
+    setFilters(current => ({ ...current, supplierTrust })); setNumber(1); setStoreNumber(1); setStorePagination(null);
   }
   async function logout() {
     const token = getSessionToken();
@@ -280,27 +289,29 @@ function AppContent() {
       onSourcing={() => user ? setSourcing(true) : requireLogin()} />}
     <main className="container" id="market-main" tabIndex="-1"><Notice error>{page === 'stores' ? storeError : error}</Notice>
       <BusinessTypeFilter selected={filters.businessType} onSelect={selectBusinessType} />
+      {page === 'stores' && <SupplierTrustFilter value={filters.supplierTrust} onChange={selectSupplierTrust}/>}
       {page === 'stores' ? <section className="panel" aria-busy={storeLoading}><h2 id="store-directory-heading" tabIndex={-1}>{l('المتاجر المعتمدة', 'Boutiques approuvées','Approved stores')}</h2>
       {storeLoading ? <p role="status">{l('جاري تحميل المتاجر…', 'Chargement des boutiques…', 'Loading stores…')}</p> : storeError ? <button onClick={() => setRefresh(n => n + 1)}>{l('إعادة المحاولة', 'Réessayer', 'Retry')}</button> :
-      <>{storePagination && <p className="muted" aria-live="polite">{storePagination.total} {l('متجر','boutique(s)','store(s)')}</p>}<div className="product-grid">{stores.map(s => <article className="panel" key={s._id}><h3>{s.name}</h3><p>{s.city}</p><p>{s.description}</p><DeclaredBusinessTypes values={s.supplierId?.businessTypes}/><Link to={storePath(s._id)}>{l('فتح المتجر', 'Voir la boutique')}</Link></article>)}</div>
+      <>{storePagination && <p className="muted" aria-live="polite">{storePagination.total} {l('متجر','boutique(s)','store(s)')}</p>}<div className="product-grid">{stores.map(s => <article className="panel" key={s._id}><h3>{s.name}</h3><p>{s.city}</p><p>{s.description}</p><DeclaredBusinessTypes values={s.supplierId?.businessTypes}/>{s.supplierId?.isVerified === true && s.supplierId?.verificationStatus === 'verified' && <p className="badge green">{l('مورد موثق','Fournisseur vérifié','Verified supplier')}</p>}<Link to={storePath(s._id)}>{l('فتح المتجر', 'Voir la boutique')}</Link></article>)}</div>
       {storePagination && storePagination.pages > 1 && <nav className="pager atlas-store-directory-pager" aria-label={l('صفحات دليل المتاجر','Pages de l’annuaire des boutiques','Store directory pages')}>
         <button type="button" disabled={storeNumber<=1} onClick={()=>browseStores(storeNumber-1)}>{l('السابق','Précédent','Previous')}</button>
         <span aria-live="polite">{storeNumber} / {storePagination.pages}</span>
         <button type="button" disabled={storeNumber>=storePagination.pages} onClick={()=>browseStores(storeNumber+1)}>{l('التالي','Suivant','Next')}</button>
       </nav>}
-      {!stores.length && <p>{filters.businessType ? l('لا توجد متاجر مطابقة لهذا النشاط حالياً.', 'Aucune boutique pour cette activité actuellement.', 'No stores for this activity currently.') : l('لا توجد متاجر معتمدة بعد', 'Aucune boutique approuvée pour le moment')}</p>}</>}</section> : <>
+      {!stores.length && <p>{filters.supplierTrust === 'verified' ? l('لا توجد متاجر لموردين موثقين تطابق هذا الاختيار حالياً.','Aucune boutique de fournisseur vérifié ne correspond à cette sélection actuellement.','No verified supplier stores match this selection currently.') : filters.businessType ? l('لا توجد متاجر مطابقة لهذا النشاط حالياً.', 'Aucune boutique pour cette activité actuellement.', 'No stores for this activity currently.') : l('لا توجد متاجر معتمدة بعد', 'Aucune boutique approuvée pour le moment')}</p>}</>}</section> : <>
       <TaxonomyBrowser value={filters.taxonomyPath} onChange={taxonomyPath => {
         if (taxonomyPath === filters.taxonomyPath) return;
         setProducts([]); setExternal(null); setVisual(null); setLoading(true); setNumber(1);
         setFilters(current => ({ ...current, taxonomyPath, category: '', categoryMode: '' }));
       }} />
-      <HomeCategories key={JSON.stringify([filters.businessType, filters.taxonomyPath, categoryRevision])} businessType={filters.businessType} taxonomyPath={filters.taxonomyPath} selected={filters.category} exact={filters.categoryMode === 'exact'}
+      <HomeCategories key={JSON.stringify([filters.businessType, filters.taxonomyPath, filters.supplierTrust, categoryRevision])} businessType={filters.businessType} taxonomyPath={filters.taxonomyPath} supplierTrust={filters.supplierTrust} selected={filters.category} exact={filters.categoryMode === 'exact'}
         onSelect={category => {
           const categoryMode = category ? 'exact' : '';
           if (category === filters.category && categoryMode === filters.categoryMode) return;
           setProducts([]); setExternal(null); setLoading(true);
           setFilters(current => ({ ...current, category, categoryMode })); setNumber(1);
         }} />
+      <SupplierTrustFilter value={filters.supplierTrust} onChange={selectSupplierTrust}/>
       <section className="panel atlas-filters" aria-label={l('فلاتر البحث', 'Filtres de recherche')}><div className="atlas-section-heading"><h2>{l('اكتشف ما يناسب تجارتك', 'Trouvez ce qui vous convient')}</h2></div><details className="atlas-filter-disclosure"><summary><MarketIcon name="filter" />{l('تصفية النتائج', 'Filtrer les résultats')}<span>{Object.entries(filters).filter(([key, value]) => key !== 'categoryMode' && value !== '').length || ''}</span></summary><div className="filters">
         {[['city', l('المدينة', 'Ville'), 'text'], ['category', l('الفئة', 'Catégorie'), 'text'], ['quantity', l('الكمية المطلوبة', 'Quantité souhaitée'), 'number'], ['minPrice', l('أقل سعر', 'Prix minimum'), 'number'], ['maxPrice', l('أعلى سعر', 'Prix maximum'), 'number'], ['supplier', l('اسم المورد', 'Nom du fournisseur'), 'text']].map(([key, label, type]) => <Field key={key} label={label} type={type} min={type === 'number' ? 0 : undefined} value={filters[key]} onChange={e => {
               setFilters({

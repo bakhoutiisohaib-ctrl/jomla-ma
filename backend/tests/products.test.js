@@ -1,3 +1,4 @@
+require('./helpers/pilotIsolation')
 process.env.JWT_SECRET = 'catalog-integration-test-secret'
 const request = require('supertest')
 const express = require('express')
