@@ -1,7 +1,7 @@
 import { localeFor } from '../../i18n/useLabels';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiRequest } from '../../api/config';
-import { setSession } from '../../api/session';
+import { getSessionToken, setSession } from '../../api/session';
 import { useLabels, statusLabel } from '../../i18n/useLabels';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { WorkspaceHeader, Field, Notice } from '../common/WorkspaceUI';
@@ -34,8 +34,13 @@ export default function AdminDashboard({
     email: '',
     password: ''
   });
+  const loadGeneration = useRef(0), submitting = useRef(false), mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const load = useCallback(async () => {
     if (user?.role !== 'admin') return;
+    const current = ++loadGeneration.current, token = getSessionToken();
+    const valid = () => mounted.current && current === loadGeneration.current && token === getSessionToken();
+    setData([]);
     setBusy(true);
     setError('');
     try {
@@ -46,14 +51,15 @@ export default function AdminDashboard({
         limit: '20'
       });
       const path = tab === 'reports' ? '/reports' : tab === 'audit' ? '/admin/audit-logs' : '/admin/' + tab;
-      const [records, counts] = await Promise.all([apiRequest(path + '?' + params), apiRequest('/admin/stats')]);
+      const [records, counts] = await Promise.all([apiRequest(path + '?' + params, {token,cache:'no-store'}), apiRequest('/admin/stats', {token,cache:'no-store'})]);
+      if(!valid())return;
       setData(records.data || []);
       setPages(records.pagination?.pages || 1);
       setStats(counts);
     } catch (e) {
-      setError(e.message);
+      if(valid())setError(e.message);
     } finally {
-      setBusy(false);
+      if(valid())setBusy(false);
     }
   }, [user?.role, tab, status, term, page]);
   useEffect(() => {
@@ -83,6 +89,8 @@ export default function AdminDashboard({
   }
   async function perform(e) {
     e.preventDefault();
+    if(submitting.current || busy || !target)return;
+    submitting.current=true;const token=getSessionToken();const valid=()=>mounted.current&&token===getSessionToken();
     setBusy(true);
     setError('');
     try {
@@ -91,7 +99,8 @@ export default function AdminDashboard({
         path = '/admin/suppliers/' + target.id + '/verify';
         body = {
           action: target.action,
-          rejectionReason: reason
+          rejectionReason: reason,
+          verificationRevision: target.verificationRevision
         };
       }
       if (target.kind === 'store') {
@@ -123,26 +132,35 @@ export default function AdminDashboard({
           moderationAction: moderation
         };
       }
-      await apiRequest(path, {
-        method: 'PUT',
-        body
-      });
+      const result = await apiRequest(path, { method: 'PUT', body, token });
+      if(!valid())return;
+      if (target.kind === 'supplier' && (result?.supplier?._id !== target.id ||
+          result.supplier.verificationRevision !== target.verificationRevision ||
+          result.supplier.verificationStatus !== (target.action === 'approve' ? 'verified' : 'rejected') ||
+          result.supplier.isVerified !== (target.action === 'approve') || !result.auditId)) {
+        throw new Error(l('لم يتأكد قرار التوثيق؛ حدّث القائمة قبل إعادة المحاولة.', 'Décision non confirmée ; actualisez la liste avant de réessayer.', 'Verification decision unconfirmed; refresh the list before retrying.'));
+      }
       setTarget(null);
       setReason('');
       setModeration('none');
       setMessage(l('حفظ القرار وأثر التدقيق', 'Décision et trace d’audit enregistrées'));
       setRevision(r => r + 1);
     } catch (e) {
-      setError(e.message);
+      if(valid()){
+        if(target.kind==='supplier'){setTarget(null);setData([]);setRevision(r=>r+1);setMessage('');}
+        setError(e.message);
+      }
     } finally {
-      setBusy(false);
+      submitting.current=false;if(valid())setBusy(false);
     }
   }
-  function review(kind, id, action) {
+  function review(kind, id, action, verificationRevision) {
+    if(busy || submitting.current)return;
     setTarget({
       kind,
       id,
-      action
+      action,
+      verificationRevision
     });
     setReason('');
     setModeration('none');
@@ -175,7 +193,7 @@ export default function AdminDashboard({
           }}>{['all', ...(tab === 'reports' ? ['pending', 'resolved', 'dismissed'] : tab === 'stores' ? ['pending', 'approved', 'rejected'] : tab === 'products' ? ['visible', 'hidden'] : ['pending', 'verified', 'rejected', 'unverified'])].map(s => <option key={s} value={s}>{s === 'all' ? l('الكل', 'Tous') : statusLabel(s, lang)}</option>)}</select></Field><button>{l('تصفية', 'Filtrer')}</button><button type="button" disabled={busy} onClick={() => setRevision(x => x + 1)}>{l('تحديث', 'Actualiser')}</button></form>
     {busy && <p role="status">{l('جاري التحميل…', 'Chargement…')}</p>}
     {data.map(item => <article className="panel" key={item._id}>
-      {tab === 'suppliers' && <><h2>{item.name}</h2><p>{item.email} · {item.city}</p><p>ICE: {item.iceNumber || '—'} · RC: {item.tradeRegistry || '—'}</p><p>{statusLabel(item.verificationStatus, lang)}</p>{item.verificationDoc && <p className="muted">{l('عرض وثائق التحقق غير متاح ضمن هذه التجربة.', 'La consultation des justificatifs est hors périmètre de ce pilote.')}</p>}<div className="actions"><button onClick={() => review('supplier', item._id, 'approve')}>{l('اعتماد التوثيق', 'Approuver')}</button><button className="danger" onClick={() => review('supplier', item._id, 'reject')}>{l('رفض التوثيق', 'Refuser')}</button></div></>}
+      {tab === 'suppliers' && <><h2>{item.name}</h2><p>{item.email} · {item.city}</p><p>ICE: {item.iceNumber || '—'} · RC: {item.tradeRegistry || '—'}</p><p>{statusLabel(item.verificationStatus, lang)}</p>{item.verificationDoc && <p className="muted">{l('عرض وثائق التحقق غير متاح ضمن هذه التجربة.', 'La consultation des justificatifs est hors périmètre de ce pilote.')}</p>}<div className="actions"><button disabled={busy || item.verificationStatus !== 'pending'} onClick={() => review('supplier', item._id, 'approve', item.verificationRevision ?? 0)}>{l('اعتماد التوثيق', 'Approuver')}</button><button disabled={busy || item.verificationStatus !== 'pending'} className="danger" onClick={() => review('supplier', item._id, 'reject', item.verificationRevision ?? 0)}>{l('رفض التوثيق', 'Refuser')}</button></div></>}
       {tab === 'stores' && <><h2>{item.name}</h2><p>{item.description}</p><p>{item.city} · {item.supplierId?.name} · {statusLabel(item.reviewStatus, lang)}</p><div className="actions"><button onClick={() => review('store', item._id, 'approve')}>{l('اعتماد المتجر', 'Approuver la boutique')}</button><button onClick={() => review('store', item._id, 'reject')}>{l('رفض', 'Refuser')}</button><button className="danger" onClick={() => review('storeStatus', item._id, !item.isActive)}>{item.isActive ? l('تعطيل', 'Désactiver') : l('تفعيل', 'Activer')}</button></div></>}
       {tab === 'products' && <><h2>{item.name}</h2><p>{item.supplierId?.name} · {item.category}</p><p>{item.description}</p><span className="badge">{item.isDraft ? l('مسودة', 'Brouillon') : l('منشور', 'Publié')}</span><div className="actions"><button className="danger" onClick={() => review('product', item._id, item.moderationStatus === 'hidden' ? 'restore' : 'hide')}>{item.moderationStatus === 'hidden' ? l('رفع الحجب', 'Restaurer') : l('حجب المنتج', 'Masquer le produit')}</button></div></>}
       {tab === 'reports' && <><h2>{item.targetName}</h2><p>{item.reason} · {statusLabel(item.status, lang)}</p><p>{item.details}</p><p>{item.resolutionNotes}</p>{item.status === 'pending' && <div className="actions"><button onClick={() => review('report', item._id, 'resolved')}>{l('معالجة البلاغ', 'Traiter le signalement')}</button><button onClick={() => review('report', item._id, 'dismissed')}>{l('حفظ دون إجراء', 'Classer sans suite')}</button></div>}</>}

@@ -1,3 +1,4 @@
+require('./helpers/pilotIsolation')
 const request = require('supertest')
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
@@ -46,7 +47,7 @@ async function publishedProduct(user, store, extra = {}) {
 }
 
 beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create()
+  mongoServer = await MongoMemoryServer.create({ instance: { storageEngine: 'wiredTiger' } })
   await mongoose.connect(mongoServer.getUri())
   await Promise.all([Supplier.init(), Organization.init(), Membership.init(), Store.init()])
   hash = await bcrypt.hash('password123', 4)
@@ -238,10 +239,10 @@ test('verification decisions update existing store badges and require pending re
   const store = await Store.create({ name: 'Store', supplierId: owner.user._id, isVerified: false })
   const submit = await request(app).post('/api/suppliers/me/verify').set(auth(owner.token)).send({ iceNumber: '001234567890001' })
   expect(submit.status).toBe(200)
-  const approval = await request(app).put('/api/admin/suppliers/' + owner.user._id + '/verify').set(auth(admin.token)).send({ action: 'approve' })
+  const approval = await request(app).put('/api/admin/suppliers/' + owner.user._id + '/verify').set(auth(admin.token)).send({ action: 'approve', verificationRevision: submit.body.supplier.verificationRevision })
   expect(approval.status).toBe(200)
   expect((await Store.findById(store._id)).isVerified).toBe(true)
-  expect((await request(app).put('/api/admin/suppliers/' + owner.user._id + '/verify').set(auth(admin.token)).send({ action: 'approve' })).status).toBe(409)
+  expect((await request(app).put('/api/admin/suppliers/' + owner.user._id + '/verify').set(auth(admin.token)).send({ action: 'approve', verificationRevision: submit.body.supplier.verificationRevision })).status).toBe(409)
   expect(await AuditLog.countDocuments({ action: 'SUPPLIER_VERIFIED', phase: 'completed', 'performedBy.id': admin.user._id })).toBe(1)
 })
 
@@ -331,3 +332,29 @@ test('concurrent logout revokes every old token while a later login gets a valid
   expect((await request(app).get('/api/suppliers/me/profile').set(auth(login.body.token))).status).toBe(200)
 })
 
+
+test('pending dossiers are immutable, same replay is harmless and stale decisions cannot approve a newer submission', async () => {
+  const owner = await account(), admin = await account('admin'), buyer = await account('buyer')
+  const store = await Store.create({ name: 'Verification store', supplierId: owner.user._id, reviewStatus:'approved', isActive:true })
+  const submit = body => request(app).post('/api/suppliers/me/verify').set(auth(owner.token)).send(body)
+  const decide = body => request(app).put('/api/admin/suppliers/' + owner.user._id + '/verify').set(auth(admin.token)).send(body)
+  const original = { iceNumber:'001234567890001', verificationRevision:0 }
+  expect((await request(app).post('/api/suppliers/me/verify').set(auth(buyer.token)).send(original)).status).toBe(403)
+  expect((await submit({...original, isVerified:true})).status).toBe(400)
+  expect((await submit({...original, verificationDoc:'https://user:pass@example.test/file'})).status).toBe(400)
+  const first=await submit(original);expect(first.status).toBe(200);expect(first.body.supplier.verificationRevision).toBe(1)
+  expect((await submit(original)).body.replayed).toBe(true)
+  expect((await submit({iceNumber:'changed',verificationRevision:1})).status).toBe(409)
+  expect(await AuditLog.countDocuments({action:'SUPPLIER_VERIFICATION_SUBMITTED',phase:'completed',targetId:owner.user._id})).toBe(1)
+  const rejected=await decide({action:'reject',verificationRevision:1,rejectionReason:'Correct dossier'});expect(rejected.status).toBe(200)
+  const next=await submit({iceNumber:'001234567890002',verificationRevision:1});expect(next.status).toBe(200);expect(next.body.supplier.verificationRevision).toBe(2)
+  expect((await decide({action:'approve',verificationRevision:1})).status).toBe(409)
+  expect((await Supplier.findById(owner.user._id)).verificationStatus).toBe('pending')
+  expect((await Store.findById(store._id)).isVerified).toBe(false)
+  const decisions=await Promise.all([decide({action:'approve',verificationRevision:2}),decide({action:'reject',verificationRevision:2,rejectionReason:'Concurrent'})])
+  expect(decisions.map(x=>x.status).sort()).toEqual([200,409])
+  const final=await Supplier.findById(owner.user._id);expect(final.verificationRevision).toBe(2)
+  expect((await Store.findById(store._id)).isVerified).toBe(final.isVerified)
+  if(final.isVerified){expect((await submit({iceNumber:'001234567890002',verificationRevision:2})).body.replayed).toBe(true);expect((await Supplier.findById(owner.user._id)).isVerified).toBe(true)}
+  expect((await request(app).get('/api/stores/'+store._id)).status).toBe(200)
+})

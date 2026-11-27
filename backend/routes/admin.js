@@ -51,25 +51,29 @@ router.get('/suppliers', asyncHandler(async (req, res) => {
 }))
 
 router.put('/suppliers/:id/verify', validateMongoId, asyncHandler(async (req, res) => {
-  const { action, rejectionReason } = req.body
-  if (!['approve', 'reject'].includes(action) || (rejectionReason !== undefined && typeof rejectionReason !== 'string')) return res.status(400).json({ message: 'إجراء مراجعة غير صالح' })
+  const { action, rejectionReason, verificationRevision } = req.body
+  if (!['approve', 'reject'].includes(action) || !Number.isSafeInteger(verificationRevision) || verificationRevision < 0 || (rejectionReason !== undefined && (typeof rejectionReason !== 'string' || rejectionReason.length > 2000))) return res.status(400).json({ message: 'إجراء مراجعة أو إصدار ملف غير صالح' })
   const supplier = await Supplier.findOne({ _id: req.params.id, role: 'supplier', isActive: { $ne: false } })
   if (!supplier) return res.status(404).json({ message: 'المورد غير موجود أو معطل' })
-  if (supplier.verificationStatus !== 'pending') return res.status(409).json({ message: 'يجب أن يكون طلب التوثيق قيد المراجعة' })
+  if (supplier.verificationStatus !== 'pending' || (supplier.verificationRevision ?? 0) !== verificationRevision) return res.status(409).json({ message: 'تغير ملف التوثيق؛ أعد تحميل الطلب قيد المراجعة' })
   const previousStatus = supplier.verificationStatus
-  const { auditId } = await auditedChange({
+  const { auditId, result: saved } = await auditedChange({
     action: action === 'approve' ? 'SUPPLIER_VERIFIED' : 'SUPPLIER_REJECTED',
     targetType: 'Supplier', targetId: supplier._id, actor: req.supplier,
-    details: { previousStatus, newStatus: action === 'approve' ? 'verified' : 'rejected', rejectionReason: rejectionReason || null, iceNumber: supplier.iceNumber, tradeRegistry: supplier.tradeRegistry }
+    details: { previousStatus, verificationRevision, newStatus: action === 'approve' ? 'verified' : 'rejected', rejectionReason: rejectionReason || null, iceNumber: supplier.iceNumber, tradeRegistry: supplier.tradeRegistry }
   }, async () => {
-    supplier.isVerified = action === 'approve'
-    supplier.verificationStatus = action === 'approve' ? 'verified' : 'rejected'
-    supplier.verifiedAt = action === 'approve' ? new Date() : undefined
-    supplier.rejectionReason = action === 'approve' ? '' : (rejectionReason || 'الوثائق لا تستوفي شروط التوثيق')
-    await supplier.save()
-    await Store.updateMany({ supplierId: supplier._id }, { $set: { isVerified: supplier.isVerified } })
+    const approved = action === 'approve'
+    const updated = await Supplier.findOneAndUpdate({ _id: supplier._id, role: 'supplier', isActive: { $ne: false },
+      verificationStatus: 'pending', verificationRevision: verificationRevision === 0 ? { $in: [0, null] } : verificationRevision },
+      { $set: { isVerified: approved, verificationStatus: approved ? 'verified' : 'rejected',
+        rejectionReason: approved ? '' : (rejectionReason?.trim() || 'الوثائق لا تستوفي شروط التوثيق'),
+        ...(approved ? { verifiedAt: new Date() } : {}) }, ...(!approved ? { $unset: { verifiedAt: 1 } } : {}) },
+      { returnDocument: 'after', runValidators: true })
+    if (!updated) throw Object.assign(new Error('تغير ملف التوثيق؛ أعد تحميل الحالة الحالية'), { status: 409 })
+    await Store.updateMany({ supplierId: supplier._id }, { $set: { isVerified: updated.isVerified } })
+    return updated
   })
-  res.json({ message: action === 'approve' ? 'تم توثيق المورد' : 'تم رفض طلب التوثيق', supplier, auditId })
+  res.json({ message: action === 'approve' ? 'تم توثيق المورد' : 'تم رفض طلب التوثيق', supplier: saved, auditId })
 }))
 
 router.put('/suppliers/:id/status', validateMongoId, asyncHandler(async (req, res) => {

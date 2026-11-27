@@ -11,6 +11,7 @@ import OrganizationPanel from './OrganizationPanel';
 import StoresPanel from './StoresPanel';
 import ProductEditor from './ProductEditor';
 import WholesaleWorkspace from '../wholesale/WholesaleWorkspace';
+import SupplierVerificationPanel from './SupplierVerificationPanel';
 import JobsPanel from './JobsPanel';
 import { SupplierHeader, SupplierSidebar, advancedSupplierTabs } from './SupplierWorkspace';
 import SupplierSetupGuide from './SupplierSetupGuide';
@@ -62,11 +63,6 @@ export default function SupplierDashboard({
   const [sourcingCloseBlocked, setSourcingCloseBlocked] = useState(false);
   const sourcingContext = useRef({ active: true, generation: 0, controller: null });
   useEffect(() => { const context = sourcingContext.current; context.active = true; return () => { context.active = false; context.generation++; context.controller?.abort(); } }, []);
-  const [verify, setVerify] = useState({
-    iceNumber: '',
-    tradeRegistry: '',
-    verificationDoc: ''
-  });
   const can = useCallback(permission => ['supplier', 'admin'].includes(profile.role) || profile.permissions?.includes(permission), [profile.role, profile.permissions]);
   const conversationRevision = useRef(0);
   const conversation = useRef({id:null,read:null,write:null,uncertain:false});
@@ -119,11 +115,6 @@ export default function SupplierDashboard({
     apiRequest('/suppliers/me/profile').then(d => {
       if (active) {
         setProfile(d);
-        setVerify({
-          iceNumber: d.iceNumber || '',
-          tradeRegistry: d.tradeRegistry || '',
-          verificationDoc: d.verificationDoc || ''
-        });
       }
     }).catch(e => {
       if (active) setError(e.message);
@@ -317,18 +308,7 @@ export default function SupplierDashboard({
                 }}>{l('حذف', 'Supprimer')}</button></div></div></article>)}</div>{!listReady && !draftLoading && <p role="status">{l("قائمة المنتجات غير مؤكدة. حدّث مساحة العمل قبل التعديل.", "Liste des produits non confirmée. Actualisez avant de modifier.", "Product list unconfirmed. Refresh before editing.")}</p>}{listReady && !listProducts.length && <p className="empty">{tab==='drafts'?l('لا توجد مسودات محفوظة.','Aucun brouillon enregistré.'):l('لا توجد منتجات بعد. أنشئ متجرك ثم أضف المنتج.', 'Aucun produit. Créez une boutique puis ajoutez votre produit.')}</p>}<div className="pager"><button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>{l('السابق', 'Précédent')}</button><span>{page}/{Math.max(1, listPages)}</span><button disabled={page >= listPages} onClick={() => setPage(p => p + 1)}>{l('التالي', 'Suivant')}</button></div></section>}
     {tab === 'rfq' && can('manage_rfq') && <section className="panel"><div className="actions"><h2>{l('طلبات الأسعار الواردة', 'Demandes de devis reçues')}</h2><button onClick={refresh}>{l('تحديث', 'Actualiser')}</button></div>{rfqs.map(r => <article className="panel" key={r._id}><h3>{agreedProduct(r)?.name}</h3><p>{r.buyerName} · {r.decision?.agreement?.quantity ?? r.quantity} {agreedProduct(r)?.unit}</p><span className="badge">{statusLabel(r.status, lang)}</span>{r.offer && <p>{formatMoney(r.decision?.agreement?.unitPrice ?? r.offer.unitPrice, r.decision?.agreement?.currency || r.currency || 'MAD', lang)} × {r.decision?.agreement?.quantity ?? r.quantity}</p>}<button disabled={!loadedMetrics.rfq} onClick={() => openThread(r)}>{l('تفاصيل ومحادثة', 'Détails et conversation')}</button></article>)}{!loadedMetrics.rfq && <p role="status">{l('قائمة الطلبات غير مؤكدة. حدّث مساحة العمل.','Demandes non confirmées. Actualisez.','Request list unconfirmed. Refresh.')}</p>}{loadedMetrics.rfq && !rfqs.length && <p className="empty">{l('لا توجد طلبات', 'Aucune demande')}</p>}</section>}
     {tab === 'sourcing' && can('manage_rfq') && <section className="panel"><h2>{l('طلبات توريد مفتوحة', 'Demandes de sourcing ouvertes')}</h2>{sourcing.map(s => <article className="panel" key={s._id}><h3>{s.productName}</h3><p>{s.quantity} {s.unit} · {s.buyerCity}</p><p>{s.notes}</p><p>{l('عدد العروض', 'Nombre d’offres')}: {s.quotesCount}</p><button onClick={() => openSourcing(s._id)}>{s.offerRecovery ? l('استكمال العرض المحفوظ', 'Reprendre l’offre enregistrée') : l('تقديم عرض محفوظ', 'Soumettre une offre')}</button></article>)}</section>}
-    {tab === 'verification' && <form className="panel" onSubmit={e => {
-        e.preventDefault();
-        action(() => apiRequest('/suppliers/me/verify', {
-          method: 'POST',
-          body: verify
-        }), l('أرسل ملفك للمراجعة', 'Dossier envoyé pour examen'));
-      }}><h2>{l('طلب مراجعة وتوثيق المورد', 'Demande de vérification')}</h2><p>{statusLabel(profile.verificationStatus, lang)}</p><p className="supplier-help">{l('هذا التوثيق التجاري اختياري، وهو منفصل عن اعتماد المتجر الإداري. لا يشترط لفتح متجر أو نشر منتج ولا يمثل ضماناً تجارياً.', 'Cette vérification commerciale est facultative et distincte de l’approbation administrative de la boutique. Elle n’est requise ni pour ouvrir une boutique ni pour publier, et ne constitue pas une garantie commerciale.')}</p>{profile.rejectionReason && <Notice error>{profile.rejectionReason}</Notice>}<div className="form-grid">{[['iceNumber', 'ICE'], ['tradeRegistry', l('السجل التجاري', 'Registre de commerce')], ['verificationDoc', l('رابط وثيقة التوثيق (HTTPS)', 'Lien du justificatif (HTTPS)')]].map(([key, label]) => <Field key={key} label={label} value={verify[key]} onChange={e => setVerify({
-            ...verify,
-            [key]: e.target.value
-          })} />)}</div><button disabled={busy} className="primary" style={{
-          marginTop: 12
-        }}>{l('إرسال للمراجعة', 'Envoyer pour examen')}</button></form>}
+    {tab === 'verification' && profile.role === 'supplier' && <SupplierVerificationPanel owner={profile._id || profile.id} onConfirmed={saved=>setProfile(saved)}/>}
     {tab === 'reviews' && <section className="panel"><h2>{l('تقييمات العملاء', 'Avis clients')}</h2>{reviews.map(r => <article className="panel" key={r._id}><strong>{r.userName || r.buyerName || r.name}</strong><p>{'★'.repeat(r.stars || 0)} {r.comment}</p>{r.reply?.text && <p className="notice">{r.reply.text}</p>}<form className="actions" onSubmit={e => {
             e.preventDefault();
             const input = e.currentTarget.elements.reply;

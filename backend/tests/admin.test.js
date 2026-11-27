@@ -1,3 +1,4 @@
+require('./helpers/pilotIsolation')
 const request = require('supertest')
 const mongoose = require('mongoose')
 const { MongoMemoryServer } = require('mongodb-memory-server')
@@ -13,7 +14,7 @@ let testAdmin
 let testSupplier
 
 beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create()
+  mongoServer = await MongoMemoryServer.create({ instance: { storageEngine: 'wiredTiger' } })
   const uri = mongoServer.getUri()
   await mongoose.connect(uri)
 
@@ -94,7 +95,7 @@ describe('Supplier Verification & Admin Moderation', () => {
     const res = await request(app)
       .put(`/api/admin/suppliers/${testSupplier._id}/verify`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ action: 'approve' })
+      .send({ action: 'approve', verificationRevision: 1 })
 
     expect(res.statusCode).toBe(200)
     expect(res.body.supplier.isVerified).toBe(true)
@@ -147,7 +148,7 @@ describe('Supplier Verification & Admin Moderation', () => {
       .put(`/api/admin/suppliers/${rejectedSupplier._id}/verify`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        action: 'reject',
+        action: 'reject', verificationRevision: 0,
         rejectionReason: 'رقم السجل التجاري غير واضح في الوثيقة المرفقة'
       })
 

@@ -30,7 +30,7 @@ function accountPayload(user, identity = {}) {
     role: user.role, ownerId: identity.ownerId || String(user._id),
     organization: user.organization, organizationId: Object.prototype.hasOwnProperty.call(identity, 'organizationId') ? identity.organizationId : (user.organizationId || null),
     permissions: identity.permissions || (['supplier', 'admin'].includes(user.role) ? ['all'] : []),
-    isVerified: user.isVerified, verificationStatus: user.verificationStatus,
+    isVerified: user.isVerified, verificationStatus: user.verificationStatus, verificationRevision: user.verificationRevision ?? 0,
     iceNumber: user.iceNumber, tradeRegistry: user.tradeRegistry, verificationDoc: user.verificationDoc,
     rejectionReason: user.rejectionReason
   }
@@ -265,28 +265,47 @@ router.patch('/me/memberships/:id', authenticate, ownerOnly, validateMongoId, as
 }))
 
 router.post('/me/verify', authenticate, ownerOnly, asyncHandler(async (req, res) => {
-  const { iceNumber, tradeRegistry, verificationDoc } = req.body
-  if (![iceNumber, tradeRegistry].some(v => typeof v === 'string' && v.trim())) {
-    return res.status(400).json({ message: 'رقم ICE أو السجل التجاري مطلوب' })
+  const body = req.body || {}, supplier = req.account
+  const fields = ['iceNumber', 'tradeRegistry', 'verificationDoc']
+  const currentRevision = supplier.verificationRevision ?? 0
+  // Older clients may submit the initial revision; subsequent edits must name it.
+  const expected = body.verificationRevision ?? 0
+  if (Object.keys(body).some(k => ![...fields, 'verificationRevision'].includes(k)) ||
+      !Number.isSafeInteger(expected) || expected < 0 ||
+      fields.some(k => body[k] !== undefined && (typeof body[k] !== 'string' || body[k].length > (k === 'verificationDoc' ? 2048 : 100)))) {
+    return res.status(400).json({ message: 'بيانات طلب التوثيق غير صحيحة' })
   }
-  if (verificationDoc && (typeof verificationDoc !== 'string' || !/^(https:\/\/|\/uploads\/)/.test(verificationDoc))) {
-    return res.status(400).json({ message: 'رابط وثيقة التوثيق غير صالح' })
+  const input = Object.fromEntries(fields.map(k => [k, (body[k] ?? supplier[k] ?? '').trim()]))
+  if (!input.iceNumber && !input.tradeRegistry) return res.status(400).json({ message: 'رقم ICE أو السجل التجاري مطلوب' })
+  if (input.verificationDoc) {
+    let valid = false
+    try {
+      const url = new URL(input.verificationDoc)
+      valid = url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password
+    } catch { /* A legacy managed reference can be retained, not newly supplied. */ }
+    if (!valid && input.verificationDoc !== supplier.verificationDoc) return res.status(400).json({ message: 'رابط وثيقة التوثيق غير صالح' })
   }
-  const supplier = req.account
-  await auditedChange({
+  const same = fields.every(k => input[k] === (supplier[k] || ''))
+  if (same && ['pending', 'verified'].includes(supplier.verificationStatus) &&
+      (expected === currentRevision || expected === currentRevision - 1)) {
+    return res.json({ message: 'هذه حالة ملف التوثيق المحفوظ', supplier: accountPayload(supplier, req.supplier), replayed: true })
+  }
+  if (expected !== currentRevision || supplier.verificationStatus === 'pending')
+    return res.status(409).json({ message: 'تغير ملف التوثيق أو أنه قيد المراجعة؛ أعد تحميل الحالة الحالية' })
+  const revisionFilter = currentRevision === 0 ? { $in: [0, null] } : currentRevision
+  const { result: saved } = await auditedChange({
     action: 'SUPPLIER_VERIFICATION_SUBMITTED', targetType: 'Supplier', targetId: supplier._id,
-    actor: req.supplier, details: { previousStatus: supplier.verificationStatus, iceNumber, tradeRegistry }
+    actor: req.supplier, details: { previousStatus: supplier.verificationStatus, verificationRevision: currentRevision + 1, iceNumber: input.iceNumber, tradeRegistry: input.tradeRegistry }
   }, async () => {
-    if (typeof iceNumber === 'string') supplier.iceNumber = iceNumber.trim().slice(0, 100)
-    if (typeof tradeRegistry === 'string') supplier.tradeRegistry = tradeRegistry.trim().slice(0, 100)
-    if (verificationDoc !== undefined) supplier.verificationDoc = verificationDoc
-    supplier.verificationStatus = 'pending'
-    supplier.isVerified = false
-    supplier.rejectionReason = ''
-    await supplier.save()
+    const updated = await Supplier.findOneAndUpdate({ _id: supplier._id, role: 'supplier', isActive: { $ne: false },
+      verificationStatus: supplier.verificationStatus, verificationRevision: revisionFilter },
+      { $set: { ...input, verificationStatus: 'pending', isVerified: false, rejectionReason: '', verificationRevision: currentRevision + 1 },
+        $unset: { verifiedAt: 1 } }, { returnDocument: 'after', runValidators: true })
+    if (!updated) throw httpError(409, 'تغير ملف التوثيق؛ أعد تحميل الحالة الحالية')
     await Store.updateMany({ supplierId: supplier._id }, { $set: { isVerified: false } })
+    return updated
   })
-  res.json({ message: 'تم إرسال طلب التوثيق للمراجعة', supplier: accountPayload(supplier, req.supplier) })
+  res.json({ message: 'تم إرسال طلب التوثيق للمراجعة', supplier: accountPayload(saved, req.supplier) })
 }))
 
 // Retired duplicate upload route: all writes use the validated catalog API.
