@@ -337,7 +337,7 @@ test('structured budget uses goods quantity tiers and never includes unknown pri
 test('structured unsupported conditions and explicit conflicting filters fail closed without external discovery',async()=>{
   await create(published({name:'Shoes',price:1}))
   for(const [query,extra,issue] of [
-    ['shoes or shirts',{},'ambiguous_or'],['shoes with delivery',{},'delivery_unknown'],
+    ['shoes or shirts under 30 MAD',{},'ambiguous_scope'],['shoes with delivery',{},'delivery_unknown'],
     ['shoes under 30 MAD',{currency:'USD'},'currency_conflict'],['shoes quantity 20',{quantity:30},'quantity_conflict'],
     ['shoes under 10 EUR',{},'unparsed_number'],['shoes without leather',{},'unsupported_negation']
   ]){
@@ -372,3 +372,98 @@ test('unsupported units, negative limits and unrecognized versions cannot silent
   }
   expect((await request(app).post('/api/ai-search').send({intentVersion:'unknown',query:'cups'})).status).toBe(400)
 })
+
+test('structured OR preserves each subject and its own city/price constraints before pagination',async()=>{
+  const fixtures=[
+    {name:'Shoes',city:'Tanger',price:24},{name:'Shoes',city:'Tanger',price:30},
+    {name:'Shirts',city:'Fes',price:40},{name:'Shirts',city:'Fes',price:50},
+    {name:'Shoes',city:'Fes',price:20},{name:'Shirts',city:'Tanger',price:20}
+  ];
+  const ids=[];
+  for(const f of fixtures){const r=await create(published({...f,category:'Wholesale',unit:'piece'}));expect(r.status).toBe(201);ids.push(r.body.product._id)}
+  const query='shoes in Tanger under 30 MAD or shirts in Fes under 50 MAD';
+  const search=async page=>request(app).post('/api/ai-search').send({intentVersion:'v49-1',query,limit:1,page});
+  const a=await search(1),b=await search(2);
+  expect(a.status).toBe(200);expect(a.body.searchIntent.issues).toEqual([]);
+  expect(a.body.searchIntent.branches).toHaveLength(2);
+  expect(a.body.total).toBe(2);expect(b.body.total).toBe(2);
+  expect([...a.body.products,...b.body.products].map(x=>x._id).sort()).toEqual([ids[0],ids[2]].sort());
+  const plain=await request(app).post('/api/ai-search').send({intentVersion:'v49-1',query:'shoes or shirts'});
+  expect(plain.body.total).toBe(6);
+  const restricted=await request(app).post('/api/ai-search').send({intentVersion:'v49-1',query,city:'Tanger'});
+  expect(restricted.body.products.map(x=>x._id)).toEqual([ids[0]]);
+});
+test('structured OR deduplicates overlapping alternatives and supports explicit city alternatives',async()=>{
+  const fixtures=[{name:'Ceramic cups',city:'طنجة'},{name:'Ceramic cups',city:'Casablanca'},{name:'Ceramic cups',city:'Fes'},{name:'Shirts shoes',city:'Fes'}];
+  const ids=[];
+  for(const f of fixtures){const r=await create(published({...f,category:'Wholesale'}));expect(r.status).toBe(201);ids.push(r.body.product._id)}
+  const run=async query=>request(app).post('/api/ai-search').send({intentVersion:'v49-1',query});
+  const r=await run('أكواب في طنجة أو كازابلانكا');
+  expect(r.status).toBe(200);expect(r.body.searchIntent.issues).toEqual([]);
+  expect(r.body.products.map(p=>p._id).sort()).toEqual(ids.slice(0,2).sort());
+  const both=await run('shoes or shirts');expect(both.body.total).toBe(1);expect(both.body.products[0]._id).toBe(ids[3]);
+});
+test('explicit lexical and city exclusions apply without weakening publication visibility',async()=>{
+  const fixtures=[{name:'Plastic cups',city:'Tanger'},{name:'Ceramic cups',city:'Tanger'},{name:'Plastic cups',city:'Fes'},{name:'Plastic cups',city:'Casablanca'}];
+  const ids=[];
+  for(const f of fixtures){const r=await create(published({...f,category:'Wholesale'}));expect(r.status).toBe(201);ids.push(r.body.product._id)}
+  await Product.updateOne({_id:ids[3]},{$set:{moderationStatus:'hidden'}});
+  const run=async query=>request(app).post('/api/ai-search').send({intentVersion:'v49-1',query});
+  const r=await run('cups without ceramic and except Fes');expect(r.status).toBe(200);expect(r.body.searchIntent.issues).toEqual([]);
+  expect(r.body.products.map(x=>x._id)).toEqual([ids[0]]);
+  const conflict=await run('ceramic cups without ceramic');expect(conflict.body.searchIntent.issues).toContain('term_conflict');expect(conflict.body.total).toBe(0);
+  const partial=await run('cups without ceramic coating');expect(partial.body.searchIntent.issues).toContain('unsupported_negation');expect(partial.body.total).toBe(0);
+});
+test('verification alternatives refer to canonical administrative status, not a quality guarantee',async()=>{
+  const verified=await create(published({name:'Shoes',category:'Wholesale'}));expect(verified.status).toBe(201);
+  const plain=await create(published({name:'Shoes',category:'Wholesale',storeId:String(otherStore._id),imageUrl:otherImage}),otherToken);expect(plain.status).toBe(201);
+  await Supplier.updateOne({_id:owner._id},{$set:{isVerified:true,verificationStatus:'verified'}});
+  await Supplier.updateOne({_id:other._id},{$set:{isVerified:true,verificationStatus:'pending'}});
+  try {
+    const run=async(query,extra={})=>request(app).post('/api/ai-search').send({intentVersion:'v49-1',query,...extra});
+    const yes=await run('shoes verified supplier');expect(yes.status).toBe(200);expect(yes.body.products.map(p=>p._id)).toEqual([verified.body.product._id]);
+    const no=await run('shoes unverified');expect(no.status).toBe(200);expect(no.body.products.map(p=>p._id)).toEqual([plain.body.product._id]);
+    const conflict=await run('shoes unverified',{supplierTrust:'verified'});expect(conflict.body.searchIntent.issues).toContain('trust_conflict');expect(conflict.body.total).toBe(0);
+  } finally {await Supplier.updateMany({_id:{$in:[owner._id,other._id]}},{$set:{isVerified:false,verificationStatus:'unverified'}})}
+});
+test('unsupported or ambiguous branch scope fails closed, never returns a partial union',async()=>{
+  for(const [query,code] of [
+    ['shoes or shirts under 30 MAD','ambiguous_scope'],
+    ['shoes quantity 20 or shirts quantity 30','branch_price_context'],
+    ['shoes and shirts or cups','mixed_logic'],
+    ['shoes or unknownmodel','ambiguous_or'],
+    ['shoes in Tanger or Fes under 30 MAD','ambiguous_or'],
+    ['shoes in Tanger except Tanger','city_conflict'],
+    ['shoes with delivery or shirts','delivery_unknown'],
+    ['shoes verified supplier unverified','conflict']
+  ]){
+    const r=await request(app).post('/api/ai-search').send({intentVersion:'v49-1',query});expect(r.status).toBe(200);
+    expect(r.body.searchIntent.issues).toContain(code);expect(r.body.total).toBe(0);expect(r.body.sourcingOffer.canRequestSourcing).toBe(false);
+  }
+});
+
+test('structured sector aliases use the reference taxonomy, retaining scoped legacy categories and filters',async()=>{
+  const a=await create(published({name:'Synthetic goods',category:'Custom category',taxonomyPath:'textile/kids'}))
+  const b=await create(published({name:'Synthetic goods',category:'نسيج'}))
+  const c=await create(published({name:'Synthetic goods',category:'نسيج',taxonomyPath:'home/decor'}))
+  const d=await create(published({name:'Synthetic goods',category:'Textile accessories'}))
+  expect([a,b,c,d].map(x=>x.status)).toEqual([201,201,201,201])
+  const run=async(query,extra={})=>request(app).post('/api/ai-search').send({intentVersion:'v49-1',query,...extra})
+  const r=await run('textile');expect(r.status).toBe(200);expect(r.body.searchIntent.categoryPath).toBe('textile')
+  expect(r.body.products.map(x=>x._id).sort()).toEqual([a.body.product._id,b.body.product._id].sort())
+  const or=await run('textile or home');expect(or.status).toBe(200);expect(or.body.searchIntent.issues).toEqual([])
+  expect(or.body.products.map(x=>x._id).sort()).toEqual([a,b,c].map(x=>x.body.product._id).sort())
+  const narrowed=await run('textile',{taxonomyPath:'textile/kids'});expect(narrowed.body.products.map(x=>x._id)).toEqual([a.body.product._id])
+});
+test('grouped numbers, common quantity, and authoritative price context are explicit',async()=>{
+  const a=await create(published({name:'Shoes',price:80,moq:10,unit:'pair',priceTiers:[{minQty:50,price:40}]}))
+  expect(a.status).toBe(201)
+  const run=async(query,extra={})=>request(app).post('/api/ai-search').send({intentVersion:'v49-1',query,...extra})
+  const r=await run('shoes quantity 50 pairs budget 2 000 MAD')
+  expect(r.status).toBe(200);expect(r.body.total).toBe(1);expect(r.body.searchIntent.budget).toBe(2000)
+  expect(r.body.searchPriceContext).toEqual({quantity:50,basis:'quantity'})
+  const moq=await run('shoes budget 1.000,00 MAD');expect(moq.status).toBe(200);expect(moq.body.total).toBe(1)
+  expect(moq.body.searchIntent.budget).toBe(1000);expect(moq.body.searchPriceContext).toEqual({quantity:null,basis:'moq'})
+  const manual=await run('shoes',{quantity:50});expect(manual.body.searchPriceContext).toEqual({quantity:50,basis:'quantity'})
+  const ambiguous=await run('بغيت بالجملة');expect(ambiguous.body.searchIntent.issues).toContain('empty_intent');expect(ambiguous.body.total).toBe(0)
+});

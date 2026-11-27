@@ -15,14 +15,21 @@ const families = [
   ['شاشات','شاشات|شاشة|ecrans|ecran|écrans|écran|monitors|monitor|screens|screen'],
   ['سماعات','سماعات|سماعة|casques|casque|headphones|earbuds'],
   ['ملابس الأطفال','ملابس الاطفال|ملابس الأطفال|حوايج الدراري|vetements enfants|vêtements enfants|kids clothing|children clothing'],
-  ['خزف','خزف|ceramique|céramique|ceramic']
+  ['خزف','خزف|ceramique|céramique|ceramic'],
+  ['مفارش','مفارش|مفرش|غطاء|couvertures|couverture|blankets|blanket'],
+  ['سلال','قش|سلال|سلة|paniers|panier|baskets|basket'],
+  ['أبواب','ابواب|أبواب|باب|portes|porte|doors|door'],
+  ['نوافذ','نوافذ|نافذة|fenetres|fenetre|fenêtres|fenêtre|windows|window'],
+  ['هدايا','هدايا|هدية|coffrets|coffret|gifts|gift'],
+  ['كابلات الشحن','كابلات الشحن|كابل شحن|charging cables|charging cable|cables de charge|câbles de charge'],
+  ['شواحن','شارجور|شاحن|شواحن|chargeurs|chargeur|chargers|charger']
 ]
 const units = [
   ['piece','قطعة|قطعه|قطع|بياسة|بياس|بيصات|بيصة|وحدة|وحدات|pieces?|pièces?|pcs|units?','قطعة|قطعه|قطع|piece|pieces|pièce|pièces|unit|units'],
   ['pair','زوج|ازواج|أزواج|pairs?|paires?','زوج|ازواج|أزواج|pair|pairs|paire|paires'],
   ['set','طقم|اطقم|أطقم|sets?|lots?','طقم|اطقم|أطقم|set|sets|lot|lots']
 ]
-const N='([0-9]+(?:[.,][0-9]{1,2})?)'
+const N='((?:[0-9]{1,3}(?:[ ,.][0-9]{3})+|[0-9]+)(?:[.,][0-9]{1,2})?)'
 const money='(?:درهم|د\\.م\\.?|mad|dhs?|dirhams?)'
 const lower='(?:اقل من|تحت|moins de|less than|under|below|<(?![=]))'
 const lowerEq='(?:على الاكثر|بحد اقصي|حد اقصي|ما يفوتش|مايفوتش|au maximum|at most|max(?:imum)?|<=|≤)'
@@ -31,14 +38,14 @@ const upperEq='(?:على الاقل|au moins|at least|>=|≥|ابتداء من)'
 const unitPattern=units.map(x=>x[1]).join('|')
 const stop=new Set('بغيت بغينا كنقلب تنقلب كنبحث نبحث ابحث عن على عند ف في من ديال بالجملة جملة مورد موردين تاجر تجار شراء نشري اريد نريد طلب لبيع للبيع بكمية ب ثمن السعر درهم mad dh d م avec en gros grossiste fournisseur fournisseurs cherche recherche je des du de la le les a au pour un une par prix acheter wholesale supplier suppliers want looking for find in at the an to buy unit price per please products product سلع سلعة منتجات منتج و and et'.split(' '))
 const bad = message=>Object.assign(new Error(message),{status:400})
-function parseIntent(raw) {
+function parseSingle(raw) {
   if(typeof raw!=='string'||raw.length>120)throw bad('Invalid search phrase')
   let q=norm(raw)
-  const f={version:VERSION,raw,terms:[],groups:[],city:null,cityAliases:[],quantity:null,unit:null,unitAliases:[],moq:null,moqStrict:false,minPrice:null,maxPrice:null,strictMin:false,strictMax:false,budget:null,currency:null,sort:null,verified:false,delivery:false,issues:[]}
+  const f={version:VERSION,raw,terms:[],groups:[],city:null,cityAliases:[],excludedCities:[],excludedCityAliases:[],excludedTerms:[],excludedGroups:[],subjects:0,categoryPath:null,quantity:null,unit:null,unitAliases:[],moq:null,moqStrict:false,minPrice:null,maxPrice:null,strictMin:false,strictMax:false,budget:null,currency:null,sort:null,verified:null,delivery:false,issues:[]}
   const issue=k=>{if(!f.issues.includes(k))f.issues.push(k)}
   const set=(k,v)=>{if(f[k]!==null&&f[k]!==v)issue('conflict');else f[k]=v}
   const get=(pattern,fn)=>{let m;const r=boundary(pattern);let n=0;while((m=q.match(r))&&n++<12){fn(m);q=q.replace(m[0],' ').replace(/\s+/g,' ').trim()}if(n>1)issue('repeated_condition')}
-  const number=v=>Number(v.replace(',','.'))
+  const number=v=>Number(v.replace(/\s/g,'').replace(/[.,](?=\d{3}(?:[.,]|$))/g,'').replace(',','.'))
   const setMoney=(k,v)=>{set(k,number(v));set('currency','MAD')}
   const setQty=(k,v,u)=>{const n=number(v);if(!Number.isSafeInteger(n)||n<1)issue('quantity');set(k,n);if(u){const row=units.find(x=>boundary(x[1]).test(u));if(row){set('unit',row[0]);f.unitAliases=row[2].split('|')}}}
   const unsignedRanges=q.replace(new RegExp(N+'\\s*[-–]\\s*'+N+'\\s*'+money,'gu'),' ')
@@ -54,14 +61,35 @@ function parseIntent(raw) {
   get(N+'\\s*('+unitPattern+')',m=>setQty('quantity',m[1],m[2]))
   get('(?:ثمن|السعر|prix|price)\\s*'+N+'\\s*'+money,m=>setMoney('maxPrice',m[1]))
   get(N+'\\s*'+money,m=>setMoney('maxPrice',m[1]))
-  get('مورد غير موثوق|مورد غير موثق|متجر غير موثق|non verifie|unverified',()=>issue('unsupported_trust'))
-  get('مورد موثوق|مورد موثق|متجر موثق|متجر موثوق|fournisseur verifie|verified supplier|verified store',()=>{f.verified=true})
+  get('مورد غير موثوق|مورد غير موثق|متجر غير موثق|non verifie|unverified',()=>set('verified',false))
+  get('مورد موثوق|مورد موثق|متجر موثق|متجر موثوق|fournisseur verifie|verified supplier|verified store',()=>set('verified',true))
   get('ارخص|رخيص|رخيصة|cheapest|cheap|moins cher|pas cher|lowest',()=>{f.sort='price_asc';set('currency','MAD')})
-  // Negation and mixed scope are not silently approximated in this first slice.
-  if(boundary('بدون|بلا|ماشي|ليس|غير|الا|باستثناء|sans|without|not|except|excluding|sauf|hors').test(q))issue('unsupported_negation')
+  // Exclusions are lexical constraints, not proof of composition.
+  const neg='(?:بدون|بلا|ماشي|ليس|غير|الا|باستثناء|sans|without|not|except|excluding|sauf|hors)'
+  const tail='(?=\\s*(?:$|[,،;؛]|(?:و|and|et)(?:\\s|$)|'+neg+'\\s))'
+  for(const [label,aliases] of cities){
+    get(neg+'\\s+(?:ف|ب)?(?:'+aliases+')'+tail,()=>{f.excludedCities.push(label);f.excludedCityAliases.push(...aliases.split('|'))})
+  }
+  for(const [label,aliases] of families){
+    get(neg+'\\s+(?:'+aliases+')'+tail,()=>{f.excludedTerms.push(label);f.excludedGroups.push(aliases.split('|'))})
+  }
+  if(boundary(neg).test(q))issue('unsupported_negation')
   if(boundary('او|ou|or').test(q))issue('ambiguous_or')
   for(const [label,aliases] of cities){get('(?:ف|ب)?(?:'+aliases+')',()=>{set('city',label);f.cityAliases=aliases.split('|')})}
-  for(const [label,aliases] of families){const r=boundary(aliases);if(r.test(q)){f.terms.push(label);f.groups.push(aliases.split('|'));q=q.replace(new RegExp(r.source,'gu'),' ')}}
+  for(const [label,aliases] of families){const rr=boundary(aliases);if(rr.test(q)){f.subjects++;f.terms.push(label);f.groups.push(aliases.split('|'));q=q.replace(new RegExp(rr.source,'gu'),' ')}}
+  const sectors=[
+    ['home','المنزل|منزل|ديكور|home|maison'],
+    ['craft','صناعة تقليدية|صناعه تقليديه|حرف|artisanat|crafts|craft'],
+    ['textile','نسيج|ملابس|حوايج|textiles|textile|vetements|clothing'],
+    ['electronic','الكترونيات|electronique|electronics']
+  ]
+  for(const [path,aliases] of sectors){
+    const rr=boundary(aliases)
+    if(rr.test(q)){set('categoryPath',path);q=q.replace(new RegExp(rr.source,'gu'),' ')}
+  }
+  if(f.categoryPath)f.subjects++
+  if(f.city&&f.excludedCities.includes(f.city))issue('city_conflict')
+  if(f.terms.some(term=>f.excludedTerms.includes(term)))issue('term_conflict')
   // Unknown residual numeric/comparison conditions require clarification, not partial matching.
   if(/[0-9<>≤≥=]/u.test(q))issue('unparsed_number')
   if((f.quantity!==null||f.moq!==null)&&boundary('kg|kilograms?|kilogrammes?|كيلو|كيلوغرام|grammes?|grams?|غرام|litres?|liters?|لتر|meters?|metres?|متر|dozens?|douzaines?|دزينة').test(q))issue('unsupported_unit')
@@ -71,6 +99,43 @@ function parseIntent(raw) {
   for(const word of words){if(!/^[\p{L}\p{M}][\p{L}\p{M}-]*$/u.test(word)){issue('unparsed_term');continue}f.terms.push(word);f.groups.push([word])}
   if(f.minPrice!==null&&f.maxPrice!==null&&(f.minPrice>f.maxPrice||(f.minPrice===f.maxPrice&&(f.strictMin||f.strictMax))))issue('price_conflict')
   return f
+}
+function hasCondition(f) {
+  return Boolean(f.city||f.excludedCities.length||f.excludedTerms.length||f.quantity!==null||f.unit||f.moq!==null||
+    f.minPrice!==null||f.maxPrice!==null||f.budget!==null||f.verified!==null||f.delivery||f.sort)
+}
+function parseIntent(raw) {
+  if(typeof raw!=='string'||raw.length>120)throw bad('Invalid search phrase')
+  const pieces=norm(raw).split(/\s+(?:او|ou|or)\s+/u)
+  if(pieces.length===1){
+    const f=parseSingle(raw)
+    if(raw.trim()&&!f.groups.length&&!f.categoryPath&&!hasCondition(f)&&!f.issues.length)f.issues.push('empty_intent')
+    return f
+  }
+  const result=parseSingle('')
+  result.raw=raw
+  const invalid=code=>{result.issues=[code];return result}
+  if(pieces.length>3||pieces.some(x=>!x.trim()))return invalid('ambiguous_or')
+  const branches=pieces.map(parseSingle)
+  const first=branches[0]
+  const cityOnly=f=>f.city&&!f.groups.length&&!f.categoryPath&&!f.issues.length&&!f.excludedCities.length&&!f.excludedTerms.length&&
+    f.quantity===null&&f.moq===null&&f.minPrice===null&&f.maxPrice===null&&f.budget===null&&f.verified===null&&!f.delivery&&!f.sort
+  if(first.subjects>0&&first.city&&branches.slice(1).every(cityOnly)){
+    if(first.quantity!==null||first.moq!==null||first.minPrice!==null||first.maxPrice!==null||first.budget!==null||
+      first.verified!==null||first.delivery||first.sort||first.excludedCities.length||first.excludedTerms.length||first.issues.length)return invalid('ambiguous_scope')
+    for(let i=1;i<branches.length;i++)branches[i]={...first,raw:pieces[i],city:branches[i].city,cityAliases:branches[i].cityAliases}
+  }else{
+    if(branches.some(f=>!f.subjects||f.terms.length!==f.subjects-(f.categoryPath?1:0)))return invalid('ambiguous_or')
+    if(branches.some((f,i)=>i>0&&!hasCondition(branches[i-1])&&hasCondition(f)))return invalid('ambiguous_scope')
+    if(pieces.some(part=>boundary('و|and|et').test(part))&&branches.some(f=>f.subjects>1))return invalid('mixed_logic')
+  }
+  // One displayed price context per result. Never silently merge distinct quantities.
+  if(branches.some(f=>f.quantity!==first.quantity||f.sort!==first.sort||(first.sort&&f.unit!==first.unit)))return invalid('branch_price_context')
+  result.branches=branches
+  result.quantity=first.quantity
+  result.sort=first.sort
+  result.issues=[...new Set(branches.flatMap(f=>f.issues))]
+  return result
 }
 function regexes(values,exact=false) {
   return values.map(value=>new RegExp((exact?'^':'(?<![\\p{L}\\p{N}])')+escapeRegex(value)+(exact?'$':'(?![\\p{L}\\p{N}])'),'iu'))

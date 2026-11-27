@@ -5,6 +5,10 @@ const { searchCatalog } = require('../utils/catalog')
 const { discoverExternally } = require('../services/externalDiscovery')
 const { VERSION, parseIntent } = require('../utils/searchIntent')
 
+const summarize = intent => {
+  const keys=['version','terms','categoryPath','city','excludedCities','excludedTerms','quantity','unit','moq','moqStrict','minPrice','maxPrice','strictMin','strictMax','budget','currency','sort','verified','delivery']
+  return {...Object.fromEntries(keys.map(k=>[k,intent[k]])),issues:[...new Set(intent.issues)],...(intent.branches?{branches:intent.branches.map(summarize)}:{})}
+}
 router.post('/', asyncHandler(async (req, res) => {
   const query = req.body.query ?? req.body.q ?? req.query.q ?? ''
   const input = { ...req.body, ...req.query, q: query }
@@ -20,7 +24,7 @@ router.post('/', asyncHandler(async (req, res) => {
     ...result,
     message: 'تم البحث في المنتجات المنشورة والمتوفرة',
     analysisMode: intent ? 'structured_keywords' : 'text_keywords',
-    ...(intent ? { searchIntent: { version: VERSION, terms: intent.terms, city: intent.city, quantity: intent.quantity, unit: intent.unit, moq: intent.moq, moqStrict: intent.moqStrict, minPrice: intent.minPrice, maxPrice: intent.maxPrice, strictMin: intent.strictMin, strictMax: intent.strictMax, budget: intent.budget, currency: intent.currency, sort: intent.sort, verified: intent.verified, delivery: intent.delivery, issues: [...new Set(intent.issues)] } } : {}),
+    ...(intent ? { searchIntent: summarize(intent) } : {}),
     aiUsed: false,
     aiMessage: intent ? 'بحث نصي محلي؛ الشروط المستخرجة ليست ضماناً للمواصفات أو التوصيل.' : 'المطابقة تعني تطابق عنوان النص فقط؛ النتائج الأخرى مرتبطة بكلمات البحث.',
     suggestions: [],

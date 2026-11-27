@@ -95,7 +95,7 @@ async function catalogCategories(input = {}) {
 
 async function searchCatalog(input, { words, visual = false, supplierId, storeId, intent } = {}) {
   const options = parseOptions(input)
-  const filter = await publicCatalogFilter({ supplierId, businessType: options.businessType, supplierTrust: intent?.verified ? 'verified' : options.supplierTrust })
+  const filter = await publicCatalogFilter({ supplierId, businessType: options.businessType, supplierTrust: options.supplierTrust })
   if (storeId) filter.$and = [{ storeId }]
   if (options.city) filter.city = new RegExp(escapeRegex(options.city), 'i')
   if (options.category) filter.category = categoryPredicate(options)
@@ -107,23 +107,50 @@ async function searchCatalog(input, { words, visual = false, supplierId, storeId
       filter.$and = [...(filter.$and || []), { supplierId: { $in: suppliers.map(s => s._id) } }]
     }
   }
-  if (intent?.quantity != null && options.quantity != null && intent.quantity !== options.quantity) intent.issues.push('quantity_conflict')
-  if (intent?.currency && options.currency && intent.currency !== options.currency) intent.issues.push('currency_conflict')
-  if (intent?.sort && options.order !== 'relevance' && options.order !== intent.sort) intent.issues.push('sort_conflict')
+  const branches = intent ? (intent.branches || [intent]) : []
   const quantity = intent?.quantity ?? options.quantity
-  if (quantity) filter.moq = { $lte: quantity }
-  if (intent) {
-    const add = predicate => { filter.$and = [...(filter.$and || []), predicate] }
-    if (intent.issues.length) add({ _id: { $in: [] } })
-    if (intent.city) add({ city: { $in: regexes(intent.cityAliases,true) } })
-    if (intent.unit) add({ unit: { $in: regexes(intent.unitAliases,true) } })
-    if (intent.currency) add({ currency: intent.currency })
-    if (intent.moq != null) add({ moq: { [intent.moqStrict?'$lt':'$lte']: intent.moq } })
-    for (const group of intent.groups) {
-      const expressions = regexes(group)
-      add({ $or: ['name','category','description'].map(field=>({ [field]: { $in: expressions } })) })
+  const requireTier = branches.some(b=>b.budget!=null||b.minPrice!=null||b.maxPrice!=null||b.sort)
+  const priceQuantity = quantity || (requireTier ? '$moq' : null)
+  const lexical = group => ({ $or: ['name','category','description'].map(field=>({[field]:{$in:regexes(group)}})) })
+  const branchPredicates = []
+  if(intent){
+    const verifiedIds=branches.some(b=>b.verified!==null) ? (await Supplier.find({
+      role:'supplier',isActive:{$ne:false},...verifiedSupplierPredicate('verified')
+    }).select('_id').lean()).map(row=>row._id) : []
+    for(const b of branches){
+      if(b.quantity!=null&&options.quantity!=null&&b.quantity!==options.quantity)intent.issues.push('quantity_conflict')
+      if(b.currency&&options.currency&&b.currency!==options.currency)intent.issues.push('currency_conflict')
+      if(b.sort&&options.order!=='relevance'&&options.order!==b.sort)intent.issues.push('sort_conflict')
+      if(b.verified===false&&options.supplierTrust==='verified')intent.issues.push('trust_conflict')
+      const clauses=[]
+      if(b.city)clauses.push({city:{$in:regexes(b.cityAliases,true)}})
+      if(b.excludedCityAliases.length)clauses.push({city:{$nin:regexes(b.excludedCityAliases,true)}})
+      if(b.unit)clauses.push({unit:{$in:regexes(b.unitAliases,true)}})
+      if(b.currency)clauses.push({currency:b.currency})
+      if(b.categoryPath){const scoped={};applyTaxonomyFilter(scoped,b.categoryPath);clauses.push(...(scoped.$and||[]))}
+      if(b.moq!=null)clauses.push({moq:{[b.moqStrict?'$lt':'$lte']:b.moq}})
+      if(b.verified!==null)clauses.push({supplierId:{[b.verified?'$in':'$nin']:verifiedIds}})
+      for(const group of b.groups)clauses.push(lexical(group))
+      for(const group of b.excludedGroups)clauses.push({$nor:[lexical(group)]})
+      const bounds={}
+      if(b.minPrice!=null)bounds[b.strictMin?'$gt':'$gte']=b.minPrice
+      if(b.maxPrice!=null)bounds[b.strictMax?'$lt':'$lte']=b.maxPrice
+      const priced=[...clauses]
+      if(Object.keys(bounds).length||b.budget!=null||b.sort)priced.push({pricingMode:'fixed',effectiveUnitPrice:{$type:'number',...bounds}})
+      if(b.budget!=null){
+        const cost={$convert:{input:'$effectiveUnitPrice',to:'decimal',onError:null,onNull:null}}
+        const amount={$convert:{input:quantity||'$moq',to:'decimal',onError:null,onNull:null}}
+        priced.push({$expr:{$and:[
+          {$ne:[cost,null]},{$ne:[amount,null]},{$gte:[cost,0]},{$gte:[amount,1]},
+          {$lte:[{$multiply:[cost,amount]},{$toDecimal:b.budget}]}
+        ]}})
+      }
+      branchPredicates.push({initial:clauses.length?{$and:clauses}:{},priced:priced.length?{$and:priced}:{}})
     }
+    if(intent.issues.length)filter.$and=[...(filter.$and||[]),{_id:{$in:[]}}]
+    else filter.$and=[...(filter.$and||[]),{$or:branchPredicates.map(b=>b.initial)}]
   }
+  if(quantity)filter.moq={$lte:quantity}
   const terms = (words || searchWords(options.q)).filter(w => typeof w === 'string' && w.trim()).slice(0, 15)
   if (!intent && terms.length) {
     const regexes = terms.map(w => new RegExp(escapeRegex(w.slice(0, 120)), 'i'))
@@ -131,7 +158,6 @@ async function searchCatalog(input, { words, visual = false, supplierId, storeId
   }
   applyTaxonomyFilter(filter, options.taxonomyPath)
   const pipeline = [{ $match: filter }]
-  const priceQuantity = quantity || (intent && (intent.budget != null || intent.minPrice != null || intent.maxPrice != null || intent.sort) ? '$moq' : null)
   if (priceQuantity) {
     pipeline.push({ $addFields: { _tiers: { $filter: { input: { $ifNull: ['$priceTiers', []] }, as: 't', cond: { $and: [{ $lte: ['$$t.minQty', priceQuantity] }, { $or: [{ $eq: [{ $ifNull: ['$$t.maxQty', null] }, null] }, { $gte: ['$$t.maxQty', priceQuantity] }] }] } } } } })
     pipeline.push({ $addFields: { effectiveUnitPrice: { $ifNull: [{ $arrayElemAt: ['$_tiers.price', 0] }, '$price'] } } })
@@ -140,13 +166,7 @@ async function searchCatalog(input, { words, visual = false, supplierId, storeId
   if (options.minPrice != null) priceFilter.$gte = options.minPrice
   if (options.maxPrice != null) priceFilter.$lte = options.maxPrice
   if (Object.keys(priceFilter).length) pipeline.push({ $match: { pricingMode: 'fixed', effectiveUnitPrice: priceFilter } })
-  if (intent) {
-    const bounds = {}
-    if (intent.minPrice != null) bounds[intent.strictMin?'$gt':'$gte'] = intent.minPrice
-    if (intent.maxPrice != null) bounds[intent.strictMax?'$lt':'$lte'] = intent.maxPrice
-    if (Object.keys(bounds).length || intent.budget != null || intent.sort) pipeline.push({ $match: { pricingMode: 'fixed', effectiveUnitPrice: { $type: 'number', ...bounds } } })
-    if (intent.budget != null) pipeline.push({ $match: { $expr: { $lte: [{ $multiply: [{ $toDecimal: '$effectiveUnitPrice' }, quantity || '$moq'] }, { $toDecimal: intent.budget }] } } })
-  }
+  if(intent&&!intent.issues.length)pipeline.push({$match:{$or:branchPredicates.map(b=>b.priced)}})
   const exactExpression = !intent && !visual && options.q ? { $eq: [{ $toLower: { $ifNull: ['$name', ''] } }, options.q.toLowerCase()] } : false
   pipeline.push({ $addFields: { _rank: { $cond: [exactExpression, 0, 1] }, _priceMissing: { $cond: [{ $eq: ['$pricingMode', 'on_request'] }, 1, 0] } } })
   const order = intent?.sort || options.order
@@ -164,7 +184,7 @@ async function searchCatalog(input, { words, visual = false, supplierId, storeId
   })
   products = await Product.populate(products, { path: 'supplierId', select: 'name city phone isVerified verificationStatus businessTypes', options: { lean: true } })
   products = products.map(product => ({ ...product, supplierId: product.supplierId ? { ...product.supplierId, businessTypes: declaredBusinessTypes(product.supplierId.businessTypes) } : null }))
-  return { products, total: totals.total, exactCount: totals.exactCount, similarCount: totals.total - totals.exactCount, page: options.page, limit: options.limit, pagination: { page: options.page, limit: options.limit, total: totals.total, pages: Math.ceil(totals.total / options.limit), hasNextPage: options.page * options.limit < totals.total, hasPrevPage: options.page > 1 } }
+  return { products, ...(intent?{searchPriceContext:{quantity:quantity??null,basis:quantity?'quantity':priceQuantity?'moq':'base'}}:{}), total: totals.total, exactCount: totals.exactCount, similarCount: totals.total - totals.exactCount, page: options.page, limit: options.limit, pagination: { page: options.page, limit: options.limit, total: totals.total, pages: Math.ceil(totals.total / options.limit), hasNextPage: options.page * options.limit < totals.total, hasPrevPage: options.page > 1 } }
 }
 
 module.exports = { PUBLIC_FIELDS, PUBLIC_VISIBILITY, imageUrlAllowed, badRequest, parseOptions, publicCatalogFilter, searchWords, searchCatalog, catalogCategories, categoryPredicate }
