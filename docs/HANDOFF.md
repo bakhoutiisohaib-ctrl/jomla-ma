@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 - Gate 4C.1 photo input/lifecycle scoped PASS: 71/71 focused after patch correction, 450/450 full FE (43 suites), build PASS, 3/3 repeated actual browser and DB proof (private media 401 -> public 200 for same explicitly published product). [Report](v49-gate4c1-photo-2026-11-27.md). Gate 4C OPEN; next save acknowledgement, draft listing and publication lifecycle.
+
 2026-11-27 - Gate 4B company/store/delegated access scoped PASS: 40/40 focused, 19/19 isolated BE, full FE 446/446 after unchanged favorites recheck, build PASS, 4/4 real owner/employee browser records and membership/store DB verification. [Report](v49-gate4b-company-2026-11-27.md). Gate 4 OPEN; next 4C product authoring/drafts/media.
 
 2026-11-27 - Gate 4A supplier office scoped PASS: simple default/advanced optional, truthful metrics, 85/85 focused, 440/440 full FE (42 suites), build PASS, 5/5 real browser records (both modes across four configurations plus unsaved editor), isolated DB unchanged commercial counts. [Report](v49-gate4a-office-2026-11-27.md). Gate 4 OPEN; next company/store/staff and private lifecycle review.

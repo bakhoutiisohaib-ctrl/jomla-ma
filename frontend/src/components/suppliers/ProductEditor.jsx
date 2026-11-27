@@ -63,7 +63,15 @@ function EditorSession({
       storeId: stores[0]._id
     }));
   }, [form.storeId, stores]);
+  function cancelImage() {
+    imageController.current?.abort();
+    imageController.current = null;
+    setBusy(false);
+    setMessage('');
+    setApproved(false);
+  }
   function update(key, value) {
+    if (key === 'imageUrl' || key === 'images') cancelImage();
     formRevision.current++;
     setForm(f => ({
       ...f,
@@ -72,10 +80,11 @@ function EditorSession({
     setApproved(false);
   }
   async function imageAction(analyze = false) {
-    if (savingRef.current || recoveryPending) return;
+    if (savingRef.current || recoveryPending || imageController.current) return;
     if (slot === 'secondary' && (form.images || []).length >= 6) return setError(l('الحد الأقصى ست صور إضافية.', 'Six images supplémentaires maximum.'));
     if (!file) return setError(l('اختر صورة أولاً', 'Choisissez une image.'));
     if (!rights) return setError(l('أقر بحق استخدام الصورة أولاً', 'Confirmez vos droits sur l’image.'));
+    if (source === 'licensed' && !license.trim()) return setError(l('أدخل مرجع الترخيص.', 'Renseignez la référence de la licence.', 'Enter the license reference.'));
     setBusy(true);
     setError('');
     setMessage('');
@@ -95,12 +104,14 @@ function EditorSession({
         signal: controller.signal
       });
       if (!mounted.current || controller.signal.aborted || requestToken !== getSessionToken()) return;
-      if (data.imageUrl) setForm(f => imageSlot === 'main' ? { ...f, imageUrl: data.imageUrl } : { ...f, images: [...new Set([...(f.images || []), data.imageUrl])] });
+      if (!mediaUrl(data?.imageUrl)) throw new Error(l("تعذر تأكيد الصورة المرفوعة.", "Image importée non confirmée.", "Uploaded image not confirmed."));
+      setForm(f => imageSlot === 'main' ? { ...f, imageUrl: data.imageUrl } : { ...f, images: [...new Set([...(f.images || []), data.imageUrl])] });
       if (data.job) {
         setMessage(l('الصورة محفوظة، والتحليل جارٍ في الخلفية…', 'Image enregistrée, analyse en cours en arrière-plan…'));
-        data = await waitForJob(data.job, { signal: controller.signal });
+        data = await waitForJob(data.job, { signal: controller.signal, token: requestToken });
       }
       if (!mounted.current || controller.signal.aborted || requestToken !== getSessionToken()) return;
+      if (!data || (data.imageUrl && !mediaUrl(data.imageUrl))) throw new Error(l('تعذر تأكيد نتيجة الصورة.', 'Résultat de l’image non confirmé.', 'Image result not confirmed.'));
       setForm(f => ({
         ...f,
         ...(imageSlot === 'main' && data.imageUrl ? { imageUrl: data.imageUrl } : {}),
@@ -115,14 +126,17 @@ function EditorSession({
     } catch (e) {
       if (!mounted.current || e.name === 'AbortError' || controller.signal.aborted || requestToken !== getSessionToken()) return;
       setMessage('');
-      if (imageSlot === 'main' && e.data?.imageUrl) update('imageUrl', e.data.imageUrl);
+      if (imageSlot === 'main' && mediaUrl(e.data?.imageUrl)) {setForm(f=>({...f,imageUrl:e.data.imageUrl}));setApproved(false);}
       setError(e.message);
     } finally {
-      if (mounted.current && !controller.signal.aborted && requestToken === getSessionToken()) setBusy(false);
+      if (imageController.current === controller) {
+        imageController.current = null;
+        if (mounted.current && !controller.signal.aborted && requestToken === getSessionToken()) setBusy(false);
+      }
     }
   }
   async function save(isDraft, recover = false) {
-    if (savingRef.current || busy) return;
+    if (savingRef.current || busy || imageController.current) return;
     // An unknown acknowledgement must be reconciled using its original payload.
     // A new key here could create a second product after the first was committed.
     if (!product && creationAttempt.current && !recover) return;
@@ -196,10 +210,23 @@ function EditorSession({
       if (mounted.current && !controller.signal.aborted && requestToken === getSessionToken()) setSaving(false);
     }
   }
-  return <ProductWizard {...{ product, form, update, stores, tiers, setTiers, rights, setRights, approved, setApproved,
-    source, setSource, license, setLicense, file, slot, setSlot, imageAction, busy, saving, recoveryPending, error, message, save, onCancel }}
+  function selectFile(e) {
+    cancelImage();formRevision.current++;
+    const chosen=e.target.files?.[0] || null;
+    setError('');
+    if(chosen && (!['image/png','image/jpeg','image/webp','image/gif'].includes(chosen.type) || chosen.size<1 || chosen.size>10*1024*1024)) {
+      setFile(null);e.target.value='';
+      setError(l('اختر صورة PNG أو JPEG أو WebP أو GIF لا تتجاوز 10MB.', 'Choisissez une image PNG, JPEG, WebP ou GIF de 10 Mo maximum.', 'Choose a PNG, JPEG, WebP or GIF image up to 10 MB.'));
+      return;
+    }
+    setFile(chosen);
+  }
+  const changeImageContext = setter => value => {cancelImage();formRevision.current++;setter(value);};
+  return <ProductWizard {...{ product, form, update, stores, tiers, setTiers, rights, approved, setApproved,
+    source, license, file, slot, imageAction, busy, saving, recoveryPending, error, message, save, onCancel }}
+    setRights={changeImageContext(setRights)} setSource={changeImageContext(setSource)} setLicense={changeImageContext(setLicense)} setSlot={changeImageContext(setSlot)}
     onRecover={() => save(creationAttempt.current?.body.isDraft, true)}
-    selectFile={e => { imageController.current?.abort(); formRevision.current++; setBusy(false); setFile(e.target.files?.[0] || null); setApproved(false); }} />;
+    selectFile={selectFile} />;
 }
 export default function ProductEditor(props) {
   const token = useSessionToken();

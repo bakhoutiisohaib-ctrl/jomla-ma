@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ProtectedImage from '../common/ProtectedImage';
 import { Field, Notice } from '../common/WorkspaceUI';
 import { mediaUrl } from '../../api/media';
@@ -11,6 +11,14 @@ export default function ProductWizard({ product, form, update, stores, tiers, se
   imageAction, busy, saving, recoveryPending = false, onRecover, error, message, save, onCancel }) {
   const l = useLabels(), { lang } = useTranslation(), heading = useRef(null);
   const [step, setStep] = useState(0);
+  const [preview, setPreview] = useState(null);
+  useEffect(()=>{
+    setPreview(null);
+    if(!file || typeof URL.createObjectURL!=='function') return;
+    const url=URL.createObjectURL(file);
+    setPreview({file,url});
+    return ()=>URL.revokeObjectURL(url);
+  },[file]);
   const [taxonomyOpen, setTaxonomyOpen] = useState(false);
   const taxonomy = useTaxonomy(taxonomyOpen || Boolean(form.taxonomyPath));
   const steps = [l('الصور والبيانات', 'Images et informations'), l('السعر والكميات', 'Prix et quantités'), l('المراجعة والنشر', 'Vérifier et publier')];
@@ -46,7 +54,11 @@ export default function ProductWizard({ product, form, update, stores, tiers, se
         <label className="check"><input type="checkbox" checked={rights} onChange={e=>resetApproval(setRights)(e.target.checked)} />{l('أقر بأنني أملك حق استخدام هذه الصورة لهذا المنتج.','Je confirme avoir le droit d’utiliser cette image pour ce produit.')}</label>
         <p className="muted">{l('يشمل الإقرار جميع الصور المرفقة. لا تستخدم صوراً دون إذن.', 'La déclaration couvre toutes les images jointes. Utilisez uniquement des images autorisées.')}</p>
         <div className="supplier-upload"><Field label={l('نوع الصورة','Usage de l’image')}><select value={slot} onChange={e=>resetApproval(setSlot)(e.target.value)}><option value="main">{l('الصورة الرئيسية','Image principale')}</option><option value="secondary">{l('صورة إضافية','Image supplémentaire')}</option></select></Field>
-        <Field label={l('ملف الصورة (حتى 10MB)','Image (10 Mo maximum)')} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={selectFile} />
+        <div className="supplier-photo-picker">
+          {preview?.file===file && <figure><img src={preview.url} alt={l('معاينة الصورة المختارة على جهازك','Aperçu local de l’image choisie','Local preview of selected image')} /><figcaption>{l('معاينة محلية قبل الرفع','Aperçu local avant importation','Local preview before upload')}</figcaption></figure>}
+          <Field label={l('التقاط صورة بالكاميرا','Prendre une photo','Take a photo')} type="file" accept="image/png,image/jpeg,image/webp,image/gif" capture="environment" onChange={selectFile} />
+          <Field label={l('ملف الصورة (حتى 10MB)','Image (10 Mo maximum)')} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={selectFile} />
+        </div>
         <div className="actions"><button type="button" disabled={busy || !rights || !file} onClick={()=>imageAction(false)}>{l('رفع الصورة','Importer l’image')}</button><button type="button" disabled={busy || !rights || !file || slot!=='main'} onClick={()=>imageAction(true)}>{l('اقتراح وصف من الصورة','Proposer une description visuelle')}</button></div><small>{file?.name} {busy && l('جارٍ الرفع أو المعالجة…','Importation ou analyse…')}</small></div>
         <p className="muted">{l('روابط الصور الخارجية غير متاحة. الوصف المقترح يحتاج مراجعتك ولا يحدد السعر أو التوفر.', 'Les liens externes sont désactivés. Toute description proposée doit être vérifiée et ne détermine ni prix ni disponibilité.')}</p>
         <div className="supplier-editor-images">{form.imageUrl && <figure><ProtectedImage value={form.imageUrl} alt={l('معاينة المنتج','Aperçu du produit')} /><figcaption>{l('الرئيسية','Principale')}</figcaption><button type="button" onClick={()=>update('imageUrl','')}>{l('إزالة الرئيسية','Retirer la principale')}</button></figure>}{(form.images || []).map((image,i)=><figure key={image}><ProtectedImage value={image} alt={l('صورة إضافية','Image supplémentaire')+' '+(i+1)} /><button type="button" onClick={()=>update('images',form.images.filter((_,n)=>n!==i))}>{l('إزالة الصورة','Retirer l’image')} {i+1}</button></figure>)}</div>

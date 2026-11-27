@@ -378,3 +378,52 @@ test('creation never falls back to an unsafe or missing request key', async () =
     Object.defineProperty(globalThis,'crypto',{configurable:true,value:secureCrypto});
   }
 });
+
+test('camera and gallery select local images and reject unsupported files before upload',()=>{
+ render(<LanguageProvider><ProductEditor stores={[]} onSaved={jest.fn()} onCancel={()=>{}} /></LanguageProvider>);
+ const camera=screen.getByLabelText('التقاط صورة بالكاميرا');
+ expect(camera).toHaveAttribute('capture','environment');
+ fireEvent.click(screen.getByLabelText('أقر بأنني أملك حق استخدام هذه الصورة لهذا المنتج.'));
+ fireEvent.change(camera,{target:{files:[new File(['invalid'],'invalid.svg',{type:'image/svg+xml'})]}});
+ expect(screen.getByRole('alert')).toHaveTextContent('PNG');
+ expect(screen.getByRole('button',{name:'رفع الصورة'})).toBeDisabled();
+ expect(apiRequest).not.toHaveBeenCalled();
+ fireEvent.change(screen.getByLabelText('ملف الصورة (حتى 10MB)'),{target:{files:[new File(['png'],'owned.png',{type:'image/png'})]}});
+ expect(screen.getByRole('button',{name:'رفع الصورة'})).toBeEnabled();
+});
+test('duplicate upload is single flight and changing rights discards a late upload response',async()=>{
+ let finish;apiRequest.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
+ render(<LanguageProvider><ProductEditor stores={[]} onSaved={jest.fn()} onCancel={()=>{}} /></LanguageProvider>);
+ const rights=screen.getByLabelText('أقر بأنني أملك حق استخدام هذه الصورة لهذا المنتج.');
+ fireEvent.click(rights);
+ fireEvent.change(screen.getByLabelText('ملف الصورة (حتى 10MB)'),{target:{files:[new File(['png'],'owned.png',{type:'image/png'})]}});
+ const upload=screen.getByRole('button',{name:'رفع الصورة'});
+ fireEvent.click(upload);fireEvent.click(upload);
+ expect(apiRequest).toHaveBeenCalledTimes(1);
+ fireEvent.click(rights);
+ await act(async()=>finish({imageUrl:'/uploads/late.png'}));
+ expect(apiRequest.mock.calls[0][1].signal.aborted).toBe(true);
+ expect(screen.queryByRole('button',{name:'إزالة الرئيسية'})).not.toBeInTheDocument();
+});
+test('removing an image during analysis cancels the result and cannot restore it',async()=>{
+ let finish;apiRequest.mockResolvedValue({imageUrl:'/uploads/example.png',job:{id:'job3',status:'pending'}});
+ waitForJob.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
+ render(<LanguageProvider><ProductEditor stores={[]} onSaved={jest.fn()} onCancel={()=>{}} /></LanguageProvider>);
+ fireEvent.click(screen.getByLabelText('أقر بأنني أملك حق استخدام هذه الصورة لهذا المنتج.'));
+ fireEvent.change(screen.getByLabelText('ملف الصورة (حتى 10MB)'),{target:{files:[new File(['png'],'owned.png',{type:'image/png'})]}});
+ fireEvent.click(screen.getByRole('button',{name:'اقتراح وصف من الصورة'}));
+ fireEvent.click(await screen.findByRole('button',{name:'إزالة الرئيسية'}));
+ await act(async()=>finish({imageUrl:'/uploads/example.png',draft:{title:'Late suggestion'}}));
+ expect(waitForJob.mock.calls[0][1].signal.aborted).toBe(true);
+ expect(screen.queryByRole('button',{name:'إزالة الرئيسية'})).not.toBeInTheDocument();
+ expect(screen.getByLabelText('عنوان المنتج')).toHaveValue('');
+});
+test('an external upload result never becomes a managed product image',async()=>{
+ apiRequest.mockResolvedValue({imageUrl:'https://example.invalid/not-owned.png'});
+ render(<LanguageProvider><ProductEditor stores={[]} onSaved={jest.fn()} onCancel={()=>{}} /></LanguageProvider>);
+ fireEvent.click(screen.getByLabelText('أقر بأنني أملك حق استخدام هذه الصورة لهذا المنتج.'));
+ fireEvent.change(screen.getByLabelText('ملف الصورة (حتى 10MB)'),{target:{files:[new File(['png'],'owned.png',{type:'image/png'})]}});
+ fireEvent.click(screen.getByRole('button',{name:'رفع الصورة'}));
+ expect(await screen.findByRole('alert')).toHaveTextContent('تعذر تأكيد الصورة المرفوعة');
+ expect(screen.queryByRole('button',{name:'إزالة الرئيسية'})).not.toBeInTheDocument();
+});
