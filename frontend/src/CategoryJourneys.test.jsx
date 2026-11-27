@@ -1,3 +1,4 @@
+import {visualFixture} from './visualSearchFixture';
 import {structuredFixture} from './structuredSearchFixture';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import App from './App';
@@ -19,7 +20,7 @@ beforeEach(()=>{
   }
   if(p.endsWith('/products/search')||p.endsWith('/ai-search')||p.endsWith('/image-search')){
    const category=u.searchParams.get('category')||(typeof opt.body==='string'?JSON.parse(opt.body).category:opt.body?.get('category'));
-   const data=category&&category!=='Textile'?[]:[item];if(p.endsWith('/ai-search'))return reply(structuredFixture(JSON.parse(opt.body),data));return reply({data,pagination:{pages:1,total:data.length}});
+   const data=category&&category!=='Textile'?[]:[item];if(p.endsWith('/ai-search'))return reply(structuredFixture(JSON.parse(opt.body),data));if(p.endsWith('/image-search'))return reply(visualFixture(data,Number(u.searchParams.get('page'))));return reply({data,pagination:{pages:1,total:data.length}});
   }
   return reply({data:[],unreadCount:0});
  });
@@ -46,6 +47,7 @@ test('directory is independent of search results, text/image requests retain exa
  fireEvent.submit(screen.getByRole('search'));
  await waitFor(()=>expect(fetch.mock.calls.some(([u,o])=>String(u).includes('/ai-search')&&JSON.parse(o.body).categoryMode==='exact')).toBe(true));
  expect(screen.getByRole('button',{name:'Category 0'})).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'بحث بالصورة'}));
  fireEvent.change(screen.getByLabelText('صورة البحث'),{target:{files:[new File(['synthetic'],'test.png',{type:'image/png'})]}});
  await waitFor(()=>expect(fetch.mock.calls.some(([u,o])=>String(u).includes('/image-search')&&o.body.get('categoryMode')==='exact')).toBe(true));
  fireEvent.change(screen.getByLabelText('الفئة'),{target:{value:'Text'}});

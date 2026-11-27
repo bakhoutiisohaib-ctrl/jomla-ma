@@ -1,3 +1,4 @@
+import {visualFixture} from './visualSearchFixture';
 import {structuredFixture} from './structuredSearchFixture';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import App from './App';
@@ -38,6 +39,7 @@ beforeEach(()=>{
    const scope=u.searchParams.get('taxonomyPath')||body.taxonomyPath||opt.body?.get?.('taxonomyPath');
    const data=scope==='building/fixtures'?[]:[item];
    if(p.endsWith('/ai-search'))return reply(structuredFixture(body,data));
+   if(p.endsWith('/image-search'))return reply(visualFixture(data,Number(u.searchParams.get('page'))));
    return reply({data,pagination:{page:1,pages:1,total:data.length},externalDiscovery:{enabled:false}});
   }
   if((p.endsWith('/products')||p.endsWith('/products/'+item._id))&&['POST','PUT'].includes(opt.method)){
@@ -65,6 +67,7 @@ test('buyer chooses sector and scoped leaf, combines activity, text and image th
  await waitFor(()=>expect(requests('/products/categories').some(([url])=>params(url).get('taxonomyPath')==='textile/kids'&&params(url).get('businessType')==='manufacturer')).toBe(true));
  change('البحث في الكتالوج','shoe');fireEvent.submit(screen.getByRole('search'));
  await waitFor(()=>expect(requests('/ai-search').some(([,o])=>JSON.parse(o.body).taxonomyPath==='textile/kids')).toBe(true));
+ fireEvent.click(screen.getByRole('button',{name:'بحث بالصورة'}));
  fireEvent.change(screen.getByLabelText('صورة البحث'),{target:{files:[new File(['test'],'synthetic.png',{type:'image/png'})]}});
  await waitFor(()=>expect(requests('/image-search').some(([,o])=>o.body.get('taxonomyPath')==='textile/kids'&&o.body.get('businessType')==='manufacturer')).toBe(true));
  choose('إعادة ضبط البحث');

@@ -1,3 +1,4 @@
+import {visualFixture} from './visualSearchFixture';
 import {structuredFixture} from './structuredSearchFixture';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App';
@@ -27,6 +28,7 @@ beforeEach(()=>{
    const type=u.searchParams.get('businessType') || (typeof opt.body==='string'?JSON.parse(opt.body).businessType:opt.body?.get('businessType'));
    const data=type==='manufacturer'?[typed]:type?[]:[typed,legacy];
    if(p.endsWith('/ai-search'))return reply(structuredFixture(JSON.parse(opt.body),data));
+   if(p.endsWith('/image-search'))return reply(visualFixture(data,Number(u.searchParams.get('page'))));
    return reply({data,pagination:{pages:1,total:data.length},externalDiscovery:{enabled:true,results:[{url:'https://example.invalid',title:'External unclassified item'}]}});
   }
   return reply({data:[],unreadCount:0});
@@ -52,6 +54,7 @@ test('text and image search retain the selected activity',async()=>{
  fireEvent.change(screen.getByLabelText('البحث في الكتالوج'),{target:{value:'shoe'}});
  fireEvent.submit(screen.getByRole('search'));
  await waitFor(()=>expect(fetch.mock.calls.some(([u,o])=>String(u).includes('/ai-search')&&JSON.parse(o.body).businessType==='manufacturer')).toBe(true));
+ fireEvent.click(screen.getByRole('button',{name:'بحث بالصورة'}));
  fireEvent.change(screen.getByLabelText('صورة البحث'),{target:{files:[new File(['synthetic'],'test.png',{type:'image/png'})]}});
  await waitFor(()=>expect(fetch.mock.calls.some(([u,o])=>String(u).includes('/image-search')&&o.body.get('businessType')==='manufacturer')).toBe(true));
 });

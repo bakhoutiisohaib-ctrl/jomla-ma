@@ -1,0 +1,7 @@
+/* Isolated controls derived from the V4.9 j47-upload dialog. */
+.atlas-public .atlas-search>button.atlas-image-search{padding:0;background:transparent;border:0;border-inline-start:1px solid var(--line);border-radius:0;color:inherit}
+.atlas-visual-upload-list{display:grid;gap:8px}
+.atlas-visual-upload{display:flex;justify-content:center;align-items:center;gap:8px;border:1px dashed #9db4a2;border-radius:14px;background:#edf4ed;color:#28543e;padding:20px;position:relative;cursor:pointer;min-width:0}
+.atlas-visual-upload input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.atlas-visual-upload:focus-within{outline:3px solid #537d5c;outline-offset:2px}
+.atlas-visual-upload .atlas-icon{width:24px;height:24px;flex:none}

@@ -1,3 +1,4 @@
+import {visualFixture} from './visualSearchFixture';
 import {structuredFixture} from './structuredSearchFixture';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import App from './App';
@@ -28,6 +29,7 @@ beforeEach(()=>{
   if(p.endsWith('/products/categories'))return response(result([{category:'Textile',count:trust?1:2}]));
   if(p.endsWith('/products/search')||p.endsWith('/ai-search')||p.endsWith('/image-search')){
    if(p.endsWith('/ai-search'))return response(structuredFixture(b,filter([product,other])));
+   if(p.endsWith('/image-search'))return response(visualFixture(filter([product,other]),page));
    return response({...result(filter([product,other])),externalDiscovery:{enabled:true,results:[{url:'https://example.invalid',title:'Unverified external item'}]}});
   }
   return response({data:[],unreadCount:0});
@@ -48,6 +50,7 @@ test('verified is optional and unavailable signals cannot be selected; verified 
  fireEvent.change(screen.getByLabelText('البحث في الكتالوج'),{target:{value:'shoe'}});
  fireEvent.submit(screen.getByRole('search'));
  await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/ai-search')&&r.trust==='verified'&&r.type==='manufacturer')).toBe(true));
+ fireEvent.click(screen.getByRole('button',{name:'بحث بالصورة'}));
  fireEvent.change(screen.getByLabelText('صورة البحث'),{target:{files:[new File(['synthetic'],'sample.png',{type:'image/png'})]}});
  await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/image-search')&&r.trust==='verified'&&r.type==='manufacturer')).toBe(true));
  choose('إلغاء فلترة الثقة');await screen.findByText(other.name);

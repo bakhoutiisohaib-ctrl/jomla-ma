@@ -52,7 +52,7 @@ export default function ProductCard({
       </div>
     </div>
     <div className="product-body">
-      {!priceContext?.structured&&['exact', 'similar'].includes(product.matchType) && <span className="badge">{product.matchBasis === 'exact_image' ? l('الصورة نفسها', 'Même fichier image') : product.matchType === 'exact' ? l('تطابق نصي', 'Correspondance textuelle') : l('مرشح مشابه', 'Résultat similaire')}</span>}
+      {!priceContext?.structured&&['exact', 'similar'].includes(product.matchType) && <span className="badge">{product.matchBasis === 'exact_image' ? l('الصورة نفسها', 'Même fichier image') : product.matchType === 'exact' ? l('تطابق نصي', 'Correspondance textuelle') : product.matchBasis==='similar_image'?l('تشابه بصري','Similarité visuelle','Visual similarity'):l('مرشح مشابه', 'Résultat similaire')}</span>}
     <h3><Link to={productPath(product._id)} title={product.name}>{product.name}</Link></h3>
     <p className="price atlas-card-price" data-price-kind={price.kind}>
       {price.kind === 'request' ? l('السعر عند الطلب', 'Prix sur demande', 'Price on request')

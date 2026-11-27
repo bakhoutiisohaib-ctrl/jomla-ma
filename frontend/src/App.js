@@ -1,6 +1,7 @@
 import { labelFor } from './i18n/useLabels';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import StructuredSearchSummary, { confirmStructuredSearch } from './components/common/StructuredSearchSummary';
+import {VisualSearchControl,VisualSearchSummary,confirmVisualSearch} from './components/common/VisualSearchControl';
 import ProductCard from './components/products/ProductCard';
 import RegisterPage from './components/auth/RegisterPage';
 import LoginPage from './components/auth/LoginPage';
@@ -125,6 +126,7 @@ function AppContent() {
       if (image) {
         const body = new FormData();
         body.append('image', image);
+        body.append('visualVersion','v49-1');
         Object.entries(filters).forEach(([k, v]) => {
           if (v !== '') body.append(k, v);
         });
@@ -147,11 +149,12 @@ function AppContent() {
         signal
       });
       if (signal?.aborted) return;
-      if (image) setVisual(data.detectedProduct || (labelFor(lang, "بحث بالصورة", "Recherche visuelle")));
+      const confirmedVisual=image?confirmVisualSearch(data,number):null;
+      setVisual(confirmedVisual);
       const confirmed=!image&&term?confirmStructuredSearch(data,term,intentRemovals,number):null;
       setStructured(confirmed);
-      if (!confirmed && !filters.businessType && !filters.taxonomyPath && !filters.supplierTrust && filters.categoryMode !== 'exact' && data.externalDiscovery?.enabled) setExternal(data.externalDiscovery);
-      const latestProducts = data.data || data.products || [];
+      if (!confirmed && !confirmedVisual && !filters.businessType && !filters.taxonomyPath && !filters.supplierTrust && filters.categoryMode !== 'exact' && data.externalDiscovery?.enabled) setExternal(data.externalDiscovery);
+      const latestProducts = confirmedVisual?data.products:(data.data || data.products || []);
       // Associate price labels with the successful response, not the next
       // filter value while its request is still pending.
       setPriceContext({
@@ -169,7 +172,7 @@ function AppContent() {
       });
     } catch (e) {
       if (!signal?.aborted && e.name !== 'AbortError') {
-        setError(e.message==='UNCONFIRMED_SEARCH'?labelFor(lang,'تعذر تأكيد نتائج البحث. أعد المحاولة.','Résultats non confirmés. Réessayez.','Search results could not be confirmed. Retry.'):e.message);
+        setError(e.data?.code==='VISUAL_INSUFFICIENT_DETAIL'?labelFor(lang,'الصورة فارغة أو تفاصيلها غير كافية. جرّب صورة واضحة للمنتج.','Image vide ou sans détails suffisants. Essayez une image claire.','Blank or insufficiently detailed image. Try a clear product photo.'):(e.message==='UNCONFIRMED_SEARCH'||e.message==='UNCONFIRMED_VISUAL')?labelFor(lang,'تعذر تأكيد نتائج البحث. أعد المحاولة.','Résultats non confirmés. Réessayez.','Search results could not be confirmed. Retry.'):e.message);
         setStructured(null);setPagination({pages:1,total:0});
         setProducts([]);
       }
@@ -270,10 +273,9 @@ function AppContent() {
   useEffect(() => {
     if (page === 'home' && (term || image)) document.getElementById('market-main')?.scrollIntoView?.({ block: 'start' });
   }, [page, term, image]);
-  const imageControl = <label className="atlas-image-search" title={l('بحث بالصورة', 'Recherche par image')}><MarketIcon name="camera" /><span className="atlas-sr">{l('بحث بالصورة', 'Recherche par image')}</span>
-    <input type="file" aria-label={l('صورة البحث', 'Image de recherche')} accept="image/jpeg,image/png,image/webp" onChange={event => {
-      const file = event.target.files?.[0]; if (file) { setImage(file); setNumber(1); setPage('home'); } event.target.value = '';
-    }} /></label>;
+  function selectImage(file){setQuery('');setTerm('');setIntentRemovals([]);setImage(file);setNumber(1);setRefresh(n=>n+1);setPage('home');}
+  function clearImage(){setImage(null);setQuery('');setTerm('');setIntentRemovals([]);setNumber(1);}
+  const imageControl=<VisualSearchControl key={page} onSelect={selectImage}/>;
   const publicPage = content => <FavoritesProvider token={sessionToken} user={user}><MarketLayout page={page} user={user} query={query} onQueryChange={setQuery} onSearch={searchMarket} loading={page==='home'&&catalogLoading}
     onAccount={dashboard} onLogout={logout} onLogin={() => requireLogin(route.href)} onRegister={() => registerAs('supplier')}
     onSourcing={() => { setPage('home'); user ? setSourcing(true) : requireLogin(); }} imageControl={imageControl}>
@@ -341,9 +343,9 @@ function AppContent() {
       </div></details></section>
       <div className="atlas-catalog-tools">{(term || image || Object.values(filters).some(Boolean)) && <button className="atlas-clear-filters" onClick={clearSearch}>{l('إعادة ضبط البحث', 'Réinitialiser la recherche')}</button>}</div>
       {!catalogLoading&&structured&&<StructuredSearchSummary result={structured} onRemove={removeCondition} onClear={clearSearch}/>}
-      {!catalogLoading&&visual && <Notice>{l('الصورة نفسها تعني تطابق الملف فقط. النتائج المشابهة تحتاج مراجعة هوية المنتج ومواصفاته.', 'Même image signifie uniquement le même fichier. Vérifiez l’identité et les caractéristiques des résultats similaires.')}</Notice>}
-      {catalogLoading ? <p role="status">{l('جاري تحميل النتائج…', 'Chargement…')}</p> : error ? <button onClick={()=>setRefresh(n=>n+1)}>{l('إعادة المحاولة','Réessayer','Retry')}</button> : <>{!structured&&<p className="muted">{pagination.total} {l('نتيجة', 'résultat(s)')}</p>}<div className="product-grid atlas-dense-product-grid">{products.map(p => <ProductCard key={p._id} product={p} priceContext={priceContext} user={user} onRfqCreated={() => setPage('buyer')} onRequireLogin={requireLogin} onCompare={toggleCompare} compared={compare.some(c => c._id === p._id)} />)}</div></>}
-      {!catalogLoading && !products.length && !error && (!structured||structured.canRequestSourcing) && <section className="panel empty"><h2>{structured?l('لا توجد منتجات تطابق هذه الشروط','Aucun produit ne correspond à ces critères','No products match these conditions'):t('product_not_found')}</h2><p>{structured?l('يمكنك تعديل شروط البحث أو طلب توريد خاص.','Modifiez vos critères ou demandez un sourcing spécifique.','Edit your conditions or request sourcing.'):t('product_not_found_desc')}</p><button className="primary" onClick={() => user ? setSourcing(true) : requireLogin()}>{t('submit_sourcing_btn')}</button></section>}
+      {!catalogLoading&&visual&&<VisualSearchSummary result={visual} onClear={clearImage}/>}
+      {catalogLoading ? <p role="status">{l('جاري تحميل النتائج…', 'Chargement…')}</p> : error ? <button onClick={()=>setRefresh(n=>n+1)}>{l('إعادة المحاولة','Réessayer','Retry')}</button> : <>{!structured&&!visual&&<p className="muted">{pagination.total} {l('نتيجة', 'résultat(s)')}</p>}<div className="product-grid atlas-dense-product-grid">{products.map(p => <ProductCard key={p._id} product={p} priceContext={priceContext} user={user} onRfqCreated={() => setPage('buyer')} onRequireLogin={requireLogin} onCompare={toggleCompare} compared={compare.some(c => c._id === p._id)} />)}</div></>}
+      {!catalogLoading && !products.length && !error && (!structured||structured.canRequestSourcing)&&(!visual||visual.canRequestSourcing) && <section className="panel empty"><h2>{visual?l('لم نجد صورة مشابهة كافية','Aucune image suffisamment similaire','No sufficiently similar image'):structured?l('لا توجد منتجات تطابق هذه الشروط','Aucun produit ne correspond à ces critères','No products match these conditions'):t('product_not_found')}</h2><p>{visual?l('جرّب صورة أخرى أو صف المنتج في طلب توريد.','Essayez une autre image ou décrivez le produit dans une demande.','Try another image or describe the product in a sourcing request.'):structured?l('يمكنك تعديل شروط البحث أو طلب توريد خاص.','Modifiez vos critères ou demandez un sourcing spécifique.','Edit your conditions or request sourcing.'):t('product_not_found_desc')}</p><button className="primary" onClick={() => user ? setSourcing(true) : requireLogin()}>{t('submit_sourcing_btn')}</button></section>}
       <div className="pager"><button disabled={number <= 1 || catalogLoading} onClick={() => setNumber(n => n - 1)}>{l('السابق', 'Précédent')}</button><span>{number} / {Math.max(1, pagination.pages || 1)}</span><button disabled={number >= (pagination.pages || 1) || catalogLoading} onClick={() => setNumber(n => n + 1)}>{l('التالي', 'Suivant')}</button></div>
       {!catalogLoading && compare.length > 0 && <section className="panel"><div className="actions"><h2>{l('مقارنة المنتجات', 'Comparer les produits')} ({compare.length}/4)</h2><button onClick={() => setCompare([])}>{l('مسح', 'Effacer')}</button></div><div className="table-wrap"><table><thead><tr><th>{l('المنتج', 'Produit')}</th><th>{l('السعر', 'Prix')}</th><th>MOQ</th><th>{l('المدينة', 'Ville')}</th><th>{l('المورد', 'Fournisseur')}</th></tr></thead><tbody>{compare.map(p => <tr key={p._id}><td>{p.name}</td><td>{Number(priceContext.quantity) > 0 && Number(priceContext.quantity) < p.moq ? l('أقل من الحد الأدنى', 'Quantité inférieure au minimum') : p.pricingMode === 'on_request' ? l('عند الطلب', 'Sur demande') : formatMoney(comparisonPrice(p), p.currency, lang)}</td><td>{p.moq} {p.unit}</td><td>{p.city}</td><td>{p.supplierId?.name}</td></tr>)}</tbody></table></div></section>}
       {!catalogLoading&&external?.enabled && <section className="panel"><span className="badge amber">{t('external_notice_badge')}</span><h2>{l('نتائج اكتشاف خارجية تجريبية', 'Découvertes externes expérimentales')}</h2><p>{t('external_notice_desc')}</p>{external.results?.map(result => <article className="panel" key={result.url}><h3><a href={result.url} target="_blank" rel="noopener noreferrer">{result.title}</a></h3><p>{result.description}</p><p className="muted">{result.sourceName} · {l('خارجي — غير موثق', 'Externe — non vérifié')}</p></article>)}</section>}
@@ -353,7 +355,7 @@ function AppContent() {
       setSourcing(false);
       setPage('buyer');
     }} initialData={{
-      productName: visual || term || query
+      productName: image ? '' : term || query
     }} onClose={() => setSourcing(false)} onRequireLogin={requireLogin} />}
   </>);
 }
