@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 — Long-content card fix and bounded local load PASS: AR320 overflow 452 -> 320 after CSS specificity correction; six viewports x six cards, zero geometry violations; FE focused 40/40, full 372/372, build PASS; local 144/144 requests, 305 unique products/26 pages and 16 stores/2 pages at fixed ranking. [Report](v49-edge-market-2026-11-27.md). Backend unchanged; production capacity, physical devices, trust scope and final visual acceptance OPEN. Gate 2 locked.
+
 2026-11-27 — Full Backend inventory 42/42 suites and 720/720 distinct assertions PASS across initial run and recheck (initial 709/720, four suite failures due to missing local inputs; recheck 128/128, exit 0, exact assertion inventory matched). [Report and summary](v49-full-backend-2026-11-27.md). No runtime/test source change. Not a single clean full run; test setup and remaining trust/visual/physical/load acceptance limits documented. Gate 1 OPEN; Gate 2 locked.
 
 2026-11-27 — Card density refinement PASS: 5 desktop columns, 2 mobile, AR390 height 351.8 -> 298.64px, desktop 471.1 -> 359.53px. FE targeted 40/40; full 372/372 (41 suites); build PASS; final isolated Chrome 10 records, four 44px hit targets across five geometries, DB PASS. [Report](v49-card-density-2026-11-27.md). Remaining 24–31px reference difference from retained controls/metadata, final scope decisions and acceptance OPEN; Gate 2 locked.

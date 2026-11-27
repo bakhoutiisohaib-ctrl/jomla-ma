@@ -1,0 +1,2786 @@
+[
+  {
+    "lang": "ar",
+    "width": 320,
+    "geometry": {
+      "overflow": [],
+      "vw": 320,
+      "scroll": 320,
+      "columns": 2,
+      "rows": [
+        {
+          "name": "Synthetic short fixed",
+          "kind": "single",
+          "card": {
+            "width": 139.5,
+            "height": 310.578125,
+            "top": 1334.0625,
+            "left": 164.5,
+            "right": 304,
+            "bottom": 1644.640625
+          },
+          "media": {
+            "width": 137.5,
+            "height": 137.5,
+            "top": 1335.0625,
+            "left": 165.5,
+            "right": 303,
+            "bottom": 1472.5625
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1340.0625,
+              "left": 254,
+              "right": 298,
+              "bottom": 1384.0625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1340.0625,
+              "left": 170.5,
+              "right": 214.5,
+              "bottom": 1384.0625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1596.640625,
+              "left": 213.5,
+              "right": 257.5,
+              "bottom": 1640.640625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1596.640625,
+              "left": 166.5,
+              "right": 210.5,
+              "bottom": 1640.640625
+            }
+          ],
+          "rating": {
+            "width": 52.796875,
+            "height": 17.6875,
+            "top": 1448.875,
+            "left": 168.5,
+            "right": 221.296875,
+            "bottom": 1466.5625
+          },
+          "trust": {
+            "width": 55.078125,
+            "height": 17.6875,
+            "top": 1448.875,
+            "left": 244.921875,
+            "right": 300,
+            "bottom": 1466.5625
+          }
+        },
+        {
+          "name": "Synthetic long title LongUnb",
+          "kind": "single",
+          "card": {
+            "width": 139.5,
+            "height": 310.578125,
+            "top": 1334.0625,
+            "left": 16,
+            "right": 155.5,
+            "bottom": 1644.640625
+          },
+          "media": {
+            "width": 137.5,
+            "height": 137.5,
+            "top": 1335.0625,
+            "left": 17,
+            "right": 154.5,
+            "bottom": 1472.5625
+          },
+          "titleClipped": true,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1340.0625,
+              "left": 105.5,
+              "right": 149.5,
+              "bottom": 1384.0625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1340.0625,
+              "left": 22,
+              "right": 66,
+              "bottom": 1384.0625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1590.046875,
+              "left": 65,
+              "right": 109,
+              "bottom": 1634.046875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1590.046875,
+              "left": 18,
+              "right": 62,
+              "bottom": 1634.046875
+            }
+          ],
+          "rating": {
+            "width": 52.796875,
+            "height": 17.6875,
+            "top": 1448.875,
+            "left": 20,
+            "right": 72.796875,
+            "bottom": 1466.5625
+          },
+          "trust": {
+            "width": 55.078125,
+            "height": 17.6875,
+            "top": 1448.875,
+            "left": 96.421875,
+            "right": 151.5,
+            "bottom": 1466.5625
+          }
+        },
+        {
+          "name": "Synthetic quote only",
+          "kind": "request",
+          "card": {
+            "width": 139.5,
+            "height": 296.140625,
+            "top": 1653.640625,
+            "left": 164.5,
+            "right": 304,
+            "bottom": 1949.78125
+          },
+          "media": {
+            "width": 137.5,
+            "height": 137.5,
+            "top": 1654.640625,
+            "left": 165.5,
+            "right": 303,
+            "bottom": 1792.140625
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1659.640625,
+              "left": 254,
+              "right": 298,
+              "bottom": 1703.640625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1659.640625,
+              "left": 170.5,
+              "right": 214.5,
+              "bottom": 1703.640625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1901.78125,
+              "left": 213.5,
+              "right": 257.5,
+              "bottom": 1945.78125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1901.78125,
+              "left": 166.5,
+              "right": 210.5,
+              "bottom": 1945.78125
+            }
+          ],
+          "rating": {
+            "width": 52.796875,
+            "height": 17.6875,
+            "top": 1768.453125,
+            "left": 168.5,
+            "right": 221.296875,
+            "bottom": 1786.140625
+          },
+          "trust": {
+            "width": 55.078125,
+            "height": 17.6875,
+            "top": 1768.453125,
+            "left": 244.921875,
+            "right": 300,
+            "bottom": 1786.140625
+          }
+        },
+        {
+          "name": "Synthetic large price range",
+          "kind": "range",
+          "card": {
+            "width": 139.5,
+            "height": 296.140625,
+            "top": 1653.640625,
+            "left": 16,
+            "right": 155.5,
+            "bottom": 1949.78125
+          },
+          "media": {
+            "width": 137.5,
+            "height": 137.5,
+            "top": 1654.640625,
+            "left": 17,
+            "right": 154.5,
+            "bottom": 1792.140625
+          },
+          "titleClipped": true,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1659.640625,
+              "left": 105.5,
+              "right": 149.5,
+              "bottom": 1703.640625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1659.640625,
+              "left": 22,
+              "right": 66,
+              "bottom": 1703.640625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1901.78125,
+              "left": 65,
+              "right": 109,
+              "bottom": 1945.78125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1901.78125,
+              "left": 18,
+              "right": 62,
+              "bottom": 1945.78125
+            }
+          ],
+          "rating": {
+            "width": 52.796875,
+            "height": 17.6875,
+            "top": 1768.453125,
+            "left": 20,
+            "right": 72.796875,
+            "bottom": 1786.140625
+          },
+          "trust": {
+            "width": 55.078125,
+            "height": 17.6875,
+            "top": 1768.453125,
+            "left": 96.421875,
+            "right": 151.5,
+            "bottom": 1786.140625
+          }
+        },
+        {
+          "name": "Synthetic zero price",
+          "kind": "single",
+          "card": {
+            "width": 139.5,
+            "height": 252.390625,
+            "top": 1958.78125,
+            "left": 164.5,
+            "right": 304,
+            "bottom": 2211.171875
+          },
+          "media": {
+            "width": 137.5,
+            "height": 137.5,
+            "top": 1959.78125,
+            "left": 165.5,
+            "right": 303,
+            "bottom": 2097.28125
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1964.78125,
+              "left": 254,
+              "right": 298,
+              "bottom": 2008.78125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1964.78125,
+              "left": 170.5,
+              "right": 214.5,
+              "bottom": 2008.78125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 2163.171875,
+              "left": 213.5,
+              "right": 257.5,
+              "bottom": 2207.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 2163.171875,
+              "left": 166.5,
+              "right": 210.5,
+              "bottom": 2207.171875
+            }
+          ],
+          "rating": {
+            "width": 52.796875,
+            "height": 17.6875,
+            "top": 2073.59375,
+            "left": 168.5,
+            "right": 221.296875,
+            "bottom": 2091.28125
+          },
+          "trust": {
+            "width": 55.078125,
+            "height": 17.6875,
+            "top": 2073.59375,
+            "left": 244.921875,
+            "right": 300,
+            "bottom": 2091.28125
+          }
+        },
+        {
+          "name": "Synthetic regular price",
+          "kind": "single",
+          "card": {
+            "width": 139.5,
+            "height": 252.390625,
+            "top": 1958.78125,
+            "left": 16,
+            "right": 155.5,
+            "bottom": 2211.171875
+          },
+          "media": {
+            "width": 137.5,
+            "height": 137.5,
+            "top": 1959.78125,
+            "left": 17,
+            "right": 154.5,
+            "bottom": 2097.28125
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1964.78125,
+              "left": 105.5,
+              "right": 149.5,
+              "bottom": 2008.78125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1964.78125,
+              "left": 22,
+              "right": 66,
+              "bottom": 2008.78125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 2163.171875,
+              "left": 65,
+              "right": 109,
+              "bottom": 2207.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 2163.171875,
+              "left": 18,
+              "right": 62,
+              "bottom": 2207.171875
+            }
+          ],
+          "rating": {
+            "width": 52.796875,
+            "height": 17.6875,
+            "top": 2073.59375,
+            "left": 20,
+            "right": 72.796875,
+            "bottom": 2091.28125
+          },
+          "trust": {
+            "width": 55.078125,
+            "height": 17.6875,
+            "top": 2073.59375,
+            "left": 96.421875,
+            "right": 151.5,
+            "bottom": 2091.28125
+          }
+        }
+      ]
+    },
+    "violations": [],
+    "unevenRows": []
+  },
+  {
+    "lang": "ar",
+    "width": 390,
+    "geometry": {
+      "overflow": [],
+      "vw": 390,
+      "scroll": 390,
+      "columns": 2,
+      "rows": [
+        {
+          "name": "Synthetic short fixed",
+          "kind": "single",
+          "card": {
+            "width": 174.5,
+            "height": 309.890625,
+            "top": 266.28125,
+            "left": 199.5,
+            "right": 374,
+            "bottom": 576.171875
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 267.28125,
+            "left": 200.5,
+            "right": 373,
+            "bottom": 439.78125
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 272.28125,
+              "left": 324,
+              "right": 368,
+              "bottom": 316.28125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 272.28125,
+              "left": 205.5,
+              "right": 249.5,
+              "bottom": 316.28125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 528.171875,
+              "left": 248.5,
+              "right": 292.5,
+              "bottom": 572.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 528.171875,
+              "left": 201.5,
+              "right": 245.5,
+              "bottom": 572.171875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 414.78125,
+            "left": 205.5,
+            "right": 267.171875,
+            "bottom": 433.78125
+          },
+          "trust": {
+            "width": 64.1875,
+            "height": 19,
+            "top": 414.78125,
+            "left": 303.8125,
+            "right": 368,
+            "bottom": 433.78125
+          }
+        },
+        {
+          "name": "Synthetic long title LongUnb",
+          "kind": "single",
+          "card": {
+            "width": 174.5,
+            "height": 309.890625,
+            "top": 266.28125,
+            "left": 16,
+            "right": 190.5,
+            "bottom": 576.171875
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 267.28125,
+            "left": 17,
+            "right": 189.5,
+            "bottom": 439.78125
+          },
+          "titleClipped": true,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 272.28125,
+              "left": 140.5,
+              "right": 184.5,
+              "bottom": 316.28125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 272.28125,
+              "left": 22,
+              "right": 66,
+              "bottom": 316.28125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 528.171875,
+              "left": 65,
+              "right": 109,
+              "bottom": 572.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 528.171875,
+              "left": 18,
+              "right": 62,
+              "bottom": 572.171875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 414.78125,
+            "left": 22,
+            "right": 83.671875,
+            "bottom": 433.78125
+          },
+          "trust": {
+            "width": 64.1875,
+            "height": 19,
+            "top": 414.78125,
+            "left": 120.3125,
+            "right": 184.5,
+            "bottom": 433.78125
+          }
+        },
+        {
+          "name": "Synthetic quote only",
+          "kind": "request",
+          "card": {
+            "width": 174.5,
+            "height": 338.640625,
+            "top": 585.171875,
+            "left": 199.5,
+            "right": 374,
+            "bottom": 923.8125
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 586.171875,
+            "left": 200.5,
+            "right": 373,
+            "bottom": 758.671875
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 591.171875,
+              "left": 324,
+              "right": 368,
+              "bottom": 635.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 591.171875,
+              "left": 205.5,
+              "right": 249.5,
+              "bottom": 635.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 875.8125,
+              "left": 248.5,
+              "right": 292.5,
+              "bottom": 919.8125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 875.8125,
+              "left": 201.5,
+              "right": 245.5,
+              "bottom": 919.8125
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 733.671875,
+            "left": 205.5,
+            "right": 267.171875,
+            "bottom": 752.671875
+          },
+          "trust": {
+            "width": 64.1875,
+            "height": 19,
+            "top": 733.671875,
+            "left": 303.8125,
+            "right": 368,
+            "bottom": 752.671875
+          }
+        },
+        {
+          "name": "Synthetic large price range",
+          "kind": "range",
+          "card": {
+            "width": 174.5,
+            "height": 338.640625,
+            "top": 585.171875,
+            "left": 16,
+            "right": 190.5,
+            "bottom": 923.8125
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 586.171875,
+            "left": 17,
+            "right": 189.5,
+            "bottom": 758.671875
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 591.171875,
+              "left": 140.5,
+              "right": 184.5,
+              "bottom": 635.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 591.171875,
+              "left": 22,
+              "right": 66,
+              "bottom": 635.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 875.8125,
+              "left": 65,
+              "right": 109,
+              "bottom": 919.8125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 875.8125,
+              "left": 18,
+              "right": 62,
+              "bottom": 919.8125
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 733.671875,
+            "left": 22,
+            "right": 83.671875,
+            "bottom": 752.671875
+          },
+          "trust": {
+            "width": 64.1875,
+            "height": 19,
+            "top": 733.671875,
+            "left": 120.3125,
+            "right": 184.5,
+            "bottom": 752.671875
+          }
+        },
+        {
+          "name": "Synthetic zero price",
+          "kind": "single",
+          "card": {
+            "width": 174.5,
+            "height": 287.390625,
+            "top": 932.8125,
+            "left": 199.5,
+            "right": 374,
+            "bottom": 1220.203125
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 933.8125,
+            "left": 200.5,
+            "right": 373,
+            "bottom": 1106.3125
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 938.8125,
+              "left": 324,
+              "right": 368,
+              "bottom": 982.8125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 938.8125,
+              "left": 205.5,
+              "right": 249.5,
+              "bottom": 982.8125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1172.203125,
+              "left": 248.5,
+              "right": 292.5,
+              "bottom": 1216.203125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1172.203125,
+              "left": 201.5,
+              "right": 245.5,
+              "bottom": 1216.203125
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 1081.3125,
+            "left": 205.5,
+            "right": 267.171875,
+            "bottom": 1100.3125
+          },
+          "trust": {
+            "width": 64.1875,
+            "height": 19,
+            "top": 1081.3125,
+            "left": 303.8125,
+            "right": 368,
+            "bottom": 1100.3125
+          }
+        },
+        {
+          "name": "Synthetic regular price",
+          "kind": "single",
+          "card": {
+            "width": 174.5,
+            "height": 287.390625,
+            "top": 932.8125,
+            "left": 16,
+            "right": 190.5,
+            "bottom": 1220.203125
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 933.8125,
+            "left": 17,
+            "right": 189.5,
+            "bottom": 1106.3125
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 938.8125,
+              "left": 140.5,
+              "right": 184.5,
+              "bottom": 982.8125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 938.8125,
+              "left": 22,
+              "right": 66,
+              "bottom": 982.8125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1172.203125,
+              "left": 65,
+              "right": 109,
+              "bottom": 1216.203125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1172.203125,
+              "left": 18,
+              "right": 62,
+              "bottom": 1216.203125
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 1081.3125,
+            "left": 22,
+            "right": 83.671875,
+            "bottom": 1100.3125
+          },
+          "trust": {
+            "width": 64.1875,
+            "height": 19,
+            "top": 1081.3125,
+            "left": 120.3125,
+            "right": 184.5,
+            "bottom": 1100.3125
+          }
+        }
+      ]
+    },
+    "violations": [],
+    "unevenRows": []
+  },
+  {
+    "lang": "fr",
+    "width": 390,
+    "geometry": {
+      "overflow": [],
+      "vw": 390,
+      "scroll": 390,
+      "columns": 2,
+      "rows": [
+        {
+          "name": "Synthetic short fixed",
+          "kind": "single",
+          "card": {
+            "width": 174.5,
+            "height": 309.890625,
+            "top": 273.953125,
+            "left": 16,
+            "right": 190.5,
+            "bottom": 583.84375
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 274.953125,
+            "left": 17,
+            "right": 189.5,
+            "bottom": 447.453125
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 279.953125,
+              "left": 140.5,
+              "right": 184.5,
+              "bottom": 323.953125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 279.953125,
+              "left": 22,
+              "right": 66,
+              "bottom": 323.953125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 535.84375,
+              "left": 97.5,
+              "right": 141.5,
+              "bottom": 579.84375
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 535.84375,
+              "left": 144.5,
+              "right": 188.5,
+              "bottom": 579.84375
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 422.453125,
+            "left": 22,
+            "right": 83.671875,
+            "bottom": 441.453125
+          },
+          "trust": {
+            "width": 50.890625,
+            "height": 19,
+            "top": 422.453125,
+            "left": 133.609375,
+            "right": 184.5,
+            "bottom": 441.453125
+          }
+        },
+        {
+          "name": "Synthetic long title LongUnb",
+          "kind": "single",
+          "card": {
+            "width": 174.5,
+            "height": 309.890625,
+            "top": 273.953125,
+            "left": 199.5,
+            "right": 374,
+            "bottom": 583.84375
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 274.953125,
+            "left": 200.5,
+            "right": 373,
+            "bottom": 447.453125
+          },
+          "titleClipped": true,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 279.953125,
+              "left": 324,
+              "right": 368,
+              "bottom": 323.953125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 279.953125,
+              "left": 205.5,
+              "right": 249.5,
+              "bottom": 323.953125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 535.84375,
+              "left": 281,
+              "right": 325,
+              "bottom": 579.84375
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 535.84375,
+              "left": 328,
+              "right": 372,
+              "bottom": 579.84375
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 422.453125,
+            "left": 205.5,
+            "right": 267.171875,
+            "bottom": 441.453125
+          },
+          "trust": {
+            "width": 50.890625,
+            "height": 19,
+            "top": 422.453125,
+            "left": 317.109375,
+            "right": 368,
+            "bottom": 441.453125
+          }
+        },
+        {
+          "name": "Synthetic quote only",
+          "kind": "request",
+          "card": {
+            "width": 174.5,
+            "height": 338.640625,
+            "top": 592.84375,
+            "left": 16,
+            "right": 190.5,
+            "bottom": 931.484375
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 593.84375,
+            "left": 17,
+            "right": 189.5,
+            "bottom": 766.34375
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 598.84375,
+              "left": 140.5,
+              "right": 184.5,
+              "bottom": 642.84375
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 598.84375,
+              "left": 22,
+              "right": 66,
+              "bottom": 642.84375
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 883.484375,
+              "left": 97.5,
+              "right": 141.5,
+              "bottom": 927.484375
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 883.484375,
+              "left": 144.5,
+              "right": 188.5,
+              "bottom": 927.484375
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 741.34375,
+            "left": 22,
+            "right": 83.671875,
+            "bottom": 760.34375
+          },
+          "trust": {
+            "width": 50.890625,
+            "height": 19,
+            "top": 741.34375,
+            "left": 133.609375,
+            "right": 184.5,
+            "bottom": 760.34375
+          }
+        },
+        {
+          "name": "Synthetic large price range",
+          "kind": "range",
+          "card": {
+            "width": 174.5,
+            "height": 338.640625,
+            "top": 592.84375,
+            "left": 199.5,
+            "right": 374,
+            "bottom": 931.484375
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 593.84375,
+            "left": 200.5,
+            "right": 373,
+            "bottom": 766.34375
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 598.84375,
+              "left": 324,
+              "right": 368,
+              "bottom": 642.84375
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 598.84375,
+              "left": 205.5,
+              "right": 249.5,
+              "bottom": 642.84375
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 883.484375,
+              "left": 281,
+              "right": 325,
+              "bottom": 927.484375
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 883.484375,
+              "left": 328,
+              "right": 372,
+              "bottom": 927.484375
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 741.34375,
+            "left": 205.5,
+            "right": 267.171875,
+            "bottom": 760.34375
+          },
+          "trust": {
+            "width": 50.890625,
+            "height": 19,
+            "top": 741.34375,
+            "left": 317.109375,
+            "right": 368,
+            "bottom": 760.34375
+          }
+        },
+        {
+          "name": "Synthetic zero price",
+          "kind": "single",
+          "card": {
+            "width": 174.5,
+            "height": 287.390625,
+            "top": 940.484375,
+            "left": 16,
+            "right": 190.5,
+            "bottom": 1227.875
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 941.484375,
+            "left": 17,
+            "right": 189.5,
+            "bottom": 1113.984375
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 946.484375,
+              "left": 140.5,
+              "right": 184.5,
+              "bottom": 990.484375
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 946.484375,
+              "left": 22,
+              "right": 66,
+              "bottom": 990.484375
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1179.875,
+              "left": 97.5,
+              "right": 141.5,
+              "bottom": 1223.875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1179.875,
+              "left": 144.5,
+              "right": 188.5,
+              "bottom": 1223.875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 1088.984375,
+            "left": 22,
+            "right": 83.671875,
+            "bottom": 1107.984375
+          },
+          "trust": {
+            "width": 50.890625,
+            "height": 19,
+            "top": 1088.984375,
+            "left": 133.609375,
+            "right": 184.5,
+            "bottom": 1107.984375
+          }
+        },
+        {
+          "name": "Synthetic regular price",
+          "kind": "single",
+          "card": {
+            "width": 174.5,
+            "height": 287.390625,
+            "top": 940.484375,
+            "left": 199.5,
+            "right": 374,
+            "bottom": 1227.875
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 941.484375,
+            "left": 200.5,
+            "right": 373,
+            "bottom": 1113.984375
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 946.484375,
+              "left": 324,
+              "right": 368,
+              "bottom": 990.484375
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 946.484375,
+              "left": 205.5,
+              "right": 249.5,
+              "bottom": 990.484375
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1179.875,
+              "left": 281,
+              "right": 325,
+              "bottom": 1223.875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1179.875,
+              "left": 328,
+              "right": 372,
+              "bottom": 1223.875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 1088.984375,
+            "left": 205.5,
+            "right": 267.171875,
+            "bottom": 1107.984375
+          },
+          "trust": {
+            "width": 50.890625,
+            "height": 19,
+            "top": 1088.984375,
+            "left": 317.109375,
+            "right": 368,
+            "bottom": 1107.984375
+          }
+        }
+      ]
+    },
+    "violations": [],
+    "unevenRows": []
+  },
+  {
+    "lang": "en",
+    "width": 390,
+    "geometry": {
+      "overflow": [],
+      "vw": 390,
+      "scroll": 390,
+      "columns": 2,
+      "rows": [
+        {
+          "name": "Synthetic short fixed",
+          "kind": "single",
+          "card": {
+            "width": 174.5,
+            "height": 309.890625,
+            "top": 260.28125,
+            "left": 16,
+            "right": 190.5,
+            "bottom": 570.171875
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 261.28125,
+            "left": 17,
+            "right": 189.5,
+            "bottom": 433.78125
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 266.28125,
+              "left": 140.5,
+              "right": 184.5,
+              "bottom": 310.28125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 266.28125,
+              "left": 22,
+              "right": 66,
+              "bottom": 310.28125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 522.171875,
+              "left": 97.5,
+              "right": 141.5,
+              "bottom": 566.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 522.171875,
+              "left": 144.5,
+              "right": 188.5,
+              "bottom": 566.171875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 408.78125,
+            "left": 22,
+            "right": 83.671875,
+            "bottom": 427.78125
+          },
+          "trust": {
+            "width": 57.078125,
+            "height": 19,
+            "top": 408.78125,
+            "left": 127.421875,
+            "right": 184.5,
+            "bottom": 427.78125
+          }
+        },
+        {
+          "name": "Synthetic long title LongUnb",
+          "kind": "single",
+          "card": {
+            "width": 174.5,
+            "height": 309.890625,
+            "top": 260.28125,
+            "left": 199.5,
+            "right": 374,
+            "bottom": 570.171875
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 261.28125,
+            "left": 200.5,
+            "right": 373,
+            "bottom": 433.78125
+          },
+          "titleClipped": true,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 266.28125,
+              "left": 324,
+              "right": 368,
+              "bottom": 310.28125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 266.28125,
+              "left": 205.5,
+              "right": 249.5,
+              "bottom": 310.28125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 522.171875,
+              "left": 281,
+              "right": 325,
+              "bottom": 566.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 522.171875,
+              "left": 328,
+              "right": 372,
+              "bottom": 566.171875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 408.78125,
+            "left": 205.5,
+            "right": 267.171875,
+            "bottom": 427.78125
+          },
+          "trust": {
+            "width": 57.078125,
+            "height": 19,
+            "top": 408.78125,
+            "left": 310.921875,
+            "right": 368,
+            "bottom": 427.78125
+          }
+        },
+        {
+          "name": "Synthetic quote only",
+          "kind": "request",
+          "card": {
+            "width": 174.5,
+            "height": 338.640625,
+            "top": 579.171875,
+            "left": 16,
+            "right": 190.5,
+            "bottom": 917.8125
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 580.171875,
+            "left": 17,
+            "right": 189.5,
+            "bottom": 752.671875
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 585.171875,
+              "left": 140.5,
+              "right": 184.5,
+              "bottom": 629.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 585.171875,
+              "left": 22,
+              "right": 66,
+              "bottom": 629.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 869.8125,
+              "left": 97.5,
+              "right": 141.5,
+              "bottom": 913.8125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 869.8125,
+              "left": 144.5,
+              "right": 188.5,
+              "bottom": 913.8125
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 727.671875,
+            "left": 22,
+            "right": 83.671875,
+            "bottom": 746.671875
+          },
+          "trust": {
+            "width": 57.078125,
+            "height": 19,
+            "top": 727.671875,
+            "left": 127.421875,
+            "right": 184.5,
+            "bottom": 746.671875
+          }
+        },
+        {
+          "name": "Synthetic large price range",
+          "kind": "range",
+          "card": {
+            "width": 174.5,
+            "height": 338.640625,
+            "top": 579.171875,
+            "left": 199.5,
+            "right": 374,
+            "bottom": 917.8125
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 580.171875,
+            "left": 200.5,
+            "right": 373,
+            "bottom": 752.671875
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 585.171875,
+              "left": 324,
+              "right": 368,
+              "bottom": 629.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 585.171875,
+              "left": 205.5,
+              "right": 249.5,
+              "bottom": 629.171875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 869.8125,
+              "left": 281,
+              "right": 325,
+              "bottom": 913.8125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 869.8125,
+              "left": 328,
+              "right": 372,
+              "bottom": 913.8125
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 727.671875,
+            "left": 205.5,
+            "right": 267.171875,
+            "bottom": 746.671875
+          },
+          "trust": {
+            "width": 57.078125,
+            "height": 19,
+            "top": 727.671875,
+            "left": 310.921875,
+            "right": 368,
+            "bottom": 746.671875
+          }
+        },
+        {
+          "name": "Synthetic zero price",
+          "kind": "single",
+          "card": {
+            "width": 174.5,
+            "height": 287.390625,
+            "top": 926.8125,
+            "left": 16,
+            "right": 190.5,
+            "bottom": 1214.203125
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 927.8125,
+            "left": 17,
+            "right": 189.5,
+            "bottom": 1100.3125
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 932.8125,
+              "left": 140.5,
+              "right": 184.5,
+              "bottom": 976.8125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 932.8125,
+              "left": 22,
+              "right": 66,
+              "bottom": 976.8125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1166.203125,
+              "left": 97.5,
+              "right": 141.5,
+              "bottom": 1210.203125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1166.203125,
+              "left": 144.5,
+              "right": 188.5,
+              "bottom": 1210.203125
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 1075.3125,
+            "left": 22,
+            "right": 83.671875,
+            "bottom": 1094.3125
+          },
+          "trust": {
+            "width": 57.078125,
+            "height": 19,
+            "top": 1075.3125,
+            "left": 127.421875,
+            "right": 184.5,
+            "bottom": 1094.3125
+          }
+        },
+        {
+          "name": "Synthetic regular price",
+          "kind": "single",
+          "card": {
+            "width": 174.5,
+            "height": 287.390625,
+            "top": 926.8125,
+            "left": 199.5,
+            "right": 374,
+            "bottom": 1214.203125
+          },
+          "media": {
+            "width": 172.5,
+            "height": 172.5,
+            "top": 927.8125,
+            "left": 200.5,
+            "right": 373,
+            "bottom": 1100.3125
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 932.8125,
+              "left": 324,
+              "right": 368,
+              "bottom": 976.8125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 932.8125,
+              "left": 205.5,
+              "right": 249.5,
+              "bottom": 976.8125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1166.203125,
+              "left": 281,
+              "right": 325,
+              "bottom": 1210.203125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1166.203125,
+              "left": 328,
+              "right": 372,
+              "bottom": 1210.203125
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 1075.3125,
+            "left": 205.5,
+            "right": 267.171875,
+            "bottom": 1094.3125
+          },
+          "trust": {
+            "width": 57.078125,
+            "height": 19,
+            "top": 1075.3125,
+            "left": 310.921875,
+            "right": 368,
+            "bottom": 1094.3125
+          }
+        }
+      ]
+    },
+    "violations": [],
+    "unevenRows": []
+  },
+  {
+    "lang": "ar",
+    "width": 768,
+    "geometry": {
+      "overflow": [],
+      "vw": 753,
+      "scroll": 753,
+      "columns": 3,
+      "rows": [
+        {
+          "name": "Synthetic short fixed",
+          "kind": "single",
+          "card": {
+            "width": 229.65625,
+            "height": 365.0625,
+            "top": 384.15625,
+            "left": 503.34375,
+            "right": 733,
+            "bottom": 749.21875
+          },
+          "media": {
+            "width": 227.65625,
+            "height": 227.65625,
+            "top": 385.15625,
+            "left": 504.34375,
+            "right": 732,
+            "bottom": 612.8125
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 390.15625,
+              "left": 683,
+              "right": 727,
+              "bottom": 434.15625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 390.15625,
+              "left": 509.34375,
+              "right": 553.34375,
+              "bottom": 434.15625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 701.21875,
+              "left": 552.34375,
+              "right": 596.34375,
+              "bottom": 745.21875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 701.21875,
+              "left": 505.34375,
+              "right": 549.34375,
+              "bottom": 745.21875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 587.8125,
+            "left": 509.34375,
+            "right": 571.015625,
+            "bottom": 606.8125
+          },
+          "trust": {
+            "width": 64.1875,
+            "height": 19,
+            "top": 587.8125,
+            "left": 662.8125,
+            "right": 727,
+            "bottom": 606.8125
+          }
+        },
+        {
+          "name": "Synthetic long title LongUnb",
+          "kind": "single",
+          "card": {
+            "width": 229.671875,
+            "height": 365.0625,
+            "top": 384.15625,
+            "left": 261.671875,
+            "right": 491.34375,
+            "bottom": 749.21875
+          },
+          "media": {
+            "width": 227.671875,
+            "height": 227.671875,
+            "top": 385.15625,
+            "left": 262.671875,
+            "right": 490.34375,
+            "bottom": 612.828125
+          },
+          "titleClipped": true,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 390.15625,
+              "left": 441.34375,
+              "right": 485.34375,
+              "bottom": 434.15625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 390.15625,
+              "left": 267.671875,
+              "right": 311.671875,
+              "bottom": 434.15625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 701.21875,
+              "left": 310.671875,
+              "right": 354.671875,
+              "bottom": 745.21875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 701.21875,
+              "left": 263.671875,
+              "right": 307.671875,
+              "bottom": 745.21875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 587.828125,
+            "left": 267.671875,
+            "right": 329.34375,
+            "bottom": 606.828125
+          },
+          "trust": {
+            "width": 64.1875,
+            "height": 19,
+            "top": 587.828125,
+            "left": 421.15625,
+            "right": 485.34375,
+            "bottom": 606.828125
+          }
+        },
+        {
+          "name": "Synthetic quote only",
+          "kind": "request",
+          "card": {
+            "width": 229.671875,
+            "height": 365.0625,
+            "top": 384.15625,
+            "left": 20,
+            "right": 249.671875,
+            "bottom": 749.21875
+          },
+          "media": {
+            "width": 227.671875,
+            "height": 227.671875,
+            "top": 385.15625,
+            "left": 21,
+            "right": 248.671875,
+            "bottom": 612.828125
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 390.15625,
+              "left": 199.671875,
+              "right": 243.671875,
+              "bottom": 434.15625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 390.15625,
+              "left": 26,
+              "right": 70,
+              "bottom": 434.15625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 701.21875,
+              "left": 69,
+              "right": 113,
+              "bottom": 745.21875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 701.21875,
+              "left": 22,
+              "right": 66,
+              "bottom": 745.21875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 587.828125,
+            "left": 26,
+            "right": 87.671875,
+            "bottom": 606.828125
+          },
+          "trust": {
+            "width": 64.1875,
+            "height": 19,
+            "top": 587.828125,
+            "left": 179.484375,
+            "right": 243.671875,
+            "bottom": 606.828125
+          }
+        },
+        {
+          "name": "Synthetic large price range",
+          "kind": "range",
+          "card": {
+            "width": 229.65625,
+            "height": 373.796875,
+            "top": 761.21875,
+            "left": 503.34375,
+            "right": 733,
+            "bottom": 1135.015625
+          },
+          "media": {
+            "width": 227.65625,
+            "height": 227.65625,
+            "top": 762.21875,
+            "left": 504.34375,
+            "right": 732,
+            "bottom": 989.875
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 767.21875,
+              "left": 683,
+              "right": 727,
+              "bottom": 811.21875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 767.21875,
+              "left": 509.34375,
+              "right": 553.34375,
+              "bottom": 811.21875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1087.015625,
+              "left": 552.34375,
+              "right": 596.34375,
+              "bottom": 1131.015625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1087.015625,
+              "left": 505.34375,
+              "right": 549.34375,
+              "bottom": 1131.015625
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 964.875,
+            "left": 509.34375,
+            "right": 571.015625,
+            "bottom": 983.875
+          },
+          "trust": {
+            "width": 64.1875,
+            "height": 19,
+            "top": 964.875,
+            "left": 662.8125,
+            "right": 727,
+            "bottom": 983.875
+          }
+        },
+        {
+          "name": "Synthetic zero price",
+          "kind": "single",
+          "card": {
+            "width": 229.671875,
+            "height": 373.796875,
+            "top": 761.21875,
+            "left": 261.671875,
+            "right": 491.34375,
+            "bottom": 1135.015625
+          },
+          "media": {
+            "width": 227.671875,
+            "height": 227.671875,
+            "top": 762.21875,
+            "left": 262.671875,
+            "right": 490.34375,
+            "bottom": 989.890625
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 767.21875,
+              "left": 441.34375,
+              "right": 485.34375,
+              "bottom": 811.21875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 767.21875,
+              "left": 267.671875,
+              "right": 311.671875,
+              "bottom": 811.21875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1087.015625,
+              "left": 310.671875,
+              "right": 354.671875,
+              "bottom": 1131.015625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1087.015625,
+              "left": 263.671875,
+              "right": 307.671875,
+              "bottom": 1131.015625
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 964.890625,
+            "left": 267.671875,
+            "right": 329.34375,
+            "bottom": 983.890625
+          },
+          "trust": {
+            "width": 64.1875,
+            "height": 19,
+            "top": 964.890625,
+            "left": 421.15625,
+            "right": 485.34375,
+            "bottom": 983.890625
+          }
+        },
+        {
+          "name": "Synthetic regular price",
+          "kind": "single",
+          "card": {
+            "width": 229.671875,
+            "height": 373.796875,
+            "top": 761.21875,
+            "left": 20,
+            "right": 249.671875,
+            "bottom": 1135.015625
+          },
+          "media": {
+            "width": 227.671875,
+            "height": 227.671875,
+            "top": 762.21875,
+            "left": 21,
+            "right": 248.671875,
+            "bottom": 989.890625
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 767.21875,
+              "left": 199.671875,
+              "right": 243.671875,
+              "bottom": 811.21875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 767.21875,
+              "left": 26,
+              "right": 70,
+              "bottom": 811.21875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1087.015625,
+              "left": 69,
+              "right": 113,
+              "bottom": 1131.015625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 1087.015625,
+              "left": 22,
+              "right": 66,
+              "bottom": 1131.015625
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 964.890625,
+            "left": 26,
+            "right": 87.671875,
+            "bottom": 983.890625
+          },
+          "trust": {
+            "width": 64.1875,
+            "height": 19,
+            "top": 964.890625,
+            "left": 179.484375,
+            "right": 243.671875,
+            "bottom": 983.890625
+          }
+        }
+      ]
+    },
+    "violations": [],
+    "unevenRows": []
+  },
+  {
+    "lang": "en",
+    "width": 1280,
+    "geometry": {
+      "overflow": [],
+      "vw": 1265,
+      "scroll": 1265,
+      "columns": 5,
+      "rows": [
+        {
+          "name": "Synthetic short fixed",
+          "kind": "single",
+          "card": {
+            "width": 235.390625,
+            "height": 379.546875,
+            "top": 239.328125,
+            "left": 20,
+            "right": 255.390625,
+            "bottom": 618.875
+          },
+          "media": {
+            "width": 233.390625,
+            "height": 233.390625,
+            "top": 240.328125,
+            "left": 21,
+            "right": 254.390625,
+            "bottom": 473.71875
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 245.328125,
+              "left": 205.390625,
+              "right": 249.390625,
+              "bottom": 289.328125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 245.328125,
+              "left": 26,
+              "right": 70,
+              "bottom": 289.328125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 570.875,
+              "left": 162.390625,
+              "right": 206.390625,
+              "bottom": 614.875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 570.875,
+              "left": 209.390625,
+              "right": 253.390625,
+              "bottom": 614.875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 448.71875,
+            "left": 26,
+            "right": 87.671875,
+            "bottom": 467.71875
+          },
+          "trust": {
+            "width": 57.078125,
+            "height": 19,
+            "top": 448.71875,
+            "left": 192.3125,
+            "right": 249.390625,
+            "bottom": 467.71875
+          }
+        },
+        {
+          "name": "Synthetic long title LongUnb",
+          "kind": "single",
+          "card": {
+            "width": 235.40625,
+            "height": 379.546875,
+            "top": 239.328125,
+            "left": 267.390625,
+            "right": 502.796875,
+            "bottom": 618.875
+          },
+          "media": {
+            "width": 233.40625,
+            "height": 233.40625,
+            "top": 240.328125,
+            "left": 268.390625,
+            "right": 501.796875,
+            "bottom": 473.734375
+          },
+          "titleClipped": true,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 245.328125,
+              "left": 452.796875,
+              "right": 496.796875,
+              "bottom": 289.328125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 245.328125,
+              "left": 273.390625,
+              "right": 317.390625,
+              "bottom": 289.328125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 570.875,
+              "left": 409.796875,
+              "right": 453.796875,
+              "bottom": 614.875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 570.875,
+              "left": 456.796875,
+              "right": 500.796875,
+              "bottom": 614.875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 448.734375,
+            "left": 273.390625,
+            "right": 335.0625,
+            "bottom": 467.734375
+          },
+          "trust": {
+            "width": 57.078125,
+            "height": 19,
+            "top": 448.734375,
+            "left": 439.71875,
+            "right": 496.796875,
+            "bottom": 467.734375
+          }
+        },
+        {
+          "name": "Synthetic quote only",
+          "kind": "request",
+          "card": {
+            "width": 235.390625,
+            "height": 379.546875,
+            "top": 239.328125,
+            "left": 514.796875,
+            "right": 750.1875,
+            "bottom": 618.875
+          },
+          "media": {
+            "width": 233.390625,
+            "height": 233.390625,
+            "top": 240.328125,
+            "left": 515.796875,
+            "right": 749.1875,
+            "bottom": 473.71875
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 245.328125,
+              "left": 700.1875,
+              "right": 744.1875,
+              "bottom": 289.328125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 245.328125,
+              "left": 520.796875,
+              "right": 564.796875,
+              "bottom": 289.328125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 570.875,
+              "left": 657.1875,
+              "right": 701.1875,
+              "bottom": 614.875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 570.875,
+              "left": 704.1875,
+              "right": 748.1875,
+              "bottom": 614.875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 448.71875,
+            "left": 520.796875,
+            "right": 582.46875,
+            "bottom": 467.71875
+          },
+          "trust": {
+            "width": 57.078125,
+            "height": 19,
+            "top": 448.71875,
+            "left": 687.109375,
+            "right": 744.1875,
+            "bottom": 467.71875
+          }
+        },
+        {
+          "name": "Synthetic large price range",
+          "kind": "range",
+          "card": {
+            "width": 235.40625,
+            "height": 379.546875,
+            "top": 239.328125,
+            "left": 762.1875,
+            "right": 997.59375,
+            "bottom": 618.875
+          },
+          "media": {
+            "width": 233.40625,
+            "height": 233.40625,
+            "top": 240.328125,
+            "left": 763.1875,
+            "right": 996.59375,
+            "bottom": 473.734375
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 245.328125,
+              "left": 947.59375,
+              "right": 991.59375,
+              "bottom": 289.328125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 245.328125,
+              "left": 768.1875,
+              "right": 812.1875,
+              "bottom": 289.328125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 570.875,
+              "left": 904.59375,
+              "right": 948.59375,
+              "bottom": 614.875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 570.875,
+              "left": 951.59375,
+              "right": 995.59375,
+              "bottom": 614.875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 448.734375,
+            "left": 768.1875,
+            "right": 829.859375,
+            "bottom": 467.734375
+          },
+          "trust": {
+            "width": 57.078125,
+            "height": 19,
+            "top": 448.734375,
+            "left": 934.515625,
+            "right": 991.59375,
+            "bottom": 467.734375
+          }
+        },
+        {
+          "name": "Synthetic zero price",
+          "kind": "single",
+          "card": {
+            "width": 235.390625,
+            "height": 379.546875,
+            "top": 239.328125,
+            "left": 1009.59375,
+            "right": 1244.984375,
+            "bottom": 618.875
+          },
+          "media": {
+            "width": 233.390625,
+            "height": 233.390625,
+            "top": 240.328125,
+            "left": 1010.59375,
+            "right": 1243.984375,
+            "bottom": 473.71875
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 245.328125,
+              "left": 1194.984375,
+              "right": 1238.984375,
+              "bottom": 289.328125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 245.328125,
+              "left": 1015.59375,
+              "right": 1059.59375,
+              "bottom": 289.328125
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 570.875,
+              "left": 1151.984375,
+              "right": 1195.984375,
+              "bottom": 614.875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 570.875,
+              "left": 1198.984375,
+              "right": 1242.984375,
+              "bottom": 614.875
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 448.71875,
+            "left": 1015.59375,
+            "right": 1077.265625,
+            "bottom": 467.71875
+          },
+          "trust": {
+            "width": 57.078125,
+            "height": 19,
+            "top": 448.71875,
+            "left": 1181.90625,
+            "right": 1238.984375,
+            "bottom": 467.71875
+          }
+        },
+        {
+          "name": "Synthetic regular price",
+          "kind": "single",
+          "card": {
+            "width": 235.390625,
+            "height": 348.28125,
+            "top": 630.875,
+            "left": 20,
+            "right": 255.390625,
+            "bottom": 979.15625
+          },
+          "media": {
+            "width": 233.390625,
+            "height": 233.390625,
+            "top": 631.875,
+            "left": 21,
+            "right": 254.390625,
+            "bottom": 865.265625
+          },
+          "titleClipped": false,
+          "titleEllipsis": "ellipsis",
+          "supplierClipped": true,
+          "priceOverflow": false,
+          "moqOverflow": false,
+          "controls": [
+            {
+              "width": 44,
+              "height": 44,
+              "top": 636.875,
+              "left": 205.390625,
+              "right": 249.390625,
+              "bottom": 680.875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 636.875,
+              "left": 26,
+              "right": 70,
+              "bottom": 680.875
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 931.15625,
+              "left": 162.390625,
+              "right": 206.390625,
+              "bottom": 975.15625
+            },
+            {
+              "width": 44,
+              "height": 44,
+              "top": 931.15625,
+              "left": 209.390625,
+              "right": 253.390625,
+              "bottom": 975.15625
+            }
+          ],
+          "rating": {
+            "width": 61.671875,
+            "height": 19,
+            "top": 840.265625,
+            "left": 26,
+            "right": 87.671875,
+            "bottom": 859.265625
+          },
+          "trust": {
+            "width": 57.078125,
+            "height": 19,
+            "top": 840.265625,
+            "left": 192.3125,
+            "right": 249.390625,
+            "bottom": 859.265625
+          }
+        }
+      ]
+    },
+    "violations": [],
+    "unevenRows": []
+  }
+]

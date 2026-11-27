@@ -59,7 +59,7 @@ export default function ProductCard({
         : price.kind === 'unknown' ? l('السعر غير متاح', 'Prix indisponible', 'Price unavailable')
         : price.kind === 'range' ? <RangePrice min={price.min} max={price.max} currency={product.currency} lang={lang} />
         : <bdi>{formatMoney(price.value, product.currency, lang)}</bdi>}
-      {!['request','unknown'].includes(price.kind) && <small> / {product.unit}</small>}
+      {!['request','unknown'].includes(price.kind) && <small className="atlas-card-unit" title={product.unit}> / {product.unit}</small>}
     </p>
     {['range','quantity','base'].includes(price.kind) && <p className="atlas-card-price-context">
       {price.kind === 'range' ? l('حسب الكمية', 'Selon quantité', 'By quantity')
@@ -69,7 +69,7 @@ export default function ProductCard({
     <div className="atlas-card-origin">
     {supplier?.name && <Link className="atlas-card-supplier" title={supplier.name} to={storeId ? storePath(storeId) : supplierPath(supplierId)}><MarketIcon name="store" /><span>{supplier.name}</span></Link>}
     {(product.city || supplier?.city) && <span className="atlas-card-city" title={product.city || supplier?.city}>{product.city || supplier?.city}</span>}</div>{!available && <p className="atlas-card-unavailable">{l('غير متوفر', 'Indisponible', 'Unavailable')}</p>}
-    </div><div className="product-footer"><div className="actions"><p className="atlas-card-moq">{l('أقل طلب', 'Min.', 'MOQ')}: <strong>{product.moq} {product.unit}</strong></p>
+    </div><div className="product-footer"><div className="actions"><p className="atlas-card-moq">{l('أقل طلب', 'Min.', 'MOQ')}: <strong>{product.moq} <span className="atlas-card-unit" title={product.unit}>{product.unit}</span></strong></p>
       <button className="primary" aria-label={l('طلب عرض سعر', 'Demander un devis')} disabled={!available || Boolean(user && user.role !== 'buyer')} title={user && user.role !== 'buyer' ? l('طلب العرض متاح لحساب المشتري', 'Demande réservée aux acheteurs') : undefined} onClick={() => {
           onView?.(product._id);
           if (!localStorage.getItem('supplierToken')) onRequireLogin?.(productPath(product._id) + '?rfq=1');else setShowRFQ(true);

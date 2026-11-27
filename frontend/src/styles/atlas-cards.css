@@ -108,3 +108,19 @@
 .atlas-public .atlas-density-card .atlas-card-media .atlas-favorite-heart .atlas-icon,
 .atlas-public .atlas-density-card .atlas-card-media .atlas-quick-view .atlas-icon { width:15px; height:15px; }
 .atlas-public .atlas-density-card .atlas-card-media button:focus-visible { outline-offset:-2px; }
+
+/* Long legal catalog units must not expand a grid track or force a tall
+   character-by-character MOQ column. Full text remains in the DOM/title. */
+.atlas-public .atlas-density-card .atlas-card-price .atlas-card-unit,
+.atlas-public .atlas-density-card .atlas-card-moq .atlas-card-unit {
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+.atlas-public .atlas-density-card .product-footer,
+.atlas-public .atlas-density-card .product-footer .actions { min-width: 0; }
+.atlas-public .atlas-density-card .atlas-card-price-context { overflow-wrap: anywhere; }
