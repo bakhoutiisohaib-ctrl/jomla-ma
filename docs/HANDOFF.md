@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 — Public store directory pagination PASS: FE focused 24/24, BE publicPages 23/23, full FE recheck 369/369 (40 suites), build PASS, real Chrome 106 unique stores over nine pages and five evidence records after mobile pager correction. [Report and evidence](v49-store-directory-2026-11-27.md). Gate 1 OPEN; real trust filters and final integrated acceptance remain.
+
 2026-11-27 — Sector browser refinement: distinct icons, all-sector directory and accessible subcategory dialog. Full FE 365/365 (39 suites), build PASS, isolated Chrome 12 records and DB PASS. [Report and evidence](v49-sector-browser-2026-11-27.md). Gate 1 OPEN; store pagination, real trust filters and final integrated acceptance remain.
 
 تحديث27 نوفمبر — ربط التصنيف الهرمي بالواجهة: نجحت44/44 حالة مركزة، ثم364/364 حالة Frontend كاملة (39 مجموعة) دون تغيير الاختبارات، والبناء. نجحت8 سجلات Chrome والتحقق المباشر من قاعدة مصطنعة: تعديل التصنيف، حفظ مسودة خاصة، عدم ظهورها للعامة، إعادة فتحها ونشرها والتصفية الصحيحة. [التقرير والأدلة](v49-taxonomy-ui-2026-11-27.md). Gate 1 مفتوحة للقبول النهائي ومقارنة V4.9؛ لا تبدأ Gate 2 ولا تنشر أو تدمج.

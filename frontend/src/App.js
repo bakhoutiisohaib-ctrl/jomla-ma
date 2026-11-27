@@ -66,6 +66,8 @@ function AppContent() {
     [stores, setStores] = useState([]),
     [storeLoading, setStoreLoading] = useState(false),
     [storeError, setStoreError] = useState(''),
+    [storeNumber, setStoreNumber] = useState(1),
+    [storePagination, setStorePagination] = useState(null),
     [loading, setLoading] = useState(false);
   const [error, setError] = useState(''),
     [image, setImage] = useState(null),
@@ -172,21 +174,35 @@ function AppContent() {
   useEffect(() => {
     if (page !== 'stores') return;
     const c = new AbortController();
-    setStoreLoading(true); setStoreError(''); setStores([]);
-    const params = new URLSearchParams({ limit: '100' });
+    setStoreLoading(true); setStoreError(''); setStores([]); setStorePagination(null);
+    const params = new URLSearchParams({ page: String(storeNumber), limit: '12' });
     if (filters.businessType) params.set('businessType', filters.businessType);
+    let correctingPage = false;
     apiRequest('/stores?' + params.toString(), { signal: c.signal }).then(d => {
-      if (!c.signal.aborted) setStores(d.data || []);
+      if (c.signal.aborted) return;
+      const p = d.pagination;
+      if (!Array.isArray(d.data) || !p || p.page !== storeNumber ||
+          !Number.isSafeInteger(p.pages) || p.pages < 0 || !Number.isSafeInteger(p.total) || p.total < 0) {
+        throw new Error(labelFor(lang,'تعذر قراءة دليل المتاجر.','Réponse de l’annuaire invalide.','Invalid store directory response.'));
+      }
+      const last = Math.max(1,p.pages);
+      if (storeNumber > last) { correctingPage = true; setStoreNumber(last); return; }
+      setStores(d.data); setStorePagination(p);
     }).catch(e => {
       if (!c.signal.aborted && e.name !== 'AbortError') setStoreError(e.message);
-    }).finally(() => { if (!c.signal.aborted) setStoreLoading(false); });
+    }).finally(() => { if (!c.signal.aborted && !correctingPage) setStoreLoading(false); });
     return () => c.abort();
-  }, [page, filters.businessType, refresh]);
+  }, [page, filters.businessType, storeNumber, refresh, lang]);
+  function browseStores(next) {
+    document.getElementById('store-directory-heading')?.focus();
+    setStoreLoading(true); setStores([]); setStorePagination(null); setStoreError('');
+    setStoreNumber(next);
+  }
   function selectBusinessType(businessType) {
     if (businessType === filters.businessType) return;
     setProducts([]); setStores([]); setExternal(null); setVisual(null); setError(''); setStoreError('');
     setLoading(page === 'home'); setStoreLoading(page === 'stores');
-    setFilters(current => ({ ...current, businessType })); setNumber(1);
+    setFilters(current => ({ ...current, businessType })); setNumber(1); setStoreNumber(1); setStorePagination(null);
   }
   async function logout() {
     const token = getSessionToken();
@@ -264,9 +280,14 @@ function AppContent() {
       onSourcing={() => user ? setSourcing(true) : requireLogin()} />}
     <main className="container" id="market-main" tabIndex="-1"><Notice error>{page === 'stores' ? storeError : error}</Notice>
       <BusinessTypeFilter selected={filters.businessType} onSelect={selectBusinessType} />
-      {page === 'stores' ? <section className="panel"><h2>{l('المتاجر المعتمدة', 'Boutiques approuvées')}</h2>
+      {page === 'stores' ? <section className="panel" aria-busy={storeLoading}><h2 id="store-directory-heading" tabIndex={-1}>{l('المتاجر المعتمدة', 'Boutiques approuvées','Approved stores')}</h2>
       {storeLoading ? <p role="status">{l('جاري تحميل المتاجر…', 'Chargement des boutiques…', 'Loading stores…')}</p> : storeError ? <button onClick={() => setRefresh(n => n + 1)}>{l('إعادة المحاولة', 'Réessayer', 'Retry')}</button> :
-      <><div className="product-grid">{stores.map(s => <article className="panel" key={s._id}><h3>{s.name}</h3><p>{s.city}</p><p>{s.description}</p><DeclaredBusinessTypes values={s.supplierId?.businessTypes}/><Link to={storePath(s._id)}>{l('فتح المتجر', 'Voir la boutique')}</Link></article>)}</div>
+      <>{storePagination && <p className="muted" aria-live="polite">{storePagination.total} {l('متجر','boutique(s)','store(s)')}</p>}<div className="product-grid">{stores.map(s => <article className="panel" key={s._id}><h3>{s.name}</h3><p>{s.city}</p><p>{s.description}</p><DeclaredBusinessTypes values={s.supplierId?.businessTypes}/><Link to={storePath(s._id)}>{l('فتح المتجر', 'Voir la boutique')}</Link></article>)}</div>
+      {storePagination && storePagination.pages > 1 && <nav className="pager atlas-store-directory-pager" aria-label={l('صفحات دليل المتاجر','Pages de l’annuaire des boutiques','Store directory pages')}>
+        <button type="button" disabled={storeNumber<=1} onClick={()=>browseStores(storeNumber-1)}>{l('السابق','Précédent','Previous')}</button>
+        <span aria-live="polite">{storeNumber} / {storePagination.pages}</span>
+        <button type="button" disabled={storeNumber>=storePagination.pages} onClick={()=>browseStores(storeNumber+1)}>{l('التالي','Suivant','Next')}</button>
+      </nav>}
       {!stores.length && <p>{filters.businessType ? l('لا توجد متاجر مطابقة لهذا النشاط حالياً.', 'Aucune boutique pour cette activité actuellement.', 'No stores for this activity currently.') : l('لا توجد متاجر معتمدة بعد', 'Aucune boutique approuvée pour le moment')}</p>}</>}</section> : <>
       <TaxonomyBrowser value={filters.taxonomyPath} onChange={taxonomyPath => {
         if (taxonomyPath === filters.taxonomyPath) return;
@@ -297,7 +318,7 @@ function AppContent() {
                 setNumber(1);
               }}><option value="">{l('الأقرب للبحث', 'Pertinence')}</option><option value="price_asc">{l('السعر تصاعدياً', 'Prix croissant')}</option><option value="price_desc">{l('السعر تنازلياً', 'Prix décroissant')}</option></select></Field>
       </div></details></section>
-      <div className="atlas-catalog-tools">{(term || image || Object.values(filters).some(Boolean)) && <button className="atlas-clear-filters" onClick={() => { setProducts([]); setExternal(null); setLoading(true); setQuery(''); setTerm(''); setImage(null); setFilters(current => Object.fromEntries(Object.keys(current).map(key => [key, '']))); setNumber(1); setCategoryRevision(n => n + 1); }}>{l('إعادة ضبط البحث', 'Réinitialiser la recherche')}</button>}</div>
+      <div className="atlas-catalog-tools">{(term || image || Object.values(filters).some(Boolean)) && <button className="atlas-clear-filters" onClick={() => { setProducts([]); setExternal(null); setLoading(true); setQuery(''); setTerm(''); setImage(null); setFilters(current => Object.fromEntries(Object.keys(current).map(key => [key, '']))); setNumber(1); setStoreNumber(1); setCategoryRevision(n => n + 1); }}>{l('إعادة ضبط البحث', 'Réinitialiser la recherche')}</button>}</div>
       {visual && <Notice>{l('الصورة نفسها تعني تطابق الملف فقط. النتائج المشابهة تحتاج مراجعة هوية المنتج ومواصفاته.', 'Même image signifie uniquement le même fichier. Vérifiez l’identité et les caractéristiques des résultats similaires.')}</Notice>}
       {loading ? <p role="status">{l('جاري تحميل النتائج…', 'Chargement…')}</p> : <><p className="muted">{pagination.total} {l('نتيجة', 'résultat(s)')}</p><div className="product-grid">{products.map(p => <ProductCard key={p._id} product={p} priceContext={priceContext} user={user} onRfqCreated={() => setPage('buyer')} onRequireLogin={requireLogin} onCompare={toggleCompare} compared={compare.some(c => c._id === p._id)} />)}</div></>}
       {!loading && !products.length && !error && <section className="panel empty"><h2>{t('product_not_found')}</h2><p>{t('product_not_found_desc')}</p><button className="primary" onClick={() => user ? setSourcing(true) : requireLogin()}>{t('submit_sourcing_btn')}</button></section>}

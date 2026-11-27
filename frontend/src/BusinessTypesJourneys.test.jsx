@@ -18,7 +18,10 @@ beforeEach(()=>{
   if(p.endsWith('/suppliers/me/profile')) return reply({role:'supplier',businessTypes:declaration,name:'Synthetic owner'});
   if(p.endsWith('/suppliers/me/business-types')){declaration=JSON.parse(opt.body).businessTypes;return lost?Promise.reject(Error('offline')):reply({businessTypes:declaration});}
   if(p.endsWith('/suppliers/register'))return reply({token:'synthetic-token',supplier:{role:JSON.parse(opt.body).role,_id:typed.supplierId._id}},201);
-  if(p.endsWith('/stores')) return failedStore?reply({},503):reply({data:u.searchParams.get('businessType')==='wholesaler'?[]:[store]});
+  if(p.endsWith('/stores')) {
+   const data=u.searchParams.get('businessType')==='wholesaler'?[]:[store];
+   return failedStore?reply({},503):reply({data,pagination:{page:Number(u.searchParams.get('page')),limit:12,total:data.length,pages:data.length?1:0,hasNextPage:false,hasPrevPage:false}});
+  }
   if(p.endsWith('/products/search')||p.endsWith('/ai-search')||p.endsWith('/image-search')){
    const type=u.searchParams.get('businessType') || (typeof opt.body==='string'?JSON.parse(opt.body).businessType:opt.body?.get('businessType'));
    const data=type==='manufacturer'?[typed]:type?[]:[typed,legacy];

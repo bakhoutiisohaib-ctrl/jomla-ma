@@ -153,3 +153,40 @@ test('invalid/missing ids return controlled errors and cannot expose private edi
   expect((await request(app).get('/api/stores/' + new mongoose.Types.ObjectId())).status).toBe(404)
   expect((await request(app).get('/api/products/mine')).status).toBe(401)
 })
+
+test('public directory pages reach beyond 100 stores, with deterministic ties and visibility filters', async () => {
+  await Supplier.updateOne({_id:f.supplier._id},{$set:{businessTypes:['manufacturer']}})
+  await Supplier.updateOne({_id:f.otherSupplier._id},{$set:{businessTypes:['importer']}})
+  const date=new Date('2026-01-01T00:00:00Z')
+  await Store.updateOne({_id:f.store._id},{$set:{createdAt:date,views:0}})
+  const make=(owner,n,extra={})=>({supplierId:owner,name:'Synthetic store '+n,slug:'directory-'+n,isActive:true,reviewStatus:'approved',createdAt:date,views:0,reviewReason:'PRIVATE_STORE_NOTE',...extra})
+  const rows=await Store.insertMany([
+    ...Array.from({length:104},(_,i)=>make(f.supplier._id,i)),
+    make(f.otherSupplier._id,104),
+    make(f.supplier._id,105,{reviewStatus:'pending'}),
+    make(f.supplier._id,106,{isActive:false}),
+    make(f.supplier._id,107,{adminSuspended:true}),
+    make(f.buyer._id,108)
+  ])
+  const expected=[String(f.store._id),...rows.slice(0,104).map(s=>String(s._id))].sort().reverse()
+  const seen=[]
+  for(let page=1;page<=9;page++){
+    const res=await request(app).get('/api/stores?businessType=manufacturer&limit=12&page='+page)
+    expect(res.status).toBe(200)
+    expect(res.body.pagination).toMatchObject({page,limit:12,total:105,pages:9,hasNextPage:page<9,hasPrevPage:page>1})
+    expect(res.body.data).toHaveLength(page===9?9:12)
+    expect(JSON.stringify(res.body)).not.toMatch(/PRIVATE_STORE_NOTE|reviewReason|organizationId|password/)
+    seen.push(...res.body.data.map(s=>s._id))
+  }
+  expect(seen).toEqual(expected)
+  expect(new Set(seen).size).toBe(105)
+  const unfiltered=await request(app).get('/api/stores?limit=100&page=2')
+  expect(unfiltered.body.pagination).toMatchObject({total:106,pages:2,hasNextPage:false})
+  expect(unfiltered.body.data).toHaveLength(6)
+  const importer=await request(app).get('/api/stores?businessType=importer&page=1&limit=12')
+  expect(importer.body.pagination.total).toBe(1)
+  expect(importer.body.data[0]._id).toBe(String(rows[104]._id))
+  const empty=await request(app).get('/api/stores?businessType=artisan&page=1&limit=12')
+  expect(empty.body.pagination).toMatchObject({total:0,pages:0})
+  expect(empty.body.data).toEqual([])
+})

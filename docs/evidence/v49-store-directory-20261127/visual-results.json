@@ -1,0 +1,99 @@
+[
+  {
+    "journey": "all_pages",
+    "total": 106,
+    "unique": 106,
+    "pages": 9
+  },
+  {
+    "journey": "activity_reset",
+    "total": 106
+  },
+  {
+    "lang": "ar",
+    "width": 320,
+    "geometry": {
+      "vw": 320,
+      "scroll": 320
+    },
+    "controls": {
+      "buttons": [
+        {
+          "x": 234.0546875,
+          "y": 731.953125,
+          "h": 44,
+          "top": 709.953125,
+          "bottom": 753.953125,
+          "hit": true
+        },
+        {
+          "x": 85.9453125,
+          "y": 731.953125,
+          "h": 44,
+          "top": 709.953125,
+          "bottom": 753.953125,
+          "hit": true
+        }
+      ],
+      "visibleBottom": 767.21875
+    }
+  },
+  {
+    "lang": "fr",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390
+    },
+    "controls": {
+      "buttons": [
+        {
+          "x": 113.890625,
+          "y": 731.625,
+          "h": 44,
+          "top": 709.625,
+          "bottom": 753.625,
+          "hit": true
+        },
+        {
+          "x": 276.109375,
+          "y": 731.625,
+          "h": 44,
+          "top": 709.625,
+          "bottom": 753.625,
+          "hit": true
+        }
+      ],
+      "visibleBottom": 775
+    }
+  },
+  {
+    "lang": "en",
+    "width": 1280,
+    "geometry": {
+      "vw": 1265,
+      "scroll": 1265
+    },
+    "controls": {
+      "buttons": [
+        {
+          "x": 566.390625,
+          "y": 821.546875,
+          "h": 44,
+          "top": 799.546875,
+          "bottom": 843.546875,
+          "hit": true
+        },
+        {
+          "x": 698.609375,
+          "y": 821.546875,
+          "h": 44,
+          "top": 799.546875,
+          "bottom": 843.546875,
+          "hit": true
+        }
+      ],
+      "visibleBottom": 844
+    }
+  }
+]

@@ -11,3 +11,16 @@
   .atlas-public:has(input:focus, textarea:focus) .atlas-mobile-nav { display: none; }
   .atlas-language-select { min-width: 82px; max-width: 105px; font-size: 12px; }
 }
+
+/* Keep directory pagination reachable above the fixed mobile navigation. */
+.atlas-public .atlas-store-directory-pager { gap:8px; flex-wrap:wrap; }
+.atlas-public .atlas-store-directory-pager > button { min-height:44px; }
+@media(max-width:700px) {
+  .atlas-public .atlas-store-directory-pager,
+  .atlas-public .atlas-store-directory-pager > button {
+    scroll-margin-block-end:calc(90px + env(safe-area-inset-bottom, 0px));
+  }
+  .atlas-public .atlas-store-directory-pager > button {
+    min-width:0; flex:1 1 0; max-width:120px;
+  }
+}

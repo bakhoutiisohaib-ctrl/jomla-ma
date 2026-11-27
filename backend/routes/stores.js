@@ -40,7 +40,7 @@ router.get('/', asyncHandler(async (req, res) => {
   if (typeof req.query.city === 'string') filter.city = req.query.city
   if (typeof req.query.category === 'string') filter.categories = req.query.category
   const stores = await Store.find(filter).select(STORE_FIELDS).populate(supplierPopulation)
-    .sort({ views: -1, createdAt: -1 }).limit(limit).skip(skip).lean()
+    .sort({ views: -1, createdAt: -1, _id: -1 }).limit(limit).skip(skip).lean()
   const visible = (await Promise.all(stores.map(publicStoreDto))).filter(Boolean)
   res.set('Cache-Control', 'no-store').json(formatPaginationResponse(visible, await Store.countDocuments(filter), page, limit))
 }))
