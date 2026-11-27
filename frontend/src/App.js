@@ -28,6 +28,7 @@ import './styles/private-pilot.css';
 import { HomeIntroduction, HomeCategories } from './components/common/HomeIntroduction';
 import './styles/atlas-home.css';
 import { BusinessTypeFilter, DeclaredBusinessTypes } from './components/common/BusinessTypes';
+import { TaxonomyBrowser } from './components/common/ProductTaxonomy';
 function AppContent() {
   const {
       t,
@@ -46,6 +47,7 @@ function AppContent() {
     city: '',
     category: '',
     categoryMode: '',
+    taxonomyPath: '',
     quantity: '',
     minPrice: '',
     maxPrice: '',
@@ -136,7 +138,7 @@ function AppContent() {
       });
       if (signal?.aborted) return;
       if (image) setVisual(data.detectedProduct || (labelFor(lang, "بحث بالصورة", "Recherche visuelle")));
-      if (!filters.businessType && filters.categoryMode !== 'exact' && data.externalDiscovery?.enabled) setExternal(data.externalDiscovery);
+      if (!filters.businessType && !filters.taxonomyPath && filters.categoryMode !== 'exact' && data.externalDiscovery?.enabled) setExternal(data.externalDiscovery);
       const latestProducts = data.data || data.products || [];
       // Associate price labels with the successful response, not the next
       // filter value while its request is still pending.
@@ -266,7 +268,12 @@ function AppContent() {
       {storeLoading ? <p role="status">{l('جاري تحميل المتاجر…', 'Chargement des boutiques…', 'Loading stores…')}</p> : storeError ? <button onClick={() => setRefresh(n => n + 1)}>{l('إعادة المحاولة', 'Réessayer', 'Retry')}</button> :
       <><div className="product-grid">{stores.map(s => <article className="panel" key={s._id}><h3>{s.name}</h3><p>{s.city}</p><p>{s.description}</p><DeclaredBusinessTypes values={s.supplierId?.businessTypes}/><Link to={storePath(s._id)}>{l('فتح المتجر', 'Voir la boutique')}</Link></article>)}</div>
       {!stores.length && <p>{filters.businessType ? l('لا توجد متاجر مطابقة لهذا النشاط حالياً.', 'Aucune boutique pour cette activité actuellement.', 'No stores for this activity currently.') : l('لا توجد متاجر معتمدة بعد', 'Aucune boutique approuvée pour le moment')}</p>}</>}</section> : <>
-      <HomeCategories key={(filters.businessType || 'all') + ':' + categoryRevision} businessType={filters.businessType} selected={filters.category} exact={filters.categoryMode === 'exact'}
+      <TaxonomyBrowser value={filters.taxonomyPath} onChange={taxonomyPath => {
+        if (taxonomyPath === filters.taxonomyPath) return;
+        setProducts([]); setExternal(null); setVisual(null); setLoading(true); setNumber(1);
+        setFilters(current => ({ ...current, taxonomyPath, category: '', categoryMode: '' }));
+      }} />
+      <HomeCategories key={JSON.stringify([filters.businessType, filters.taxonomyPath, categoryRevision])} businessType={filters.businessType} taxonomyPath={filters.taxonomyPath} selected={filters.category} exact={filters.categoryMode === 'exact'}
         onSelect={category => {
           const categoryMode = category ? 'exact' : '';
           if (category === filters.category && categoryMode === filters.categoryMode) return;
