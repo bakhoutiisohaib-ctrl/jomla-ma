@@ -1,0 +1,90 @@
+[
+  {
+    "journey": "observer_expansion",
+    "initial": 8,
+    "expanded": 14,
+    "unique": 14,
+    "currentExcluded": true,
+    "hiddenExcluded": true
+  },
+  {
+    "lang": "ar",
+    "width": 320,
+    "geometry": {
+      "vw": 320,
+      "scroll": 320,
+      "groups": [
+        {
+          "columns": 2,
+          "count": 7
+        },
+        {
+          "columns": 2,
+          "count": 7
+        }
+      ]
+    }
+  },
+  {
+    "lang": "ar",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "groups": [
+        {
+          "columns": 2,
+          "count": 7
+        },
+        {
+          "columns": 2,
+          "count": 7
+        }
+      ]
+    }
+  },
+  {
+    "lang": "fr",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "groups": [
+        {
+          "columns": 2,
+          "count": 7
+        },
+        {
+          "columns": 2,
+          "count": 7
+        }
+      ]
+    }
+  },
+  {
+    "lang": "en",
+    "width": 1280,
+    "geometry": {
+      "vw": 1265,
+      "scroll": 1265,
+      "groups": [
+        {
+          "columns": 5,
+          "count": 7
+        },
+        {
+          "columns": 5,
+          "count": 7
+        }
+      ]
+    }
+  },
+  {
+    "journey": "withdrawal_revalidation",
+    "remaining": 13,
+    "withdrawnAbsent": true
+  },
+  {
+    "journey": "recommendation_back_fragment"
+  }
+]

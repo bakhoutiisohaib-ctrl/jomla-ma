@@ -164,3 +164,49 @@ test('catalog price range follows the completed search response and preserves th
   await screen.findByText('السعر الأساسي للبحث');
   expect(screen.getByRole('button', { name: 'معاينة سريعة: ' + product.name }).closest('article').querySelector('[data-price-kind]')).toHaveAttribute('data-price-kind', 'base');
 });
+
+test.each([
+  ['range', {price:50,priceTiers:[{minQty:10,maxQty:29,price:40},{minQty:30,price:20}]}],
+  ['request', {pricingMode:'on_request'}],
+  ['unknown', {priceTiers:[{minQty:10,maxQty:50,price:22},{minQty:30,price:18}]}],
+  ['unknown', {price:null}],
+  ['unknown', {priceTiers:'invalid'}]
+])('quick preview presents validated fresh price kind %s', async (kind, patch) => {
+  const original = fetch.getMockImplementation();
+  const fresh = {...product,...patch};
+  fetch.mockImplementation((url,options) => new URL(url,'http://localhost').pathname.endsWith('/products/'+pid) ? reply({product:fresh}) : original(url,options));
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button',{name:'معاينة سريعة: '+product.name}));
+  const dialog = await screen.findByRole('dialog');
+  await waitFor(() => expect(dialog.querySelector('.atlas-preview-price')).toHaveAttribute('data-price-kind',kind));
+  const price = dialog.querySelector('.atlas-preview-price');
+  if(kind==='range'){
+    expect(price.querySelectorAll('bdi')[0].textContent).toBe(new Intl.NumberFormat('ar-MA',{style:'currency',currency:'MAD'}).format(20));
+    expect(price.querySelectorAll('bdi')[1].textContent).toBe(new Intl.NumberFormat('ar-MA',{style:'currency',currency:'MAD'}).format(40));
+    expect(dialog.querySelector('.atlas-preview-tiers bdi')).toHaveTextContent('10–29');
+    expect(dialog.querySelector('.atlas-preview-tiers bdi')).toHaveAttribute('dir','ltr');
+  }else{
+    expect(price).toHaveTextContent(kind==='request'?'السعر عند الطلب':'السعر غير متاح');
+    expect(dialog.querySelector('.atlas-preview-tiers')).toBeNull();
+    expect(price.querySelector('small')).toBeNull();
+  }
+});
+
+test('quick preview recalculates selected search quantity from fresh DTO instead of stale effective price', async () => {
+  const original = fetch.getMockImplementation();
+  const fresh = {...product,price:25,priceTiers:[{minQty:30,price:18}]};
+  fetch.mockImplementation((url,options) => {
+    const pathname = new URL(url,'http://localhost').pathname;
+    if(pathname.endsWith('/products/'+pid)) return reply({product:fresh});
+    if(pathname.endsWith('/products/search')) return reply({data:[{...fresh,effectiveUnitPrice:20}],pagination:{total:1,pages:1}});
+    return original(url,options);
+  });
+  render(<App />);
+  fireEvent.change(screen.getByLabelText('الكمية المطلوبة'),{target:{value:'50'}});
+  await screen.findByText('للكمية المطلوبة: 50 قطعة');
+  fireEvent.click(screen.getByRole('button',{name:'معاينة سريعة: '+product.name}));
+  const dialog = await screen.findByRole('dialog');
+  await waitFor(()=>expect(dialog.querySelector('.atlas-preview-price')).toHaveAttribute('data-price-kind','quantity'));
+  expect(dialog.querySelector('.atlas-preview-price bdi').textContent).toBe(new Intl.NumberFormat('ar-MA',{style:'currency',currency:'MAD'}).format(18));
+  expect(dialog.querySelector('.atlas-preview-price-context')).toHaveTextContent('50');
+});

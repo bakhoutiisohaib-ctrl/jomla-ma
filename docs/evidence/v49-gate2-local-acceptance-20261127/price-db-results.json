@@ -1,0 +1,10 @@
+{
+  "requests": 1,
+  "quantity": 50,
+  "targetPriceUnset": true,
+  "correctProductBuyerSupplier": true,
+  "status": "pending",
+  "threads": 1,
+  "messages": 1,
+  "notifications": 1
+}

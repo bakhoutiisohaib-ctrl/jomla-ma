@@ -78,6 +78,6 @@ export default function ProductCard({
     </div></div>
     {showRFQ && <RFQModal product={product} user={user} onSuccess={onRfqCreated} onClose={() => setShowRFQ(false)} onRequireLogin={onRequireLogin} />}
     {showReport && <ReportModal targetType="product" targetId={product._id} targetName={product.name} onClose={() => setShowReport(false)} />}
-    {showPreview && <ProductPreview id={product._id} user={user} onCompare={onCompare} compared={compared} onReport={() => { setShowPreview(false); setShowReport(true); }} onClose={() => setShowPreview(false)} />}
+    {showPreview && <ProductPreview id={product._id} priceContext={priceContext} user={user} onCompare={onCompare} compared={compared} onReport={() => { setShowPreview(false); setShowReport(true); }} onClose={() => setShowPreview(false)} />}
   </article>;
 }

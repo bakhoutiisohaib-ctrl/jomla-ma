@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 - Gate 2 local technical acceptance PASS/CLOSED: quick preview validated fresh tier/quantity prices and fixed portal cart icon; 88/88 focused, full FE 419/419 (42 suites), final build PASS, 37/37 final browser records across six independent isolated labs including two real RFQ DB checks. [Report](v49-gate2-local-acceptance-2026-11-27.md). Video and pre-RFQ chat remain open; no physical device or production sign-off. Next Gate 3 buyer account; preserve original project and no deploy.
+
 2026-11-27 - Gate 2E bounded recommendations scoped PASS: 68/68 focused/recheck, 413/413 full FE (42 suites), build PASS; Chrome seven records, expansion 8 to 14 unique, withdrawal leaves 13, four geometries, back fragment. Numeric budget survives visibility refresh, no stale snapshots. [Report](v49-gate2-rec-2026-11-27.md). Gate 2 OPEN pending integrated local acceptance; video and pre-RFQ chat unimplemented.
 
 2026-11-27 - Gate 2D fixed commercial dock scoped PASS: FE 72/72 focused, 412/412 full (42 suites), build PASS, final Chrome eight records incl. short viewport/focus fallback, store/cart and real RFQ qty50 with direct DB checks. [Report](v49-gate2-dock-2026-11-27.md). Gate 2 OPEN; next recommendations/continuous browsing. No backend change.

@@ -1,0 +1,139 @@
+[
+  {
+    "lang": "ar",
+    "width": 320,
+    "geometry": {
+      "vw": 320,
+      "scroll": 320,
+      "buttons": [
+        {
+          "width": 44,
+          "height": 48,
+          "hit": true
+        },
+        {
+          "width": 44,
+          "height": 48,
+          "hit": true
+        }
+      ],
+      "inputWidth": 154,
+      "rangeDirection": "ltr",
+      "rangeText": "10–19",
+      "tier": "ابتداءً من 30 قطعة‏18,00 د.م.‏"
+    },
+    "boundaries": [
+      10,
+      19,
+      20,
+      29,
+      30,
+      50
+    ],
+    "invalidBlocked": true
+  },
+  {
+    "lang": "ar",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "buttons": [
+        {
+          "width": 44,
+          "height": 48,
+          "hit": true
+        },
+        {
+          "width": 44,
+          "height": 48,
+          "hit": true
+        }
+      ],
+      "inputWidth": 224,
+      "rangeDirection": "ltr",
+      "rangeText": "10–19",
+      "tier": "ابتداءً من 30 قطعة‏18,00 د.م.‏"
+    },
+    "boundaries": [
+      10,
+      19,
+      20,
+      29,
+      30,
+      50
+    ],
+    "invalidBlocked": true
+  },
+  {
+    "lang": "fr",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "buttons": [
+        {
+          "width": 44,
+          "height": 48,
+          "hit": true
+        },
+        {
+          "width": 44,
+          "height": 48,
+          "hit": true
+        }
+      ],
+      "inputWidth": 224,
+      "rangeDirection": "ltr",
+      "rangeText": "10–19",
+      "tier": "À partir de 30 قطعة18,00 MAD"
+    },
+    "boundaries": [
+      10,
+      19,
+      20,
+      29,
+      30,
+      50
+    ],
+    "invalidBlocked": true
+  },
+  {
+    "lang": "en",
+    "width": 1280,
+    "geometry": {
+      "vw": 1265,
+      "scroll": 1265,
+      "buttons": [
+        {
+          "width": 44,
+          "height": 44,
+          "hit": true
+        },
+        {
+          "width": 44,
+          "height": 44,
+          "hit": true
+        }
+      ],
+      "inputWidth": 398.46875,
+      "rangeDirection": "ltr",
+      "rangeText": "10–19",
+      "tier": "From 30 قطعةMAD 18.00"
+    },
+    "boundaries": [
+      10,
+      19,
+      20,
+      29,
+      30,
+      50
+    ],
+    "invalidBlocked": true
+  },
+  {
+    "journey": "guest_login_quantity_real_rfq",
+    "quantity": 50,
+    "targetPriceUnset": true
+  }
+]
