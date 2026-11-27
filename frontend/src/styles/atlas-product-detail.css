@@ -172,3 +172,10 @@
   .atlas-public .atlas-detail-request .atlas-add-cart .atlas-icon { flex-shrink: 0; }
   .atlas-public:has(input:focus,textarea:focus) .atlas-detail-request { position: static; width: auto; max-height: none; border-radius: 10px; box-shadow: none; }
 }
+
+.atlas-discover-more { display: flex; justify-content: center; margin: 20px 0; }
+.atlas-public .atlas-discover-more > :is(a,button) {
+  display: inline-flex; justify-content: center; align-items: center;
+  min-height: 44px; padding: 8px 18px; border: 1px solid #c8d4bd;
+  border-radius: 10px; background: #edf1e5; color: #355640; text-align: center;
+}

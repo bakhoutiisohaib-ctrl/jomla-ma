@@ -286,3 +286,41 @@ test('quantity no longer meeting current MOQ on login return requires correction
   expect(document.querySelector('.atlas-detail-request button')).toBeDisabled();
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
+
+test('recommendations expand from real bounded results without duplicate cards or losing the current product', async () => {
+  const original = fetch.getMockImplementation();
+  const rows = Array.from({length: 12}, (_, index) => ({...source, _id: (index + 100).toString(16).padStart(24, '0'), name: 'Synthetic item ' + index, taxonomyPath: index < 6 ? 'home/decor' : 'home/kitchen'}));
+  product = {...product, taxonomyPath:'home/decor'};
+  fetch.mockImplementation((url, options) => {
+    const parsed = new URL(url, 'http://localhost');
+    if (parsed.pathname === '/api/products/search') {
+      return response({data: parsed.searchParams.has('taxonomyPath') ? [product, rows[0], ...rows.filter(item => item.taxonomyPath === 'home/decor'), null, {_id:'invalid'}] : [product, ...rows]});
+    }
+    return original(url, options);
+  });
+  await open();
+  const related = await screen.findByRole('region', {name:'منتجات مشابهة'});
+  const discoveries = await screen.findByRole('region', {name:'قد تهمك أيضاً'});
+  expect(within(related).getAllByRole('article')).toHaveLength(4);
+  expect(within(discoveries).getAllByRole('article')).toHaveLength(4);
+  expect(related.querySelector('.atlas-dense-product-grid')).toBeInTheDocument();
+  expect(fetch.mock.calls.some(([url]) => String(url).includes('taxonomyPath=home%2Fdecor') && String(url).includes('limit=24'))).toBe(true);
+  fireEvent.click(screen.getByRole('button', {name:'عرض المزيد من المنتجات'}));
+  expect(within(related).getAllByRole('article')).toHaveLength(6);
+  expect(within(discoveries).getAllByRole('article')).toHaveLength(6);
+  const links = [...document.querySelectorAll('#product-discover article h3 a')].map(a => a.getAttribute('href'));
+  expect(new Set(links).size).toBe(12);
+  expect(links).not.toContain('/products/' + pid);
+  expect(screen.queryByRole('button', {name:'عرض المزيد من المنتجات'})).not.toBeInTheDocument();
+  expect(screen.getByRole('link', {name:'تابع التصفح في السوق'})).toHaveAttribute('href','/');
+  expect(window.location.pathname).toBe('/products/' + pid);
+  // Hide clears all resource data, but a later load retains only the display budget.
+  rows.splice(0, 1);
+  Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+  act(() => document.dispatchEvent(new Event('visibilitychange')));
+  expect(document.querySelectorAll('#product-discover article')).toHaveLength(0);
+  Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+  act(() => document.dispatchEvent(new Event('visibilitychange')));
+  await waitFor(() => expect(document.querySelectorAll('#product-discover article')).toHaveLength(11));
+  expect(screen.queryByRole('heading', {name:'Synthetic item 0'})).not.toBeInTheDocument();
+});

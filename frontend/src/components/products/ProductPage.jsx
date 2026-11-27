@@ -19,6 +19,8 @@ export default function ProductPage({ id, search, user, sessionLoading, onBack, 
   const l = useLabels();
   const { data, error, loading } = usePublicResource('/products/' + id);
   const [rfqIntent, setRfqIntent] = useState(null), [enteredQuantity, setEnteredQuantity] = useState(null);
+  // Only the display budget survives visibility revalidation; cards never do.
+  const [recommendationLimit, setRecommendationLimit] = useState(4);
   const product = data?.product, store = data?.store, supplier = product?.supplierId;
   usePublicMeta(product?.name, product?.description, product ? productPath(id) : '');
   const supplierId = supplier?._id || supplier;
@@ -68,7 +70,7 @@ export default function ProductPage({ id, search, user, sessionLoading, onBack, 
         </div><ShareLink path={productPath(id)} /></section>
         {supplierId && <ProductSupplierReviews key={supplierId + ':' + (user?._id || 'guest')} supplierId={supplierId} user={user} />}
         </div>
-        <RelatedProducts key={id} product={product} user={user} onRequireLogin={onRequireLogin} onRfqCreated={onRfqCreated} />
+        <RelatedProducts key={id} product={product} visible={recommendationLimit} setVisible={setRecommendationLimit} user={user} onRequireLogin={onRequireLogin} onRfqCreated={onRfqCreated} />
       </>}
       {product && available && rfqIntent?.id === id && <RFQModal key={id + ':' + (user?._id || 'visitor')} product={product} user={user} initialQuantity={rfqIntent.quantity} onClose={() => setRfqIntent(null)} onRequireLogin={() => onRequireLogin(rfqPath(rfqIntent.quantity))} onSuccess={onRfqCreated} />}
     </main></>;
