@@ -96,7 +96,7 @@ export default function MarketLayout({ children, page, user, query = '', onQuery
       <Link to="/" className="atlas-brand" aria-label="Jomla.ma"><span className="atlas-brand-mark">ج</span><strong dir="ltr">jomla<span>.</span><small>ma</small></strong></Link>
       <form className="atlas-search" onSubmit={onSearch} role="search"><MarketIcon name="search" />
         <label className="atlas-sr" htmlFor="market-query">{l('البحث في الكتالوج', 'Rechercher dans le catalogue')}</label>
-        <input id="market-query" placeholder={l('ما الذي تبحث عنه بالجملة؟', 'Que cherchez-vous en gros ?')} value={query} onChange={event => onQueryChange?.(event.target.value)} />
+        <input id="market-query" maxLength={120} placeholder={l('ما الذي تبحث عنه بالجملة؟', 'Que cherchez-vous en gros ?')} value={query} onChange={event => onQueryChange?.(event.target.value)} />
         {imageControl}<button className="primary" disabled={loading}>{l('ابحث', 'Rechercher')}</button>
       </form>
       <nav className="atlas-account" aria-label={l('الحساب واللغة', 'Compte et langue')}>

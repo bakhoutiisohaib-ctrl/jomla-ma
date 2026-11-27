@@ -7,6 +7,10 @@ export function cardPrice(product, context = {}) {
   if (product.pricingMode === 'on_request') return { kind: 'request' };
   if (!/^[A-Z]{3}$/.test(product.currency || '') || !validPrice(product.price)) return { kind: 'unknown' };
   const base = product.price;
+  if (context.moqPriceSearch) {
+    if(!validQty(product.moq)||!validPrice(product.effectiveUnitPrice))return {kind:'unknown'};
+    return {kind:'moq',value:product.effectiveUnitPrice,quantity:product.moq};
+  }
   if (validQty(context.quantity)) {
     if (!validQty(product.moq) || context.quantity < product.moq || !validPrice(product.effectiveUnitPrice))
       return { kind: 'unknown' };

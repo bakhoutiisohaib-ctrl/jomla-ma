@@ -1,3 +1,4 @@
+import {structuredFixture} from './structuredSearchFixture';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 import RegisterPage from './components/auth/RegisterPage';
@@ -25,6 +26,7 @@ beforeEach(()=>{
   if(p.endsWith('/products/search')||p.endsWith('/ai-search')||p.endsWith('/image-search')){
    const type=u.searchParams.get('businessType') || (typeof opt.body==='string'?JSON.parse(opt.body).businessType:opt.body?.get('businessType'));
    const data=type==='manufacturer'?[typed]:type?[]:[typed,legacy];
+   if(p.endsWith('/ai-search'))return reply(structuredFixture(JSON.parse(opt.body),data));
    return reply({data,pagination:{pages:1,total:data.length},externalDiscovery:{enabled:true,results:[{url:'https://example.invalid',title:'External unclassified item'}]}});
   }
   return reply({data:[],unreadCount:0});

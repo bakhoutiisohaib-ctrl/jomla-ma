@@ -509,3 +509,11 @@ test('search removal contract rejects invented keys, duplicate keys, invalid sco
   }
   const r=await request(app).post('/api/ai-search?intentRemovals=maxPrice').send({intentVersion:'v49-1',query:'shoes under 30 MAD'});expect(r.status).toBe(400)
 });
+
+test('invalid structured quantity returns clarification with no usable price context',async()=>{
+ for(const query of ['cups quantity 0','cups quantity 1.5']){
+  const r=await request(app).post('/api/ai-search').send({intentVersion:'v49-1',query,includeAlternatives:true});
+  expect(r.status).toBe(200);expect(r.body.searchIntent.issues).toContain('quantity');expect(r.body.total).toBe(0);
+  expect(r.body.searchPriceContext).toEqual({quantity:null,basis:'base'});expect(r.body.sourcingOffer.canRequestSourcing).toBe(false);
+ }
+});

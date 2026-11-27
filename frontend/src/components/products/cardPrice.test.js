@@ -44,3 +44,8 @@ test.each([
 ])('malformed prices or ranges fail closed: %j', override => {
   expect(cardPrice({ ...product, ...override })).toEqual({ kind: 'unknown' });
 });
+
+test('confirmed MOQ price is the effective tier, never the base or range',()=>{
+ expect(cardPrice({...product,effectiveUnitPrice:20},{moqPriceSearch:true})).toEqual({kind:'moq',value:20,quantity:product.moq});
+ expect(cardPrice(product,{moqPriceSearch:true})).toEqual({kind:'unknown'});
+});

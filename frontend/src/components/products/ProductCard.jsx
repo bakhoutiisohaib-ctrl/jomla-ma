@@ -52,7 +52,7 @@ export default function ProductCard({
       </div>
     </div>
     <div className="product-body">
-      {['exact', 'similar'].includes(product.matchType) && <span className="badge">{product.matchBasis === 'exact_image' ? l('الصورة نفسها', 'Même fichier image') : product.matchType === 'exact' ? l('تطابق نصي', 'Correspondance textuelle') : l('مرشح مشابه', 'Résultat similaire')}</span>}
+      {!priceContext?.structured&&['exact', 'similar'].includes(product.matchType) && <span className="badge">{product.matchBasis === 'exact_image' ? l('الصورة نفسها', 'Même fichier image') : product.matchType === 'exact' ? l('تطابق نصي', 'Correspondance textuelle') : l('مرشح مشابه', 'Résultat similaire')}</span>}
     <h3><Link to={productPath(product._id)} title={product.name}>{product.name}</Link></h3>
     <p className="price atlas-card-price" data-price-kind={price.kind}>
       {price.kind === 'request' ? l('السعر عند الطلب', 'Prix sur demande', 'Price on request')
@@ -61,10 +61,10 @@ export default function ProductCard({
         : <bdi>{formatMoney(price.value, product.currency, lang)}</bdi>}
       {!['request','unknown'].includes(price.kind) && <small className="atlas-card-unit" title={product.unit}> / {product.unit}</small>}
     </p>
-    {['range','quantity','base'].includes(price.kind) && <p className="atlas-card-price-context">
+    {['range','quantity','base','moq'].includes(price.kind) && <p className="atlas-card-price-context">
       {price.kind === 'range' ? l('حسب الكمية', 'Selon quantité', 'By quantity')
         : price.kind === 'base' ? l('السعر الأساسي للبحث', 'Prix de base du filtre', 'Search base price')
-        : l('للكمية المطلوبة: ', 'Pour la quantité : ', 'For quantity: ') + price.quantity + ' ' + product.unit}
+        : (price.kind==='moq'?l('عند الحد الأدنى: ','Au minimum : ','At MOQ: '):l('للكمية المطلوبة: ', 'Pour la quantité : ', 'For quantity: ')) + price.quantity + ' ' + product.unit}
     </p>}
     <div className="atlas-card-origin">
     {supplier?.name && <Link className="atlas-card-supplier" title={supplier.name} to={storeId ? storePath(storeId) : supplierPath(supplierId)}><MarketIcon name="store" /><span>{supplier.name}</span></Link>}

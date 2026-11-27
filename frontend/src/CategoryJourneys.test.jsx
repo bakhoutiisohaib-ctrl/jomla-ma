@@ -1,3 +1,4 @@
+import {structuredFixture} from './structuredSearchFixture';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import App from './App';
 const item={_id:'111111111111111111111111',name:'Synthetic first product',category:'Textile',price:20,currency:'MAD',moq:1,unit:'piece',availability:'in_stock',supplierId:{_id:'222222222222222222222222',name:'Synthetic supplier'},storeId:'222222222222222222222222'};
@@ -18,7 +19,7 @@ beforeEach(()=>{
   }
   if(p.endsWith('/products/search')||p.endsWith('/ai-search')||p.endsWith('/image-search')){
    const category=u.searchParams.get('category')||(typeof opt.body==='string'?JSON.parse(opt.body).category:opt.body?.get('category'));
-   const data=category&&category!=='Textile'?[]:[item];return reply({data,pagination:{pages:1,total:data.length}});
+   const data=category&&category!=='Textile'?[]:[item];if(p.endsWith('/ai-search'))return reply(structuredFixture(JSON.parse(opt.body),data));return reply({data,pagination:{pages:1,total:data.length}});
   }
   return reply({data:[],unreadCount:0});
  });

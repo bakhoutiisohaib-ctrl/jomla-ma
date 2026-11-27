@@ -19,9 +19,9 @@ export default function ProductPreview({ id, priceContext, onClose, user, onComp
   const supplierId = product?.supplierId?._id || product?.supplierId;
   // Use the newly fetched public detail DTO, never a stale card price.
   const general = product ? cardPrice(product) : { kind: 'unknown' };
-  const quantity = parseQuantity(priceContext?.quantity);
+  const quantity = parseQuantity(priceContext?.moqPriceSearch?product?.moq:priceContext?.quantity);
   const selected = product && quantity !== null ? detailPricing(product, quantity) : null;
-  const price = selected ? (selected.kind === 'fixed' ? {kind:'quantity', value:selected.unitPrice, quantity} : {kind:selected.kind === 'request' ? 'request' : 'unknown'})
+  const price = selected ? (selected.kind === 'fixed' ? {kind:priceContext?.moqPriceSearch?'moq':'quantity', value:selected.unitPrice, quantity} : {kind:selected.kind === 'request' ? 'request' : 'unknown'})
     : product && priceContext?.basePriceSearch && !['unknown','request'].includes(general.kind) ? cardPrice(product, {basePriceSearch:true}) : general;
   const tiers = product && !['unknown','request'].includes(general.kind)
     ? [...(product.priceTiers || [])].sort((a,b) => a.minQty - b.minQty) : [];
@@ -36,7 +36,7 @@ export default function ProductPreview({ id, priceContext, onClose, user, onComp
           : price.kind === 'unknown' ? l('السعر غير متاح', 'Prix indisponible', 'Price unavailable')
           : price.kind === 'range' ? <><bdi>{money(price.min)}</bdi> – <bdi>{money(price.max)}</bdi></> : <bdi>{money(price.value)}</bdi>}
           {!['request','unknown'].includes(price.kind) && <small> / {product.unit}</small>}</p>
-        {['range','quantity','base'].includes(price.kind) && <p className="atlas-preview-price-context">{price.kind === 'range' ? l('حسب الكمية', 'Selon quantité', 'By quantity') : price.kind === 'base' ? l('السعر الأساسي للبحث', 'Prix de base du filtre', 'Search base price') : <>{l('للكمية المطلوبة: ', 'Pour la quantité : ', 'For quantity: ')}<bdi dir="ltr">{price.quantity}</bdi> {product.unit}</>}</p>}
+        {['range','quantity','base','moq'].includes(price.kind) && <p className="atlas-preview-price-context">{price.kind === 'range' ? l('حسب الكمية', 'Selon quantité', 'By quantity') : price.kind === 'base' ? l('السعر الأساسي للبحث', 'Prix de base du filtre', 'Search base price') : <>{price.kind==='moq'?l('عند الحد الأدنى: ','Au minimum : ','At MOQ: '):l('للكمية المطلوبة: ', 'Pour la quantité : ', 'For quantity: ')}<bdi dir="ltr">{price.quantity}</bdi> {product.unit}</>}</p>}
         <SupplierRating supplierId={supplierId} />
         <dl><div><dt>{l('أقل طلب', 'Commande minimum')}</dt><dd>{product.moq} {product.unit}</dd></div><div><dt>{l('المدينة', 'Ville')}</dt><dd>{product.city || product.supplierId?.city || '—'}</dd></div><div><dt>{l('المورد', 'Fournisseur')}</dt><dd>{product.supplierId?.name || '—'}</dd></div></dl>
         <p>{product.description}</p>

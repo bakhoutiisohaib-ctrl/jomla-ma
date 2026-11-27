@@ -1,0 +1,8 @@
+/* V4.9 j47-summary/j47-line/j47-chips: isolated search result controls. */
+.atlas-search-summary{background:#fff;border:1px solid #dbe5da;border-radius:12px;padding:10px 12px;margin:0 0 12px;color:#294c38;display:grid;gap:6px;min-width:0}
+.atlas-search-summary-line{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.atlas-search-chips,.atlas-search-alternatives{display:flex;flex-wrap:wrap;gap:5px;min-width:0}
+.atlas-search-summary small{color:#637164;font-size:11px;overflow-wrap:anywhere}
+.atlas-search-alternatives small{flex-basis:100%}
+.atlas-search-summary .atlas-search-chip{background:#edf4ed;border:1px solid #dbe5da;color:#294c38;border-radius:999px;padding:5px 9px;min-height:32px;font-size:12px;line-height:1.4;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.atlas-search-summary .atlas-search-chip:disabled{opacity:.65;cursor:default}

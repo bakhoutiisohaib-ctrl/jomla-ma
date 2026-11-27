@@ -1,3 +1,4 @@
+import {structuredFixture} from './structuredSearchFixture';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 
@@ -5,10 +6,11 @@ const item = {_id:'111111111111111111111111',name:'Synthetic catalog item',categ
 const reply = data => Promise.resolve({ok:true,status:200,json:async()=>data});
 beforeEach(() => {
   localStorage.clear(); sessionStorage.clear(); window.history.replaceState({},'','/');
-  global.fetch = jest.fn((url) => {
+  global.fetch = jest.fn((url,opt={}) => {
     const path = new URL(url,'http://localhost').pathname;
     if(path.endsWith('/products/categories')) return reply({data:[{category:item.category,count:1}],pagination:{page:1,limit:12,total:1,pages:1,hasNextPage:false,hasPrevPage:false}});
-    if(path.endsWith('/products/search') || path.endsWith('/ai-search')) return reply({data:[item],pagination:{pages:1,total:1}});
+    if(path.endsWith('/ai-search'))return reply(structuredFixture(JSON.parse(opt.body),[item]));
+    if(path.endsWith('/products/search')) return reply({data:[item],pagination:{pages:1,total:1}});
     return reply({data:[],unreadCount:0});
   });
 });

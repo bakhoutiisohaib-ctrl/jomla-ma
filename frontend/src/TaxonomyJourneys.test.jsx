@@ -1,3 +1,4 @@
+import {structuredFixture} from './structuredSearchFixture';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import App from './App';
 import ProductEditor from './components/suppliers/ProductEditor';
@@ -36,6 +37,7 @@ beforeEach(()=>{
    const body=typeof opt.body==='string'?JSON.parse(opt.body):{};
    const scope=u.searchParams.get('taxonomyPath')||body.taxonomyPath||opt.body?.get?.('taxonomyPath');
    const data=scope==='building/fixtures'?[]:[item];
+   if(p.endsWith('/ai-search'))return reply(structuredFixture(body,data));
    return reply({data,pagination:{page:1,pages:1,total:data.length},externalDiscovery:{enabled:false}});
   }
   if((p.endsWith('/products')||p.endsWith('/products/'+item._id))&&['POST','PUT'].includes(opt.method)){

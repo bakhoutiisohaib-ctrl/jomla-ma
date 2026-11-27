@@ -185,7 +185,7 @@ async function searchCatalog(input, { words, visual = false, supplierId, storeId
   })
   products = await Product.populate(products, { path: 'supplierId', select: 'name city phone isVerified verificationStatus businessTypes', options: { lean: true } })
   products = products.map(product => ({ ...product, supplierId: product.supplierId ? { ...product.supplierId, businessTypes: declaredBusinessTypes(product.supplierId.businessTypes) } : null }))
-  return { products, ...(intent?{searchPriceContext:{quantity:quantity??null,basis:quantity?'quantity':priceQuantity?'moq':'base'}}:{}), total: totals.total, exactCount: totals.exactCount, similarCount: totals.total - totals.exactCount, page: options.page, limit: options.limit, pagination: { page: options.page, limit: options.limit, total: totals.total, pages: Math.ceil(totals.total / options.limit), hasNextPage: options.page * options.limit < totals.total, hasPrevPage: options.page > 1 } }
+  return { products, ...(intent?{searchPriceContext:intent.issues.length?{quantity:null,basis:'base'}:{quantity:quantity??null,basis:quantity?'quantity':priceQuantity?'moq':'base'}}:{}), total: totals.total, exactCount: totals.exactCount, similarCount: totals.total - totals.exactCount, page: options.page, limit: options.limit, pagination: { page: options.page, limit: options.limit, total: totals.total, pages: Math.ceil(totals.total / options.limit), hasNextPage: options.page * options.limit < totals.total, hasPrevPage: options.page > 1 } }
 }
 
 module.exports = { PUBLIC_FIELDS, PUBLIC_VISIBILITY, imageUrlAllowed, badRequest, parseOptions, publicCatalogFilter, searchWords, searchCatalog, catalogCategories, categoryPredicate }

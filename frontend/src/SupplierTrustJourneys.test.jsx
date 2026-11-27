@@ -1,3 +1,4 @@
+import {structuredFixture} from './structuredSearchFixture';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import App from './App';
 const supplier={_id:'2'.repeat(24),name:'Synthetic verified owner',isVerified:true,verificationStatus:'verified',businessTypes:['manufacturer']};
@@ -26,6 +27,7 @@ beforeEach(()=>{
   }
   if(p.endsWith('/products/categories'))return response(result([{category:'Textile',count:trust?1:2}]));
   if(p.endsWith('/products/search')||p.endsWith('/ai-search')||p.endsWith('/image-search')){
+   if(p.endsWith('/ai-search'))return response(structuredFixture(b,filter([product,other])));
    return response({...result(filter([product,other])),externalDiscovery:{enabled:true,results:[{url:'https://example.invalid',title:'Unverified external item'}]}});
   }
   return response({data:[],unreadCount:0});

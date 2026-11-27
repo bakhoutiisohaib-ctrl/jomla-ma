@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 UTC - Gate 5B.2 structured search UI scoped PASS: BE 89/89 (5 suites), full FE 474/474 (45 suites), final presentation correction targeted 29/29, build PASS, final Chrome 7/7 + DB. V4.9 summary chips/explicit alternatives and confirmed price context wired to existing catalog. [Report](v49-gate5b2-search-ui-2026-11-27.md). Gate 5 OPEN; next 5C visual search/comparison and integrated acceptance.
+
 2026-11-27 - Gate 5B.1 search condition contract scoped backend PASS: 88/88 (5 suites), verified original V4.9 j47Remove/j47SearchPanel, explicit validated removals and opt-in single-condition alternative counts from live catalog, no automatic relaxation; delivery requires explicit removal. [Report](v49-gate5b1-search-controls-2026-11-27.md). Gate 5 OPEN; frontend unchanged, next reference UI wiring.
 
 2026-11-27 - Gate 5A.2 compound search scoped backend PASS: bounded OR with per-branch constraints, known lexical/city exclusions, canonical verified/unverified, reference sector aliases, grouped amounts and pricing context. Final isolated BE 85/85 (5 suites); first exclusion failure corrected/retested. [Report](v49-gate5a2-compound-search-2026-11-27.md). Gate 5 OPEN; UI unchanged; incompatible branch quantities and unsupported scopes remain explicit, no silent relaxation.
