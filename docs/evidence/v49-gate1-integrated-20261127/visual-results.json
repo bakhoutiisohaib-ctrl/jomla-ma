@@ -1,0 +1,363 @@
+[
+  {
+    "journey": "live_card_geometry",
+    "lang": "ar",
+    "width": 320,
+    "geometry": {
+      "vw": 320,
+      "scroll": 320,
+      "header": {
+        "width": 320,
+        "height": 123,
+        "top": 0,
+        "left": 0,
+        "right": 320,
+        "bottom": 123
+      },
+      "cards": [
+        {
+          "card": {
+            "width": 138.5,
+            "height": 314.125,
+            "top": 1334.0625,
+            "left": 165.5,
+            "right": 304,
+            "bottom": 1648.1875
+          },
+          "media": {
+            "width": 136.5,
+            "height": 136.5,
+            "top": 1335.0625,
+            "left": 166.5,
+            "right": 303,
+            "bottom": 1471.5625
+          },
+          "title": "ellipsis",
+          "heart": {
+            "width": 44,
+            "height": 44,
+            "top": 1340.0625,
+            "left": 171.5,
+            "right": 215.5,
+            "bottom": 1384.0625
+          },
+          "preview": {
+            "width": 44,
+            "height": 44,
+            "top": 1340.0625,
+            "left": 254,
+            "right": 298,
+            "bottom": 1384.0625
+          }
+        },
+        {
+          "card": {
+            "width": 138.5,
+            "height": 314.125,
+            "top": 1334.0625,
+            "left": 16,
+            "right": 154.5,
+            "bottom": 1648.1875
+          },
+          "media": {
+            "width": 136.5,
+            "height": 136.5,
+            "top": 1335.0625,
+            "left": 17,
+            "right": 153.5,
+            "bottom": 1471.5625
+          },
+          "title": "ellipsis",
+          "heart": {
+            "width": 44,
+            "height": 44,
+            "top": 1340.0625,
+            "left": 22,
+            "right": 66,
+            "bottom": 1384.0625
+          },
+          "preview": {
+            "width": 44,
+            "height": 44,
+            "top": 1340.0625,
+            "left": 104.5,
+            "right": 148.5,
+            "bottom": 1384.0625
+          }
+        }
+      ]
+    }
+  },
+  {
+    "journey": "live_card_geometry",
+    "lang": "ar",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "header": {
+        "width": 390,
+        "height": 123,
+        "top": -1002,
+        "left": 0,
+        "right": 390,
+        "bottom": -879
+      },
+      "cards": [
+        {
+          "card": {
+            "width": 173.5,
+            "height": 351.828125,
+            "top": 264.28125,
+            "left": 200.5,
+            "right": 374,
+            "bottom": 616.109375
+          },
+          "media": {
+            "width": 171.5,
+            "height": 171.5,
+            "top": 265.28125,
+            "left": 201.5,
+            "right": 373,
+            "bottom": 436.78125
+          },
+          "title": "ellipsis",
+          "heart": {
+            "width": 44,
+            "height": 44,
+            "top": 270.28125,
+            "left": 206.5,
+            "right": 250.5,
+            "bottom": 314.28125
+          },
+          "preview": {
+            "width": 44,
+            "height": 44,
+            "top": 270.28125,
+            "left": 324,
+            "right": 368,
+            "bottom": 314.28125
+          }
+        },
+        {
+          "card": {
+            "width": 173.5,
+            "height": 351.828125,
+            "top": 264.28125,
+            "left": 16,
+            "right": 189.5,
+            "bottom": 616.109375
+          },
+          "media": {
+            "width": 171.5,
+            "height": 171.5,
+            "top": 265.28125,
+            "left": 17,
+            "right": 188.5,
+            "bottom": 436.78125
+          },
+          "title": "ellipsis",
+          "heart": {
+            "width": 44,
+            "height": 44,
+            "top": 270.28125,
+            "left": 22,
+            "right": 66,
+            "bottom": 314.28125
+          },
+          "preview": {
+            "width": 44,
+            "height": 44,
+            "top": 270.28125,
+            "left": 139.5,
+            "right": 183.5,
+            "bottom": 314.28125
+          }
+        }
+      ]
+    }
+  },
+  {
+    "journey": "live_card_geometry",
+    "lang": "fr",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "header": {
+        "width": 390,
+        "height": 123,
+        "top": -1076,
+        "left": 0,
+        "right": 390,
+        "bottom": -953
+      },
+      "cards": [
+        {
+          "card": {
+            "width": 173.5,
+            "height": 351.828125,
+            "top": 253.953125,
+            "left": 16,
+            "right": 189.5,
+            "bottom": 605.78125
+          },
+          "media": {
+            "width": 171.5,
+            "height": 171.5,
+            "top": 254.953125,
+            "left": 17,
+            "right": 188.5,
+            "bottom": 426.453125
+          },
+          "title": "ellipsis",
+          "heart": {
+            "width": 44,
+            "height": 44,
+            "top": 259.953125,
+            "left": 22,
+            "right": 66,
+            "bottom": 303.953125
+          },
+          "preview": {
+            "width": 44,
+            "height": 44,
+            "top": 259.953125,
+            "left": 139.5,
+            "right": 183.5,
+            "bottom": 303.953125
+          }
+        },
+        {
+          "card": {
+            "width": 173.5,
+            "height": 351.828125,
+            "top": 253.953125,
+            "left": 200.5,
+            "right": 374,
+            "bottom": 605.78125
+          },
+          "media": {
+            "width": 171.5,
+            "height": 171.5,
+            "top": 254.953125,
+            "left": 201.5,
+            "right": 373,
+            "bottom": 426.453125
+          },
+          "title": "ellipsis",
+          "heart": {
+            "width": 44,
+            "height": 44,
+            "top": 259.953125,
+            "left": 206.5,
+            "right": 250.5,
+            "bottom": 303.953125
+          },
+          "preview": {
+            "width": 44,
+            "height": 44,
+            "top": 259.953125,
+            "left": 324,
+            "right": 368,
+            "bottom": 303.953125
+          }
+        }
+      ]
+    }
+  },
+  {
+    "journey": "live_card_geometry",
+    "lang": "en",
+    "width": 1280,
+    "geometry": {
+      "vw": 1265,
+      "scroll": 1265,
+      "header": {
+        "width": 1265,
+        "height": 81.25,
+        "top": -1084,
+        "left": 0,
+        "right": 1265,
+        "bottom": -1002.75
+      },
+      "cards": [
+        {
+          "card": {
+            "width": 292.75,
+            "height": 471.078125,
+            "top": 160.328125,
+            "left": 20,
+            "right": 312.75,
+            "bottom": 631.40625
+          },
+          "media": {
+            "width": 290.75,
+            "height": 290.75,
+            "top": 161.328125,
+            "left": 21,
+            "right": 311.75,
+            "bottom": 452.078125
+          },
+          "title": "ellipsis",
+          "heart": {
+            "width": 44,
+            "height": 44,
+            "top": 166.328125,
+            "left": 26,
+            "right": 70,
+            "bottom": 210.328125
+          },
+          "preview": {
+            "width": 44,
+            "height": 44,
+            "top": 166.328125,
+            "left": 262.75,
+            "right": 306.75,
+            "bottom": 210.328125
+          }
+        },
+        {
+          "card": {
+            "width": 292.75,
+            "height": 471.078125,
+            "top": 160.328125,
+            "left": 330.75,
+            "right": 623.5,
+            "bottom": 631.40625
+          },
+          "media": {
+            "width": 290.75,
+            "height": 290.75,
+            "top": 161.328125,
+            "left": 331.75,
+            "right": 622.5,
+            "bottom": 452.078125
+          },
+          "title": "ellipsis",
+          "heart": {
+            "width": 44,
+            "height": 44,
+            "top": 166.328125,
+            "left": 336.75,
+            "right": 380.75,
+            "bottom": 210.328125
+          },
+          "preview": {
+            "width": 44,
+            "height": 44,
+            "top": 166.328125,
+            "left": 573.5,
+            "right": 617.5,
+            "bottom": 210.328125
+          }
+        }
+      ]
+    }
+  },
+  "real_image_text_taxonomy_activity_verification_quantity",
+  "preview_escape_focus",
+  "guest_cart_migrates_once_to_A",
+  "A_B_favorites_and_cart_isolation",
+  "real_rfq_submission_cart_consumption"
+]

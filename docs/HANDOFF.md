@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 — Gate 1 integrated regression checkpoint: Backend 230/230 in 15 suites (single run), prior full FE 372/372 and build at same runtime SHA, isolated Chrome 9 records and RFQ/favorite/thread/notification DB checks PASS. Actual local V4.9 visual audit reveals compactness/density gap (mobile 390 card 351.8 vs 271.7 px; desktop 4 vs 5 columns). [Report](v49-gate1-integrated-2026-11-27.md). Gate 1 remains OPEN; refine visual density without losing real controls and resolve remaining scope. Gate 2 locked.
+
 2026-11-27 — Verified supplier filter slice PASS: optional real administrative verification across catalog/categories/text/image/store directory. BE targeted recheck 72/72; final FE 372/372 (41 suites), build PASS, Chrome 8 records after empty-state correction. [Report and evidence](v49-supplier-trust-2026-11-27.md). Top-rated/fast response/supplier country remain unavailable pending verifiable data; Gate 1 OPEN, final integrated acceptance and scope decisions outstanding.
 
 2026-11-27 — Public store directory pagination PASS: FE focused 24/24, BE publicPages 23/23, full FE recheck 369/369 (40 suites), build PASS, real Chrome 106 unique stores over nine pages and five evidence records after mobile pager correction. [Report and evidence](v49-store-directory-2026-11-27.md). Gate 1 OPEN; real trust filters and final integrated acceptance remain.
