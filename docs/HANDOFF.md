@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 5 local integrated acceptance PASS/CLOSED: clean baseline BE 105/105 (6), full FE 484/484 (47), CI build PASS; reproduced/fixed inherited dictionary lookup crash, final targeted FE 16/16 and strict build PASS; corrected-source fresh Chrome 22/22 (10 text, 6 visual, 6 comparison) + all DB/API checks. [Report](v49-gate5-local-acceptance-20261128.md). Full FE predates limited fix; physical camera, production/full parity and prior-gate obligations remain. Next Gate 6.
+
 2026-11-28 - Gate 5C.3B comparison UI scoped PASS: reference quick preview/detail/expanded image entries use fresh comparable API, single quantity and explicit states; full FE 483/483 (47 suites), final targeted 53/53, strict build PASS, final actual Chrome 6/6 + DB/API and reference quantity geometry PASS. [Report](v49-gate5c3b-comparison-ui-20261128.md). Gate 5 OPEN; next integrated Gate 5 acceptance.
 
 2026-11-28 - Gate 5C.3A comparable offers backend scoped PASS: reverified V4.9 reference, public catalog ownership/visibility, same recognized title family/category/taxonomy/unit/currency, shared quantity-tier selector, honest MOQ/price states, pagination; final isolated BE 99/99 (5 suites). [Report](v49-gate5c3a-comparison-contract-20261128.md). Gate 5 OPEN; next comparison modal/UI integration and integrated acceptance.

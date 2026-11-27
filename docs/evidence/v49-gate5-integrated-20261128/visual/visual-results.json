@@ -1,0 +1,28 @@
+[
+  {
+    "journey": "file_picker_exact_bytes_replaces_text",
+    "exact": 1,
+    "unindexed": 1
+  },
+  {
+    "journey": "camera_input_reencoded_image",
+    "similar": 1,
+    "cameraHardwareTested": false
+  },
+  {
+    "journey": "blank_photo_rejected_no_false_empty"
+  },
+  {
+    "journey": "multilingual_responsive_visual_results",
+    "widths": [
+      390,
+      1280
+    ]
+  },
+  {
+    "journey": "visual_result_to_live_comparison_and_back"
+  },
+  {
+    "journey": "remove_image_returns_catalog"
+  }
+]

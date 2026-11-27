@@ -1,0 +1,49 @@
+[
+  {
+    "journey": "strict_zero_and_counted_alternatives",
+    "total": 0,
+    "alternativeCounts": [
+      1,
+      1
+    ]
+  },
+  {
+    "journey": "explicit_remove_price_preserves_city",
+    "total": 1
+  },
+  {
+    "journey": "confirmed_moq_price",
+    "price": 35,
+    "quantity": 10
+  },
+  {
+    "journey": "confirmed_quantity_price_and_preview",
+    "price": 20,
+    "quantity": 50
+  },
+  {
+    "journey": "shipping_unknown_until_explicit_removal",
+    "total": 1
+  },
+  {
+    "journey": "french_english_chip_labels_and_responsive_width",
+    "widths": [
+      390,
+      1280
+    ]
+  },
+  {
+    "journey": "clear_returns_original_catalog",
+    "total": 2
+  },
+  {
+    "journey": "darija_quantity_flows_to_comparison",
+    "quantity": 50
+  },
+  {
+    "journey": "french_arabic_or_and_exclusions"
+  },
+  {
+    "journey": "free_word_does_not_collide_with_translation_dictionary"
+  }
+]

@@ -75,3 +75,12 @@ test('invalid numeric quantity is a confirmed zero-result clarification, not a n
  expect(screen.queryByText('تعذر تأكيد نتائج البحث. أعد المحاولة.')).toBeNull();
  expect(document.querySelector('.panel.empty')).toBeNull();
 });
+
+test('free search vocabulary never resolves inherited translation dictionary properties',async()=>{
+ handler=body=>response(body,{intent:{terms:['constructor'],city:null,maxPrice:null,strictMax:false,currency:null,removable:['terms']}});
+ render(<App/>);await screen.findByRole('heading',{name:item.name});submit('constructor');
+ const summary=await screen.findByRole('region',{name:'شروط البحث'});
+ expect(within(summary).getByRole('button',{name:'إزالة constructor'})).toBeInTheDocument();
+ expect(within(summary).getByText('نتائج البحث · 0')).toBeInTheDocument();
+ expect(screen.queryByRole('heading',{name:item.name})).toBeNull();
+});

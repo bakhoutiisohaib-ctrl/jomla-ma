@@ -47,7 +47,7 @@ function chipText(key,value){
   return <>{match[1]}<bdi dir="ltr">{match[2]+suffix}</bdi>{key==='moq'?match[3]:''}</>;
 }
 function labels(f,l){
-  const term=v=>families[v]?l(...families[v]):v, city=v=>l(v,cities[v]||v,cities[v]||v);
+  const term=v=>Object.hasOwn(families,v)?l(...families[v]):v, city=v=>{const translated=Object.hasOwn(cities,v)?cities[v]:v;return l(v,translated,translated);};
   const unit=f.unit==='pair'?l('زوج','paire','pair'):f.unit==='set'?l('طقم','lot','set'):f.unit==='piece'?l('قطعة','pièce','piece'):'';
   const amount=n=>n+(unit?' '+unit:'');
   return [
