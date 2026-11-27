@@ -93,7 +93,7 @@ async function catalogCategories(input = {}) {
   return { data: result?.data || [], pagination: { page: options.page, limit: options.limit, total, pages: Math.ceil(total / options.limit), hasNextPage: options.page * options.limit < total, hasPrevPage: options.page > 1 } }
 }
 
-async function searchCatalog(input, { words, visual = false, supplierId, storeId, intent } = {}) {
+async function searchCatalog(input, { words, visual = false, supplierId, storeId, intent, countOnly = false } = {}) {
   const options = parseOptions(input)
   const filter = await publicCatalogFilter({ supplierId, businessType: options.businessType, supplierTrust: options.supplierTrust })
   if (storeId) filter.$and = [{ storeId }]
@@ -167,6 +167,7 @@ async function searchCatalog(input, { words, visual = false, supplierId, storeId
   if (options.maxPrice != null) priceFilter.$lte = options.maxPrice
   if (Object.keys(priceFilter).length) pipeline.push({ $match: { pricingMode: 'fixed', effectiveUnitPrice: priceFilter } })
   if(intent&&!intent.issues.length)pipeline.push({$match:{$or:branchPredicates.map(b=>b.priced)}})
+  if(countOnly){const [row]=await Product.aggregate([...pipeline,{$count:'total'}]).option({maxTimeMS:5000});return {total:row?.total||0}}
   const exactExpression = !intent && !visual && options.q ? { $eq: [{ $toLower: { $ifNull: ['$name', ''] } }, options.q.toLowerCase()] } : false
   pipeline.push({ $addFields: { _rank: { $cond: [exactExpression, 0, 1] }, _priceMissing: { $cond: [{ $eq: ['$pricingMode', 'on_request'] }, 1, 0] } } })
   const order = intent?.sort || options.order

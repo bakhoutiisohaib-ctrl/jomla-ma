@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 - Gate 5B.1 search condition contract scoped backend PASS: 88/88 (5 suites), verified original V4.9 j47Remove/j47SearchPanel, explicit validated removals and opt-in single-condition alternative counts from live catalog, no automatic relaxation; delivery requires explicit removal. [Report](v49-gate5b1-search-controls-2026-11-27.md). Gate 5 OPEN; frontend unchanged, next reference UI wiring.
+
 2026-11-27 - Gate 5A.2 compound search scoped backend PASS: bounded OR with per-branch constraints, known lexical/city exclusions, canonical verified/unverified, reference sector aliases, grouped amounts and pricing context. Final isolated BE 85/85 (5 suites); first exclusion failure corrected/retested. [Report](v49-gate5a2-compound-search-2026-11-27.md). Gate 5 OPEN; UI unchanged; incompatible branch quantities and unsupported scopes remain explicit, no silent relaxation.
 
 2026-11-27 - Gate 5A.1 structured search backend contract scoped PASS (opt-in only; UI unchanged): reverified exact V4.9 reference hash, reused catalog, parsed bounded multilingual conditions, fail-closed ambiguous/unknown conditions, final isolated BE 78/78 (5 suites), syntax/diff PASS. [Report](v49-gate5a1-search-contract-2026-11-27.md). Gate 5 OPEN; complete OR/exclusions/remaining reference behavior before UI activation.

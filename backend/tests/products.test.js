@@ -467,3 +467,45 @@ test('grouped numbers, common quantity, and authoritative price context are expl
   const manual=await run('shoes',{quantity:50});expect(manual.body.searchPriceContext).toEqual({quantity:50,basis:'quantity'})
   const ambiguous=await run('بغيت بالجملة');expect(ambiguous.body.searchIntent.issues).toContain('empty_intent');expect(ambiguous.body.total).toBe(0)
 });
+
+test('V4.9 explicit condition removal preserves original query, visibility, other filters and exact totals',async()=>{
+  const fixtures=[{name:'Ceramic cups',city:'Tanger',price:40},{name:'Ceramic cups',city:'Fes',price:20},{name:'Plastic cups',city:'Tanger',price:20},{name:'Ceramic cups',city:'Tanger',price:25}];
+  const ids=[];
+  for(const f of fixtures){const r=await create(published({...f,category:'Kitchen',unit:'piece'}));expect(r.status).toBe(201);ids.push(r.body.product._id)}
+  await Product.updateOne({_id:ids[3]},{$set:{moderationStatus:'hidden'}});
+  const query='ceramic cups in Tanger under 30 MAD';
+  const run=async(extra={})=>request(app).post('/api/ai-search').send({query,intentVersion:'v49-1',...extra});
+  const initial=await run({includeAlternatives:true,limit:1});expect(initial.status).toBe(200);expect(initial.body.total).toBe(0);
+  expect(initial.body.searchIntent.raw).toBe(query);expect(initial.body.searchIntent.removed).toEqual([]);
+  expect(initial.body.searchAlternatives).toEqual([{key:'city',total:1},{key:'maxPrice',total:1}]);
+  const selected=await run({intentRemovals:['maxPrice'],includeAlternatives:true});expect(selected.status).toBe(200);
+  expect(selected.body.products.map(p=>p._id)).toEqual([ids[0]]);expect(selected.body.searchIntent.removed).toEqual(['maxPrice']);
+  expect(selected.body.searchIntent.city).toBe('طنجة');expect(selected.body.searchIntent.maxPrice).toBeNull();
+  expect(selected.body.searchAlternatives).toEqual([]);
+  const manual=await run({intentRemovals:['city'],city:'Tanger'});expect(manual.body.total).toBe(0);
+  const both=await run({intentRemovals:['city','maxPrice']});expect(both.body.products.map(p=>p._id).sort()).toEqual(ids.slice(0,2).sort());
+  const untouched=await run();expect(untouched.body.total).toBe(0);expect(untouched.body.searchAlternatives).toEqual([]);
+});
+test('shipping condition cannot be relaxed without explicit choice; alternative counts do not expose products',async()=>{
+  const r=await create(published({name:'Shoes',price:20,unit:'pair'}));expect(r.status).toBe(201);
+  const query='shoes under 30 MAD with delivery';
+  const run=async(extra={})=>request(app).post('/api/ai-search').send({intentVersion:'v49-1',query,...extra});
+  const a=await run({includeAlternatives:true});expect(a.status).toBe(200);expect(a.body.total).toBe(0);
+  expect(a.body.searchIntent.issues).toEqual(['delivery_unknown']);
+  expect(a.body.searchAlternatives).toEqual([{key:'delivery',total:1}]);
+  expect(a.body.sourcingOffer.canRequestSourcing).toBe(false);
+  const b=await run({intentRemovals:['delivery']});expect(b.status).toBe(200);expect(b.body.searchIntent.issues).toEqual([]);
+  expect(b.body.products.map(p=>p._id)).toEqual([r.body.product._id]);
+});
+test('search removal contract rejects invented keys, duplicate keys, invalid scopes and legacy requests',async()=>{
+  for(const extra of [
+    {intentRemovals:['supplierId']},{intentRemovals:['city']},{intentRemovals:['maxPrice','maxPrice']},
+    {intentRemovals:'maxPrice'},{intentRemovals:[{key:'maxPrice'}]},{includeAlternatives:'true'},
+    {intentVersion:undefined,intentRemovals:['maxPrice']},
+    {query:'shoes or shirts',intentRemovals:['terms']},
+    {query:'shoes without leather',intentRemovals:['terms']}
+  ]){
+    const r=await request(app).post('/api/ai-search').send({intentVersion:'v49-1',query:'shoes under 30 MAD',...extra});expect(r.status).toBe(400)
+  }
+  const r=await request(app).post('/api/ai-search?intentRemovals=maxPrice').send({intentVersion:'v49-1',query:'shoes under 30 MAD'});expect(r.status).toBe(400)
+});

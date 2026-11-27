@@ -140,4 +140,40 @@ function parseIntent(raw) {
 function regexes(values,exact=false) {
   return values.map(value=>new RegExp((exact?'^':'(?<![\\p{L}\\p{N}])')+escapeRegex(value)+(exact?'$':'(?![\\p{L}\\p{N}])'),'iu'))
 }
-module.exports={VERSION,parseIntent,regexes}
+
+// A removal is an explicit user action against the original parsed phrase.
+// Never accept arbitrary predicates or reconstruct the query from translated labels.
+const REMOVABLE = ['categoryPath','terms','excludedTerms','city','excludedCities','quantity','moq','minPrice','maxPrice','budget','verified','delivery','sort']
+const ALTERNATIVES = ['city','quantity','moq','minPrice','maxPrice','budget','verified','delivery']
+function removable(intent) {
+  if(intent.branches || intent.issues.some(x=>x!=='delivery_unknown'))return []
+  return REMOVABLE.filter(k=>Array.isArray(intent[k])?intent[k].length>0: k==='delivery'?intent[k]===true:intent[k]!==null)
+}
+function withRemovals(raw,removed=[]) {
+  const f=parseIntent(raw)
+  if(!Array.isArray(removed)||removed.length>REMOVABLE.length||new Set(removed).size!==removed.length||
+    removed.some(k=>typeof k!=='string'||!REMOVABLE.includes(k)||!removable(f).includes(k)))
+    throw bad('Invalid search condition removal')
+  for(const k of removed){
+    if(k==='terms'){f.terms=[];f.groups=[]}
+    else if(k==='excludedTerms'){f.excludedTerms=[];f.excludedGroups=[]}
+    else if(k==='city'){f.city=null;f.cityAliases=[]}
+    else if(k==='excludedCities'){f.excludedCities=[];f.excludedCityAliases=[]}
+    else if(k==='delivery'){f.delivery=false;f.issues=f.issues.filter(x=>x!=='delivery_unknown')}
+    else {
+      f[k]=null
+      if(k==='minPrice')f.strictMin=false
+      if(k==='maxPrice')f.strictMax=false
+      if(k==='moq')f.moqStrict=false
+    }
+  }
+  // The shared unit belongs to the surviving quantity/MOQ constraints.
+  if(removed.some(k=>k==='quantity'||k==='moq')&&f.quantity===null&&f.moq===null){f.unit=null;f.unitAliases=[]}
+  if(removed.some(k=>['minPrice','maxPrice','budget','sort'].includes(k))&&f.minPrice===null&&f.maxPrice===null&&f.budget===null&&!f.sort)f.currency=null
+  return f
+}
+function alternativeKeys(intent) {
+  return removable(intent).filter(k=>ALTERNATIVES.includes(k))
+}
+
+module.exports={VERSION,parseIntent,regexes,withRemovals,removable,alternativeKeys}
