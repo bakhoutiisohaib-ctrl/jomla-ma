@@ -268,3 +268,21 @@ test('operator benchmark is database-independent synthetic evidence and CLI muta
   expect(() => parseArguments(['--limit', '999999'])).toThrow()
   expect(() => parseArguments(['--product', 'invalid'])).toThrow()
 })
+
+test('reference input quality gate rejects flat/transparent or low contrast photos, accepts both edge directions and retains legacy descriptor contract',async()=>{
+  const flat=await sharp({create:{width:64,height:64,channels:3,background:'#cccccc'}}).png().toBuffer()
+  const transparent=await sharp({create:{width:64,height:64,channels:4,background:{r:30,g:90,b:180,alpha:0}}}).png().toBuffer()
+  const pale=await sampleImage([248,248,248])
+  for(const buffer of [flat,transparent,pale]){
+    await expect(describeImage(buffer,{requireDetail:true})).rejects.toMatchObject({status:422,code:'VISUAL_INSUFFICIENT_DETAIL'})
+    expect((await describeImage(buffer)).vector).toHaveLength(VECTOR_LENGTH)
+  }
+  const stripe=await sharp(Buffer.from(Array.from({length:64*64*3},(_,i)=>Math.floor(i/(64*3))%8<4?30:230)),{raw:{width:64,height:64,channels:3}}).png().toBuffer()
+  for(const buffer of [redImage,blueImage,stripe,await sharp(stripe).rotate(90).png().toBuffer()]){
+    expect(await describeImage(buffer,{requireDetail:true})).toEqual(await describeImage(buffer))
+  }
+  const product=await published({imageUrl:await imageFile(flat)})
+  await indexProduct(product._id)
+  expect((await searchImage(flat)).exactCount).toBe(1)
+  await expect(searchImage(flat,{requireDetail:true})).rejects.toMatchObject({status:422,code:'VISUAL_INSUFFICIENT_DETAIL'})
+})

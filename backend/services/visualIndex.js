@@ -39,7 +39,7 @@ function normalize(values) {
   return magnitude ? values.map(value => value / magnitude) : values.map(() => 0)
 }
 
-async function describeImage(buffer) {
+async function describeImage(buffer, { requireDetail = false } = {}) {
   if (!Buffer.isBuffer(buffer) || buffer.length < 20 || buffer.length > MAX_BYTES) throw imageError('صورة البحث غير صالحة أو تجاوزت 10 ميغابايت')
   let metadata, data
   try {
@@ -51,6 +51,25 @@ async function describeImage(buffer) {
       .resize(SIZE, SIZE, { fit: 'fill', kernel: 'lanczos3' }).toColourspace('srgb').removeAlpha().raw().toBuffer()
     if (data.length !== SIZE * SIZE * 3) throw new Error('Unexpected pixel layout')
   } catch { throw imageError('تعذر فك صورة JPEG/PNG/WebP/GIF آمنة وصالحة') }
+
+  // V4.9 input quality gate: use the already decoded pixels, not a second
+  // descriptor or filename heuristic. Scale to the reference 0..255 units.
+  // This is only a conservative detail check, not object recognition.
+  if (requireDetail) {
+    let sum=0, sq=0, edge=0
+    const n=SIZE*SIZE, grayAt=i=>(data[i*3]+data[i*3+1]+data[i*3+2])/3
+    for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){
+      const i=y*SIZE+x,v=grayAt(i)
+      sum+=v;sq+=v*v
+      if(x>0)edge+=Math.abs(v-grayAt(i-1))
+      if(y>0)edge+=Math.abs(v-grayAt(i-SIZE))
+    }
+    const spread=Math.sqrt(Math.max(0,sq/n-(sum/n)**2))
+    if(spread<7||edge/(2*n)<1.5)throw Object.assign(
+      new Error('الصورة فارغة أو تفاصيلها غير كافية. جرّب صورة واضحة للمنتج.'),
+      {status:422,code:'VISUAL_INSUFFICIENT_DETAIL'}
+    )
+  }
 
   const histogram = new Array(64).fill(0)
   const spatial = new Array(4 * 4 * 3).fill(0)
@@ -177,8 +196,8 @@ function effectivePrice(product, quantity) {
   return tier?.price ?? product.price
 }
 
-async function searchImage(buffer, { filters = {}, pagination = {} } = {}) {
-  const query = await describeImage(buffer)
+async function searchImage(buffer, { filters = {}, pagination = {}, requireDetail = false } = {}) {
+  const query = await describeImage(buffer, { requireDetail })
   const options = parseOptions({ ...filters, ...pagination })
   const filter = await candidateFilter(options)
   const maxCandidates = integerSetting('VISUAL_SEARCH_MAX_CANDIDATES', 5000, 20000)
