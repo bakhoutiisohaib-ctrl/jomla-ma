@@ -1,3 +1,4 @@
+const { effectivePrice } = require('../utils/productPricing')
 const { createHash } = require('crypto')
 const mongoose = require('mongoose')
 const sharp = require('sharp')
@@ -190,11 +191,6 @@ async function candidateFilter(options) {
   return filter
 }
 
-function effectivePrice(product, quantity) {
-  if (!quantity) return product.price
-  const tier = (product.priceTiers || []).find(t => t.minQty <= quantity && (t.maxQty == null || t.maxQty >= quantity))
-  return tier?.price ?? product.price
-}
 
 async function searchImage(buffer, { filters = {}, pagination = {}, requireDetail = false } = {}) {
   const query = await describeImage(buffer, { requireDetail })

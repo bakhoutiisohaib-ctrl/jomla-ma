@@ -92,6 +92,12 @@ router.get('/categories', asyncHandler(async (req, res) => {
   res.json(await catalogCategories(req.query))
 }))
 
+// Comparison is a fresh, public read of the same catalog, not a saved shortlist.
+router.get('/:id/comparable', validateMongoId, asyncHandler(async (req,res)=>{
+  res.set('Cache-Control','no-store')
+  res.json(await require('../services/comparableOffers').comparableOffers(req.params.id,req.query))
+}))
+
 // Editor reads remain on /mine; public details never expose a draft to an
 // owner/admin simply because a session or a known id was supplied.
 router.get('/:id', validateMongoId, asyncHandler(async (req, res) => {

@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 5C.3A comparable offers backend scoped PASS: reverified V4.9 reference, public catalog ownership/visibility, same recognized title family/category/taxonomy/unit/currency, shared quantity-tier selector, honest MOQ/price states, pagination; final isolated BE 99/99 (5 suites). [Report](v49-gate5c3a-comparison-contract-20261128.md). Gate 5 OPEN; next comparison modal/UI integration and integrated acceptance.
+
 2026-11-28 - Gate 5C.2 visual search UI scoped PASS: full FE 479/479 (46 suites), final equivalent lint correction targeted 34/34 (6 suites), strict build PASS, actual Chrome 5/5 + DB/API PASS. Original Codex visual engine, V4.9 upload controls, file/camera input, honest match/coverage labels and manual filter preservation. [Report](v49-gate5c2-visual-ui-20261128.md). Gate 5 OPEN; next 5C.3 comparable offers. Hardware camera not tested.
 
 2026-11-27 UTC - Gate 5C.1 visual input quality scoped backend PASS: existing visual index retained, opt-in v49-1 rejects insufficient detail (422), external discovery disabled for opt-in; 78/78 (5 suites), syntax/diff PASS. [Report](v49-gate5c1-visual-quality-2026-11-27.md). Gate 5 OPEN; next upload/camera and comparable offers integration.

@@ -517,3 +517,75 @@ test('invalid structured quantity returns clarification with no usable price con
   expect(r.body.searchPriceContext).toEqual({quantity:null,basis:'base'});expect(r.body.sourcingOffer.canRequestSourcing).toBe(false);
  }
 });
+
+test('comparable offers use full public catalog, same family category unit currency and taxonomy, with shared quantity price and pagination',async()=>{
+ const ids=[];
+ const common={category:'Kitchen',unit:'piece',taxonomyPath:'home/kitchen',price:40,name:'Ceramic cups'}
+ // Use an actual approved taxonomy path from the directory.
+ common.taxonomyPath='home/decor'
+ for(const f of [
+  {price:40,priceTiers:[{minQty:10,maxQty:49,price:35},{minQty:50,price:20}]},
+  {name:'Plastic cups',price:25},
+  {name:'Ceramic cups',price:1,moq:100},
+  {name:'Ceramic cups',pricingMode:'on_request',price:null},
+  {name:'Ceramic plates',price:1},
+  {name:'Ceramic cups',price:1,unit:'pair'},
+  {name:'Ceramic cups',price:1,currency:'EUR'},
+  {name:'Ceramic cups',price:1,category:'Other'},
+  {name:'Ceramic cups',price:1,taxonomyPath:'textile/kids'},
+  {name:'Ceramic cups',price:1},
+  {name:'Ceramic cups',price:1,availability:'out_of_stock',inStock:false}
+ ]){const r=await create(published({...common,...f}));expect(r.status).toBe(201);ids.push(r.body.product._id)}
+ await Product.updateOne({_id:ids[9]},{$set:{moderationStatus:'hidden'}})
+ const run=async(quantity,page=1,limit=2)=>request(app).get('/api/products/'+ids[0]+'/comparable').query({quantity,page,limit})
+ const first=await run(50),second=await run(50,2)
+ expect(first.status).toBe(200);expect(first.headers['cache-control']).toBe('no-store')
+ expect(first.body).toMatchObject({version:'v49-1',anchorId:ids[0],quantity:50,currency:'MAD',unit:'piece',total:4,identityVerified:false,shippingIncluded:false,familyKnown:true})
+ expect(first.body.offers.map(x=>x._id)).toEqual([ids[0],ids[1]])
+ expect(first.body.offers.map(x=>x.quote)).toEqual([{kind:'fixed',unitPrice:20,total:1000},{kind:'fixed',unitPrice:25,total:1250}])
+ expect(second.body.offers.map(x=>x._id)).toEqual([ids[3],ids[2]])
+ expect(second.body.offers.map(x=>x.quote)).toEqual([{kind:'request'},{kind:'below_moq'}])
+ const smaller=await run(20);expect(smaller.body.offers.map(x=>x._id)).toEqual([ids[1],ids[0]])
+ expect(smaller.body.offers[1].quote).toEqual({kind:'fixed',unitPrice:35,total:700})
+ expect((await run(50,3)).body.offers).toEqual([])
+})
+test('comparison revalidates anchor and candidate visibility, never mixes unknown families or returns draft data',async()=>{
+ const a=await create(published({name:'Synthetic ZX-100',category:'Misc',unit:'piece'}))
+ const b=await create(published({name:'Synthetic ZX-200',category:'Misc',unit:'piece'}))
+ expect(a.status).toBe(201);expect(b.status).toBe(201)
+ const id=a.body.product._id,run=()=>request(app).get('/api/products/'+id+'/comparable')
+ const r=await run();expect(r.status).toBe(200);expect(r.body.familyKnown).toBe(false);expect(r.body.offers.map(x=>x._id)).toEqual([id])
+ await Product.updateOne({_id:id},{$set:{isDraft:true}})
+ expect((await run()).status).toBe(404)
+ await Product.updateOne({_id:id},{$set:{isDraft:false}})
+ await Store.updateOne({_id:store._id},{$set:{isActive:false}})
+ try{expect((await run()).status).toBe(404)}finally{await Store.updateOne({_id:store._id},{$set:{isActive:true}})}
+})
+test('comparison retains explicit unknown and unsafe estimates, validates quantity and filter contract',async()=>{
+ const a=await create(published({name:'Shoes',category:'Shoes',unit:'pair',price:50}))
+ const b=await create(published({name:'Shoes',category:'Shoes',unit:'pair',price:1}))
+ expect(a.status).toBe(201);expect(b.status).toBe(201)
+ await Product.updateOne({_id:b.body.product._id},{$set:{priceTiers:[{minQty:10,maxQty:50,price:1},{minQty:20,price:2}]}})
+ const endpoint='/api/products/'+a.body.product._id+'/comparable'
+ const r=await request(app).get(endpoint).query({quantity:30});expect(r.status).toBe(200)
+ expect(r.body.offers.map(x=>x.quote)).toEqual([{kind:'fixed',unitPrice:50,total:1500},{kind:'unknown'}])
+ const overflow=await request(app).get(endpoint).query({quantity:Number.MAX_SAFE_INTEGER});expect(overflow.status).toBe(200);expect(overflow.body.offers[0].quote).toEqual({kind:'fixed',unitPrice:50,total:null})
+ for(const q of [{quantity:0},{quantity:'1.5'},{quantity:-1},{limit:51},{supplierId:String(other._id)}])expect((await request(app).get(endpoint).query(q)).status).toBe(400)
+})
+
+test('comparison includes another owner but excludes mismatched store ownership, draft and suspended store',async()=>{
+ const common={name:'Ceramic cups',category:'Kitchen',unit:'piece',price:20}
+ const a=await create(published(common))
+ const b=await create(published({...common,storeId:String(otherStore._id),imageUrl:otherImage,price:15}),otherToken)
+ const c=await create(published({...common,price:1}))
+ const d=await create(published({...common,price:2}))
+ for(const r of [a,b,c,d])expect(r.status).toBe(201)
+ await Product.updateOne({_id:c.body.product._id},{$set:{storeId:otherStore._id}})
+ await Product.updateOne({_id:d.body.product._id},{$set:{isDraft:true}})
+ const run=()=>request(app).get('/api/products/'+a.body.product._id+'/comparable').query({quantity:20})
+ const r=await run();expect(r.status).toBe(200)
+ expect(r.body.offers.map(p=>p._id)).toEqual([b.body.product._id,a.body.product._id])
+ expect(r.body.offers.map(p=>p.supplierId._id)).toEqual([String(other._id),String(owner._id)])
+ await Store.updateOne({_id:otherStore._id},{$set:{adminSuspended:true}})
+ try{expect((await run()).body.offers.map(p=>p._id)).toEqual([a.body.product._id])}finally{await Store.updateOne({_id:otherStore._id},{$set:{adminSuspended:false}})}
+})

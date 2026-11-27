@@ -176,4 +176,11 @@ function alternativeKeys(intent) {
   return removable(intent).filter(k=>ALTERNATIVES.includes(k))
 }
 
-module.exports={VERSION,parseIntent,regexes,withRemovals,removable,alternativeKeys}
+// Use the existing lexical family vocabulary, only on the product title.
+// Material alone (ceramic) is not a product family.
+function comparisonFamilies(name){
+  if(typeof name!=='string')return []
+  const title=norm(name)
+  return families.filter(([label,aliases])=>label!=='خزف'&&boundary(aliases).test(title)).map(([label])=>label)
+}
+module.exports={VERSION,parseIntent,regexes,withRemovals,removable,alternativeKeys,comparisonFamilies}
