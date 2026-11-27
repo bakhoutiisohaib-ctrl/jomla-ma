@@ -1,0 +1,25 @@
+[
+  {
+    "journey": "local_preview_and_real_upload",
+    "rightsRequired": true
+  },
+  {
+    "journey": "private_draft",
+    "anonymousMedia": 401,
+    "publicDetail": 404
+  },
+  {
+    "journey": "explicit_publish_same_draft",
+    "anonymousMedia": 200,
+    "publicDetail": 200,
+    "quantity": 12,
+    "unitPrice": 45,
+    "tierPrice": 40
+  },
+  {
+    "journey": "explicit_unpublish_same_product",
+    "anonymousMedia": 401,
+    "publicDetail": 404,
+    "privateDraftListed": true
+  }
+]

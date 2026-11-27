@@ -1,0 +1,12 @@
+{
+  "membershipRevoked": true,
+  "permissions": [
+    "manage_store"
+  ],
+  "employeeDetached": true,
+  "pendingStore": true,
+  "storeInactive": true,
+  "stores": 2,
+  "products": 2,
+  "requests": 0
+}

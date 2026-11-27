@@ -1,0 +1,17 @@
+[
+  {
+    "journey": "local_preview_and_real_upload",
+    "rightsRequired": true
+  },
+  {
+    "journey": "private_draft",
+    "anonymousMedia": 401
+  },
+  {
+    "journey": "explicit_publish_same_draft",
+    "anonymousMedia": 200,
+    "quantity": 12,
+    "unitPrice": 45,
+    "tierPrice": 40
+  }
+]

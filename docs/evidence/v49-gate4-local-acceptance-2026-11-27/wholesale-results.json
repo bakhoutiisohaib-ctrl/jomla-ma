@@ -1,0 +1,43 @@
+[
+  {
+    "journey": "private_draft",
+    "id": "c13319e26c605fa05df18782",
+    "status": "draft",
+    "revision": 0,
+    "publicStatus": 404,
+    "publicListed": false,
+    "price": 21,
+    "moq": 20,
+    "tierPrice": 18
+  },
+  {
+    "journey": "explicit_publish",
+    "id": "c13319e26c605fa05df18782",
+    "status": "published",
+    "revision": 1,
+    "publicStatus": 200,
+    "publicListed": true,
+    "price": 21,
+    "moq": 20,
+    "tierPrice": 18
+  },
+  {
+    "journey": "anonymous_detail_and_tier_filter",
+    "quantity": 50,
+    "unitPrice": 18
+  },
+  {
+    "journey": "pause_same_opportunity",
+    "id": "c13319e26c605fa05df18782",
+    "status": "paused",
+    "revision": 2,
+    "publicStatus": 404,
+    "publicListed": false,
+    "price": 21,
+    "moq": 20,
+    "tierPrice": 18
+  },
+  {
+    "journey": "public_access_revoked"
+  }
+]

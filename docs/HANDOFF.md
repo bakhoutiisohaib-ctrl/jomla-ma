@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 - Gate 4 local technical acceptance PASS/CLOSED: final runtime a0d4a43; exact-source full FE 468/468 (44 suites), relevant isolated BE 54/54 (4 suites), CI build PASS, 55/55 browser records across seven isolated labs + direct DB proof. Six final reruns exit 0; negotiation/reviews exact-source 27 records. [Acceptance report](v49-gate4-local-acceptance-2026-11-27.md). Documentation-only close, declared obligations and production readiness remain OPEN.
+
 2026-11-27 - Gate 4E.3 transaction-linked reviews scoped PASS: final isolated BE 54/54 (4 suites), full FE 468/468 (44 suites), build PASS, 27/27 actual Chrome + DB records (six new review journey records). Bilateral attestation required; legacy ratings excluded, no independent purchase claim; owner reply and audited removal/repost safeguards. [Report](v49-gate4e3-reviews-2026-11-27.md). Gate 4 OPEN pending integrated acceptance. Limits documented.
 
 2026-11-27 - Gate 4E.2 optional supplier verification scoped PASS: isolated BE 46/46, full FE 466/466 (44 suites), final targeted recheck 25/25 after cleanup lint correction, build PASS, 7/7 actual browser + DB. Pending dossier revision fence; rejection/resubmission/approval, public store/product always available, badge only after approval. [Report](v49-gate4e2-verification-2026-11-27.md). Gate 4 OPEN; next 4E.3 review eligibility. Limits documented.

@@ -1,0 +1,64 @@
+{
+  "runtime": "a0d4a4384b6d9ff38e23f8cdf5b9d283d35296fb",
+  "scope": "local technical Gate 4",
+  "status": "PASS_CLOSED",
+  "frontend": {
+    "passed": 468,
+    "total": 468,
+    "suites": 44,
+    "seconds": 88.133
+  },
+  "backend": {
+    "passed": 54,
+    "total": 54,
+    "suites": 4,
+    "seconds": 26.715,
+    "scope": "relevant isolated regression, not full inventory"
+  },
+  "build": "PASS",
+  "browser": {
+    "labs": 7,
+    "passed": 55,
+    "total": 55,
+    "databaseChecks": "PASS",
+    "records": [
+      {
+        "slice": "4a-office",
+        "file": "office-results.json",
+        "records": 5
+      },
+      {
+        "slice": "4b-company",
+        "file": "company-results.json",
+        "records": 4
+      },
+      {
+        "slice": "4c1-photo",
+        "file": "photo-results.json",
+        "records": 3
+      },
+      {
+        "slice": "4c2-drafts",
+        "file": "draft-results.json",
+        "records": 4
+      },
+      {
+        "slice": "4e1-wholesale",
+        "file": "wholesale-results.json",
+        "records": 5
+      },
+      {
+        "slice": "4e2-verification",
+        "file": "verification-results.json",
+        "records": 7
+      },
+      {
+        "slice": "4d-and-4e3",
+        "file": "../v49-gate4e3-reviews-2026-11-27/dock-results.json",
+        "records": 27
+      }
+    ]
+  },
+  "productionReady": false,
+  "independentPaymentOrDeliveryProof": false
+}
