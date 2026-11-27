@@ -1,0 +1,142 @@
+[
+  {
+    "lang": "ar",
+    "width": 320,
+    "geometry": {
+      "vw": 320,
+      "scroll": 320,
+      "bottom": 844,
+      "height": 63.375,
+      "viewport": 844,
+      "position": "fixed",
+      "mobileNav": "none",
+      "actions": [
+        {
+          "width": 122.9375,
+          "height": 46.375,
+          "hit": true
+        },
+        {
+          "width": 102.453125,
+          "height": 46.375,
+          "hit": true
+        },
+        {
+          "width": 66.609375,
+          "height": 46.375,
+          "hit": true
+        }
+      ]
+    },
+    "footerReachable": true
+  },
+  {
+    "lang": "ar",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "bottom": 844,
+      "height": 63.375,
+      "viewport": 844,
+      "position": "fixed",
+      "mobileNav": "none",
+      "actions": [
+        {
+          "width": 152.40625,
+          "height": 46.375,
+          "hit": true
+        },
+        {
+          "width": 127.03125,
+          "height": 46.375,
+          "hit": true
+        },
+        {
+          "width": 82.5625,
+          "height": 46.375,
+          "hit": true
+        }
+      ]
+    },
+    "footerReachable": true
+  },
+  {
+    "lang": "fr",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "bottom": 844,
+      "height": 63.375,
+      "viewport": 844,
+      "position": "fixed",
+      "mobileNav": "none",
+      "actions": [
+        {
+          "width": 152.40625,
+          "height": 46.375,
+          "hit": true
+        },
+        {
+          "width": 127.03125,
+          "height": 46.375,
+          "hit": true
+        },
+        {
+          "width": 82.5625,
+          "height": 46.375,
+          "hit": true
+        }
+      ]
+    },
+    "footerReachable": true
+  },
+  {
+    "lang": "en",
+    "width": 1280,
+    "geometry": {
+      "vw": 1265,
+      "scroll": 1265,
+      "bottom": 844,
+      "height": 61,
+      "viewport": 844,
+      "position": "fixed",
+      "mobileNav": "none",
+      "actions": [
+        {
+          "width": 337.671875,
+          "height": 44,
+          "hit": true
+        },
+        {
+          "width": 281.40625,
+          "height": 44,
+          "hit": true
+        },
+        {
+          "width": 182.90625,
+          "height": 44,
+          "hit": true
+        }
+      ]
+    },
+    "footerReachable": true
+  },
+  {
+    "journey": "short_viewport_in_flow",
+    "width": 390,
+    "height": 400
+  },
+  {
+    "journey": "input_focus_dock_in_flow"
+  },
+  {
+    "journey": "cart_store_back"
+  },
+  {
+    "journey": "dock_real_rfq",
+    "quantity": 50,
+    "modalAboveDock": true
+  }
+]

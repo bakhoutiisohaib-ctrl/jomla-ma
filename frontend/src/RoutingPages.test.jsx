@@ -194,3 +194,28 @@ test('guest chosen quantity is restored after login and sent once without turnin
   expect(sent).toHaveLength(1);
   expect(JSON.parse(sent[0][1].body)).toMatchObject({ productId: pid, quantity: 50, targetPrice: null });
 });
+
+test('product actions reuse one RFQ button, the real cart and public store destination', async () => {
+  openProduct(); await screen.findByRole('heading', { name: product.name, level: 1 });
+  const region = screen.getByRole('region', { name: 'إجراءات المنتج' });
+  expect(region.querySelectorAll('button.primary')).toHaveLength(1);
+  expect(region.querySelector('.atlas-detail-store-action')).toHaveAttribute('href', storePath(sid));
+  const add = region.querySelector('.atlas-add-cart');
+  expect(add).toBeEnabled();
+  fireEvent.click(add);
+  expect(add).toBeDisabled();
+  expect(region.querySelectorAll('button.primary')).toHaveLength(1);
+  expect(fetch.mock.calls.filter(([url, options]) => String(url).endsWith('/rfq') && options.method === 'POST')).toHaveLength(0);
+  fireEvent.click(region.querySelector('.atlas-detail-store-action'));
+  await screen.findByRole('heading', { name: store.name, level: 1 });
+  expect(screen.queryByRole('region', { name: 'إجراءات المنتج' })).not.toBeInTheDocument();
+});
+
+test('supplier action region has no buyer cart and cannot launch RFQ', async () => {
+  localStorage.setItem('supplierToken', jwt); profile = { ...buyer, role: 'supplier' };
+  openProduct(); await screen.findByText('إرسال طلب عرض السعر متاح لحساب المشتري.');
+  const region = screen.getByRole('region', { name: 'إجراءات المنتج' });
+  expect(region.querySelector('button.primary')).toBeDisabled();
+  expect(region.querySelector('.atlas-add-cart')).toBeNull();
+  expect(region.querySelector('.atlas-detail-store-action')).toHaveAttribute('href', storePath(sid));
+});
