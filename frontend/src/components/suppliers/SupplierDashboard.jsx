@@ -69,6 +69,14 @@ export default function SupplierDashboard({
   });
   const can = useCallback(permission => ['supplier', 'admin'].includes(profile.role) || profile.permissions?.includes(permission), [profile.role, profile.permissions]);
   const conversationRevision = useRef(0);
+  const conversation = useRef({id:null,read:null,write:null,uncertain:false});
+  const [threadLoading,setThreadLoading] = useState(false), [threadError,setThreadError] = useState('');
+  const [sendBusy,setSendBusy] = useState(false);
+  const labels = useRef(l); labels.current=l;
+  useEffect(()=>{
+    const c=conversation.current;
+    return ()=>{c.id=null;c.read?.abort();c.write?.abort();conversationRevision.current++;};
+  },[liveSession]);
   const rejection = useSupplierRejection({ rfqId: selected?._id, progress: thread?.rejection, status: selected?.status,
     onUpdated: result => {
       conversationRevision.current += 1;
@@ -76,19 +84,26 @@ export default function SupplierDashboard({
       setThread(current => current ? { ...current, rejection: result.rejection } : current);
       refresh();
     } });
-  const refreshConversation = useCallback(async id => {
-    const revision = ++conversationRevision.current;
-    const token = getSessionToken();
-    const result = await apiRequest('/rfq/' + id + '/thread', { token }).catch(error => {
-      if (revision === conversationRevision.current && token === getSessionToken()) throw error;
-      return null;
-    });
-    if (!result || revision !== conversationRevision.current || token !== getSessionToken()) return;
-    setThread(result);
-    if (result.rfq) setSelected(current => current?._id === id ? {
-      ...current, status: result.rfq.status, decision: result.rfq.decision, currentOfferId: result.rfq.currentOfferId,
-      offer: result.rfq.offer, revision: result.rfq.revision
-    } : current);
+  const refreshConversation = useCallback(async (id,explicit=false) => {
+    const c=conversation.current;
+    if (c.id!==id || c.write || (c.uncertain && !explicit)) return;
+    const revision = ++conversationRevision.current, token = getSessionToken();
+    c.read?.abort(); const controller=new AbortController(); c.read=controller;
+    const valid=()=>c.id===id && revision===conversationRevision.current && !controller.signal.aborted && token===getSessionToken();
+    setThreadLoading(true);
+    try {
+      const result=await apiRequest('/rfq/' + id + '/thread', {token,signal:controller.signal,cache:'no-store'});
+      if(!valid())return;
+      if(!result || (result.rfq && result.rfq._id!==id) || (result.thread?.rfqId && String(result.thread.rfqId)!==id))
+        throw new Error(labels.current('بيانات المحادثة غير مطابقة للطلب.','Conversation non conforme à la demande.','Conversation does not match this request.'));
+      if(!result.thread) throw new Error(labels.current('المحادثة غير متاحة حالياً.','Conversation indisponible.','Conversation unavailable.'));
+      setThread(result);setThreadError('');c.uncertain=false;
+      if(result.rfq) setSelected(current=>current?._id===id?{
+        ...current,status:result.rfq.status,decision:result.rfq.decision,currentOfferId:result.rfq.currentOfferId,
+        offer:result.rfq.offer,revision:result.rfq.revision
+      }:current);
+    }catch(error){if(valid())setThreadError(error.message);}
+    finally{if(c.read===controller)c.read=null;if(valid())setThreadLoading(false);}
   }, []);
   useEffect(() => {
     const id = selected?._id;
@@ -215,38 +230,39 @@ export default function SupplierDashboard({
     }
   }
   async function openThread(rfq) {
-    setSelected(rfq);
-    setThread(null);
-    setText('');
-    try {
-      await refreshConversation(rfq._id);
-    } catch (e) {
-      setError(e.message);
-    }
+    const c=conversation.current;
+    if(c.write)return;
+    c.read?.abort();c.id=rfq._id;c.uncertain=false;
+    setSelected(rfq);setThread(null);setText('');setThreadError('');
+    await refreshConversation(rfq._id);
   }
   async function openSourcing(id) {
     const context = sourcingContext.current, revision = ++context.generation, token = getSessionToken();
     context.controller?.abort(); context.controller = new AbortController();
     const valid = () => context.active && revision === context.generation && token === getSessionToken();
     try { const data = await apiRequest('/sourcing/'+id, { token, signal: context.controller.signal, cache: 'no-store' });
-      if (valid()) { setSourcingSession(token); setQuoteTarget({ ...data, _id: data._id || id }); setTab('sourcing'); setError(''); setMessage(''); }
+      if (valid()) { if(data?._id && data._id!==id)throw new Error(l('بيانات الطلب غير مطابقة.','Demande non conforme.','Request mismatch.')); setSourcingSession(token); setQuoteTarget({ ...data, _id: data._id || id }); setTab('sourcing'); setError(''); setMessage(''); }
     } catch(e) { if (valid() && e.name !== 'AbortError') setError(e.message); }
   }
   async function sendMessage(e) {
     e.preventDefault();
-    const id = selected._id;
-    const revision = conversationRevision.current;
-    await action(async () => {
-      await apiRequest('/rfq/' + id + '/messages', {
-        method: 'POST',
-        body: {
-          content: text
-        }
-      });
-      if (revision === conversationRevision.current) setText('');
-      const result = await apiRequest('/rfq/' + id + '/thread');
-      if (revision === conversationRevision.current) setThread(result);
-    });
+    const c=conversation.current, id=selected?._id, token=getSessionToken();
+    if(!id || c.id!==id || !token || c.write || c.uncertain || busy || threadLoading || threadError || !thread?.thread ||
+       thread.thread.status==='closed' || rejection.blocked || offerCloseBlocked || thread.offerSubmission ||
+       !['pending','responded'].includes(selected.status) || !text.trim())return;
+    const controller=new AbortController();c.write=controller;
+    const valid=()=>c.id===id && !controller.signal.aborted && token===getSessionToken();
+    setSendBusy(true);setError('');let acknowledged=false;
+    try{
+      const result=await apiRequest('/rfq/'+id+'/messages',{method:'POST',body:{content:text},token,signal:controller.signal});
+      if(!valid())return;
+      if(!result?.thread || String(result.thread.rfqId)!==id)throw new Error(l('لم يتأكد إرسال الرسالة. تحقق من المحادثة قبل إعادة الإرسال.','Envoi non confirmé. Vérifiez la conversation avant de renvoyer.','Message unconfirmed. Check the conversation before resending.'));
+      setText('');acknowledged=true;
+    }catch(error){if(valid()){c.uncertain=true;setThreadError(error.message);}}
+    finally{
+      if(c.write===controller)c.write=null;
+      if(valid()){setSendBusy(false);if(acknowledged)await refreshConversation(id);}
+    }
   }
   const unread = loadedMetrics.notifications && unreadTotal!=null ? unreadTotal : '—';
   const metric = (key,value) => loadedMetrics[key] && value!=null ? value : '—';
@@ -299,7 +315,7 @@ export default function SupplierDashboard({
                     method: 'DELETE'
                   }));
                 }}>{l('حذف', 'Supprimer')}</button></div></div></article>)}</div>{!listReady && !draftLoading && <p role="status">{l("قائمة المنتجات غير مؤكدة. حدّث مساحة العمل قبل التعديل.", "Liste des produits non confirmée. Actualisez avant de modifier.", "Product list unconfirmed. Refresh before editing.")}</p>}{listReady && !listProducts.length && <p className="empty">{tab==='drafts'?l('لا توجد مسودات محفوظة.','Aucun brouillon enregistré.'):l('لا توجد منتجات بعد. أنشئ متجرك ثم أضف المنتج.', 'Aucun produit. Créez une boutique puis ajoutez votre produit.')}</p>}<div className="pager"><button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>{l('السابق', 'Précédent')}</button><span>{page}/{Math.max(1, listPages)}</span><button disabled={page >= listPages} onClick={() => setPage(p => p + 1)}>{l('التالي', 'Suivant')}</button></div></section>}
-    {tab === 'rfq' && can('manage_rfq') && <section className="panel"><div className="actions"><h2>{l('طلبات الأسعار الواردة', 'Demandes de devis reçues')}</h2><button onClick={refresh}>{l('تحديث', 'Actualiser')}</button></div>{rfqs.map(r => <article className="panel" key={r._id}><h3>{agreedProduct(r)?.name}</h3><p>{r.buyerName} · {r.decision?.agreement?.quantity ?? r.quantity} {agreedProduct(r)?.unit}</p><span className="badge">{statusLabel(r.status, lang)}</span>{r.offer && <p>{formatMoney(r.decision?.agreement?.unitPrice ?? r.offer.unitPrice, r.decision?.agreement?.currency || r.currency || 'MAD', lang)} × {r.decision?.agreement?.quantity ?? r.quantity}</p>}<button onClick={() => openThread(r)}>{l('تفاصيل ومحادثة', 'Détails et conversation')}</button></article>)}{!rfqs.length && <p className="empty">{l('لا توجد طلبات', 'Aucune demande')}</p>}</section>}
+    {tab === 'rfq' && can('manage_rfq') && <section className="panel"><div className="actions"><h2>{l('طلبات الأسعار الواردة', 'Demandes de devis reçues')}</h2><button onClick={refresh}>{l('تحديث', 'Actualiser')}</button></div>{rfqs.map(r => <article className="panel" key={r._id}><h3>{agreedProduct(r)?.name}</h3><p>{r.buyerName} · {r.decision?.agreement?.quantity ?? r.quantity} {agreedProduct(r)?.unit}</p><span className="badge">{statusLabel(r.status, lang)}</span>{r.offer && <p>{formatMoney(r.decision?.agreement?.unitPrice ?? r.offer.unitPrice, r.decision?.agreement?.currency || r.currency || 'MAD', lang)} × {r.decision?.agreement?.quantity ?? r.quantity}</p>}<button disabled={!loadedMetrics.rfq} onClick={() => openThread(r)}>{l('تفاصيل ومحادثة', 'Détails et conversation')}</button></article>)}{!loadedMetrics.rfq && <p role="status">{l('قائمة الطلبات غير مؤكدة. حدّث مساحة العمل.','Demandes non confirmées. Actualisez.','Request list unconfirmed. Refresh.')}</p>}{loadedMetrics.rfq && !rfqs.length && <p className="empty">{l('لا توجد طلبات', 'Aucune demande')}</p>}</section>}
     {tab === 'sourcing' && can('manage_rfq') && <section className="panel"><h2>{l('طلبات توريد مفتوحة', 'Demandes de sourcing ouvertes')}</h2>{sourcing.map(s => <article className="panel" key={s._id}><h3>{s.productName}</h3><p>{s.quantity} {s.unit} · {s.buyerCity}</p><p>{s.notes}</p><p>{l('عدد العروض', 'Nombre d’offres')}: {s.quotesCount}</p><button onClick={() => openSourcing(s._id)}>{s.offerRecovery ? l('استكمال العرض المحفوظ', 'Reprendre l’offre enregistrée') : l('تقديم عرض محفوظ', 'Soumettre une offre')}</button></article>)}</section>}
     {tab === 'verification' && <form className="panel" onSubmit={e => {
         e.preventDefault();
@@ -337,8 +353,8 @@ export default function SupplierDashboard({
             method: 'PUT'
           }))}>{l('قرأت', 'Marquer comme lu')}</button>}</article>)}</section>}
     </main></div>
-    {(selected || quoteTarget) && <AtlasDialog title={selected ? agreedProduct(selected)?.name : quoteTarget.productName} label={l('تفاصيل التفاوض', 'Détails de négociation')} busy={busy || offerCloseBlocked || rejection.loading || sourcingCloseBlocked} onClose={() => {
-              conversationRevision.current += 1;
+    {(selected || quoteTarget) && <AtlasDialog title={selected ? agreedProduct(selected)?.name : quoteTarget.productName} label={l('تفاصيل التفاوض', 'Détails de négociation')} busy={busy || sendBusy || offerCloseBlocked || rejection.loading || sourcingCloseBlocked} onClose={() => {
+              conversation.current.id=null;conversation.current.read?.abort();conversation.current.write?.abort();conversationRevision.current += 1;
               setSelected(null);
               setQuoteTarget(null);
             }}><Notice error>{error}</Notice>
@@ -347,11 +363,11 @@ export default function SupplierDashboard({
           : rejection.phase === 'pending' ? l('نية الرفض محفوظة وقيد الاستكمال؛ الرفض ليس نهائياً بعد.', 'Refus enregistré, finalisation en cours ; il n’est pas encore définitif.')
           : l('نتيجة الرفض غير محسومة. استكمل الطلب نفسه للتحقق.', 'Résultat du refus incertain. Reprenez la même demande pour vérifier.')}</p>
         {rejection.error && <p role="alert">{rejection.error}</p>}
-        {rejection.phase !== 'completed' && <button type="button" disabled={rejection.loading || rejection.waiting} onClick={rejection.submit}>{l('استكمال رفض الطلب', 'Reprendre le refus')}</button>}
+        {rejection.phase !== 'completed' && <button type="button" disabled={rejection.loading || rejection.waiting || threadLoading || Boolean(threadError)} onClick={rejection.submit}>{l('استكمال رفض الطلب', 'Reprendre le refus')}</button>}
       </section>}
-      {selected && thread && <div className="trade-negotiation-grid"><aside className="trade-pane"><CommercialAgreement rfq={selected} /><OfferHistory rfq={selected} offers={thread.offers || []}/></aside><section className="trade-pane"><NegotiationMessages messages={thread.thread?.messages || []} offers={thread.offers || []} role="supplier"/>{['pending', 'responded'].includes(selected.status) && <form className="trade-compose" onSubmit={sendMessage}><Field label={l('رسالتك', 'Votre message')} value={text} required maxLength={4000} onChange={e => setText(e.target.value)} /><button disabled={busy || !text.trim()}>{l('إرسال', 'Envoyer')}</button></form>}</section></div>}
-      {selected && !thread && <p role="status">{l('تحميل تفاصيل الطلب…','Chargement de la demande…')}</p>}
-      {selected && thread && (['pending', 'responded', 'offering'].includes(selected.status) || thread.offerSubmission) && <SupplierOfferForm rfq={selected} progress={thread.offerSubmission} onBlockClose={setOfferCloseBlocked} disabled={busy || rejection.blocked} onReject={rejection.submit} onUpdated={() => { refresh(); refreshConversation(selected._id).catch(e => setError(e.message)); }}/>}
+      {selected && thread && <div className="trade-negotiation-grid"><aside className="trade-pane"><CommercialAgreement rfq={selected} /><OfferHistory rfq={selected} offers={thread.offers || []}/></aside><section className="trade-pane"><NegotiationMessages messages={thread.thread?.messages || []} offers={thread.offers || []} role="supplier"/>{['pending', 'responded'].includes(selected.status) && <form className="trade-compose" onSubmit={sendMessage}><Field label={l('رسالتك', 'Votre message')} value={text} disabled={sendBusy} required maxLength={4000} onChange={e => setText(e.target.value)} /><button disabled={busy || sendBusy || threadLoading || Boolean(threadError) || rejection.blocked || offerCloseBlocked || Boolean(thread.offerSubmission) || thread.thread?.status==='closed' || !text.trim()}>{l('إرسال', 'Envoyer')}</button></form>}</section></div>}
+      {selected && threadError && <section><Notice error>{threadError}</Notice><button type="button" disabled={threadLoading || sendBusy} onClick={()=>refreshConversation(selected._id,true)}>{l('تحديث المحادثة','Actualiser la conversation','Refresh conversation')}</button></section>}{selected && !thread && !threadError && <p role="status">{l('تحميل تفاصيل الطلب…','Chargement de la demande…')}</p>}
+      {selected && thread && (['pending', 'responded', 'offering'].includes(selected.status) || thread.offerSubmission) && <SupplierOfferForm rfq={selected} progress={thread.offerSubmission} onBlockClose={setOfferCloseBlocked} disabled={busy || sendBusy || threadLoading || Boolean(threadError) || rejection.blocked} onReject={rejection.submit} onUpdated={() => { refresh(); refreshConversation(selected._id).catch(e => setError(e.message)); }}/>}
       {quoteTarget && <section><p>{statusLabel(quoteTarget.status,lang)}</p>{quoteTarget.quotes?.map(q=><section key={q._id}><p>{statusLabel(q.status,lang)}</p><SourcingQuoteTerms quote={q} sourcing={quoteTarget}/></section>)}</section>}
       {quoteTarget && <SourcingOfferForm sourcing={quoteTarget} supplier={profile} sessionToken={sourcingSession} onBlockClose={setSourcingCloseBlocked} onUpdated={result => {
         refresh();

@@ -213,3 +213,31 @@ test('a failed second private draft page is not an empty catalog and retry confi
  expect(screen.getByRole('heading',{name:'First private draft'})).toBeInTheDocument();
  expect(apiRequest.mock.calls.filter(([p])=>p.includes('limit=100')&&p.includes('/products/mine')).every(([,o])=>o.token==='s2-dashboard-synthetic-session')).toBe(true);
 });
+
+test('mismatched supplier thread cannot expose foreign messages or submit an offer',async()=>{
+ const rfq={_id:'rfq-local',status:'pending',quantity:20,currency:'MAD',productId:{name:'Local product',unit:'piece'}};
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(p,o)=>p==='/rfq/supplier'?{data:[rfq]}:p.endsWith('/thread')?{rfq:{...rfq,_id:'other'},thread:{messages:[{content:'Foreign message'}]},offers:[]}:base(p,o));
+ show();fireEvent.click(await screen.findByRole('button',{name:'طلبات الأسعار',exact:true}));fireEvent.click(await screen.findByRole('button',{name:'تفاصيل ومحادثة'}));
+ expect(await screen.findByText('بيانات المحادثة غير مطابقة للطلب.')).toBeInTheDocument();
+ expect(screen.queryByText('Foreign message')).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'إرسال العرض'})).not.toBeInTheDocument();
+});
+test('supplier message submission is single flight and uncertain response blocks further sends until explicit refresh',async()=>{
+ const rfq={_id:'rfq-message',status:'pending',quantity:20,currency:'MAD',productId:{name:'Message product',unit:'piece'}};
+ const base=apiRequest.getMockImplementation();let finish;
+ apiRequest.mockImplementation((p,o)=>p==='/rfq/supplier'?Promise.resolve({data:[rfq]}):p.endsWith('/thread')?Promise.resolve({rfq,thread:{rfqId:rfq._id,status:'open',messages:[]},offers:[]}):p.endsWith('/messages')?new Promise(resolve=>{finish=resolve;}):base(p,o));
+ show();fireEvent.click(await screen.findByRole('button',{name:'طلبات الأسعار',exact:true}));fireEvent.click(await screen.findByRole('button',{name:'تفاصيل ومحادثة'}));
+ const input=await screen.findByLabelText('رسالتك');fireEvent.change(input,{target:{value:'Synthetic supplier message'}});
+ fireEvent.submit(input.closest('form'));fireEvent.submit(input.closest('form'));
+ expect(apiRequest.mock.calls.filter(([p])=>p.endsWith('/messages'))).toHaveLength(1);
+ await act(async()=>finish({}));
+ expect(await screen.findByText(/لم يتأكد إرسال الرسالة/)).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'إرسال العرض'})).toBeDisabled();
+ expect(input).toHaveValue('Synthetic supplier message');
+ fireEvent.submit(input.closest('form'));
+ expect(apiRequest.mock.calls.filter(([p])=>p.endsWith('/messages'))).toHaveLength(1);
+ fireEvent.click(screen.getByRole('button',{name:'تحديث المحادثة'}));
+ await act(async()=>{});
+ expect(screen.getByRole('button',{name:'إرسال العرض'})).toBeEnabled();
+});
