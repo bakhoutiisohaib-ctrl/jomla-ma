@@ -1,0 +1,321 @@
+{
+    "runtimeBase":  "035e101c2d5058a9919ba0afc8815c78ff0a40fa",
+    "initial":  {
+                    "passedTests":  709,
+                    "failedTests":  11,
+                    "passedSuites":  38,
+                    "suites":  42,
+                    "failedSuites":  4,
+                    "tests":  720,
+                    "pendingTests":  0
+                },
+    "recheck":  {
+                    "passedTests":  128,
+                    "tests":  128,
+                    "passedSuites":  4,
+                    "suites":  4
+                },
+    "final":  {
+                  "failedTests":  0,
+                  "pendingTests":  0,
+                  "oneCleanRun":  false,
+                  "passedTests":  720,
+                  "suites":  42
+              },
+    "results":  [
+                    {
+                        "suite":  "accountRecovery.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  8
+                    },
+                    {
+                        "suite":  "admin.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  7
+                    },
+                    {
+                        "suite":  "backup.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  11
+                    },
+                    {
+                        "suite":  "businessTypes.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  12
+                    },
+                    {
+                        "suite":  "buyerOnboarding.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  2
+                    },
+                    {
+                        "suite":  "externalDiscovery.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  6
+                    },
+                    {
+                        "suite":  "favorites.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  9
+                    },
+                    {
+                        "suite":  "jobs.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  15
+                    },
+                    {
+                        "suite":  "journey.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  1
+                    },
+                    {
+                        "suite":  "launchBlockers.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  9
+                    },
+                    {
+                        "suite":  "mediaCancellation.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  5
+                    },
+                    {
+                        "suite":  "mediaPrivacy.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  39
+                    },
+                    {
+                        "suite":  "mediaRateLimits.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  9
+                    },
+                    {
+                        "suite":  "mongoLifecycle.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  4
+                    },
+                    {
+                        "suite":  "pilot_journey.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  3
+                    },
+                    {
+                        "suite":  "pilot_security.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  12
+                    },
+                    {
+                        "suite":  "pilotOperations.test.js",
+                        "initial":  "failed",
+                        "final":  "passed",
+                        "rechecked":  true,
+                        "tests":  13
+                    },
+                    {
+                        "suite":  "preflight.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  19
+                    },
+                    {
+                        "suite":  "productAI.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  10
+                    },
+                    {
+                        "suite":  "productCreationIdempotency.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  17
+                    },
+                    {
+                        "suite":  "products.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  18
+                    },
+                    {
+                        "suite":  "publicMedia.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  30
+                    },
+                    {
+                        "suite":  "publicPages.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  23
+                    },
+                    {
+                        "suite":  "reportPrivacy.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  35
+                    },
+                    {
+                        "suite":  "reports_and_roles.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  3
+                    },
+                    {
+                        "suite":  "reportTransactions.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  1
+                    },
+                    {
+                        "suite":  "requestParserSecurity.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  39
+                    },
+                    {
+                        "suite":  "reviews_trust.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  6
+                    },
+                    {
+                        "suite":  "rfq.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  9
+                    },
+                    {
+                        "suite":  "rfq_consistency.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  40
+                    },
+                    {
+                        "suite":  "rfq_creation.test.js",
+                        "initial":  "failed",
+                        "final":  "passed",
+                        "rechecked":  true,
+                        "tests":  19
+                    },
+                    {
+                        "suite":  "rfq_offer_submission.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  30
+                    },
+                    {
+                        "suite":  "rfq_supplier_rejection.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  43
+                    },
+                    {
+                        "suite":  "runtime.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  2
+                    },
+                    {
+                        "suite":  "security.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  15
+                    },
+                    {
+                        "suite":  "sourcing.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  5
+                    },
+                    {
+                        "suite":  "sourcingCreation.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  35
+                    },
+                    {
+                        "suite":  "sourcingDecision.test.js",
+                        "initial":  "failed",
+                        "final":  "passed",
+                        "rechecked":  true,
+                        "tests":  48
+                    },
+                    {
+                        "suite":  "sourcingOfferSubmission.test.js",
+                        "initial":  "failed",
+                        "final":  "passed",
+                        "rechecked":  true,
+                        "tests":  48
+                    },
+                    {
+                        "suite":  "stores_and_threads.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  4
+                    },
+                    {
+                        "suite":  "visualIndex.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  13
+                    },
+                    {
+                        "suite":  "wholesaleOpportunities.test.js",
+                        "initial":  "passed",
+                        "final":  "passed",
+                        "rechecked":  false,
+                        "tests":  43
+                    }
+                ]
+}

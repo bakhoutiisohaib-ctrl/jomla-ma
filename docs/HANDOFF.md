@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 — Full Backend inventory 42/42 suites and 720/720 distinct assertions PASS across initial run and recheck (initial 709/720, four suite failures due to missing local inputs; recheck 128/128, exit 0, exact assertion inventory matched). [Report and summary](v49-full-backend-2026-11-27.md). No runtime/test source change. Not a single clean full run; test setup and remaining trust/visual/physical/load acceptance limits documented. Gate 1 OPEN; Gate 2 locked.
+
 2026-11-27 — Card density refinement PASS: 5 desktop columns, 2 mobile, AR390 height 351.8 -> 298.64px, desktop 471.1 -> 359.53px. FE targeted 40/40; full 372/372 (41 suites); build PASS; final isolated Chrome 10 records, four 44px hit targets across five geometries, DB PASS. [Report](v49-card-density-2026-11-27.md). Remaining 24–31px reference difference from retained controls/metadata, final scope decisions and acceptance OPEN; Gate 2 locked.
 
 2026-11-27 — Gate 1 integrated regression checkpoint: Backend 230/230 in 15 suites (single run), prior full FE 372/372 and build at same runtime SHA, isolated Chrome 9 records and RFQ/favorite/thread/notification DB checks PASS. Actual local V4.9 visual audit reveals compactness/density gap (mobile 390 card 351.8 vs 271.7 px; desktop 4 vs 5 columns). [Report](v49-gate1-integrated-2026-11-27.md). Gate 1 remains OPEN; refine visual density without losing real controls and resolve remaining scope. Gate 2 locked.
