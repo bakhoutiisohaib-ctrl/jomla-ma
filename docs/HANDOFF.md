@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 — Gate 2A continuous product sections PASS: Overview/Details/Recommended sticky native fragment navigation, focused FE 41/41, full FE 374/374 (41 suites), build PASS; final Chrome 7 records incl. keyboard focus, legacy fragments, and back destination geometry. [Report](v49-gate2-nav-2026-11-27.md). Backend unchanged; Gate 2 OPEN. Next gallery/media, quantity pricing, commercial bar and recommendations.
+
 2026-11-27 — Gate 1 LOCAL TECHNICAL PASS under original Gate 0 contract. Fresh final integrated Chrome 10 records and direct DB checks PASS at b268385, FE 372/372 and build PASS, BE inventory 720/720 across initial/recheck (unchanged backend), edge/load PASS. [Acceptance matrix and explicit scope decision](v49-gate1-local-acceptance-2026-11-27.md). Three unsupported trust metrics NOT implemented; carried as explicit obligations into Gates 3–5 and final acceptance, physical/production separate. No claim of owner visual sign-off or deployment readiness. Gate 2 may begin separately; no Gate 2 code in this checkpoint.
 
 2026-11-27 — Long-content card fix and bounded local load PASS: AR320 overflow 452 -> 320 after CSS specificity correction; six viewports x six cards, zero geometry violations; FE focused 40/40, full 372/372, build PASS; local 144/144 requests, 305 unique products/26 pages and 16 stores/2 pages at fixed ranking. [Report](v49-edge-market-2026-11-27.md). Backend unchanged; production capacity, physical devices, trust scope and final visual acceptance OPEN. Gate 2 locked.

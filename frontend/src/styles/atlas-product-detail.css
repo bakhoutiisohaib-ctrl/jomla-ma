@@ -83,3 +83,24 @@
   .atlas-detail-specs { font-size: 13px; }
   .atlas-zoom-toolbar button { flex: 1 1 auto; font-size: 12px; }
 }
+
+/* V4.9 section navigation: one continuous document, not hidden tab panels. */
+.atlas-public .atlas-detail-section-nav-top {
+  position: sticky; top: 0; z-index: 20; display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr)); gap: 5px;
+  margin: 0 0 18px; padding: 6px 0; background: #f7f7f2;
+}
+.atlas-public .atlas-detail-section-nav-top a {
+  justify-content: center; text-align: center; min-width: 0;
+  min-height: 44px; padding: 6px 4px; font-size: 14px;
+  background: transparent; border: 1px solid transparent;
+}
+.atlas-public .atlas-detail-section-nav-top a[aria-current=location] {
+  background: #edf1e5; border-color: #c8d4bd; color: #244e37; font-weight: 700;
+}
+.atlas-detail-page :is(#product-overview,#product-details,#product-description,#product-reviews,#product-discover) {
+  scroll-margin-block-start: 76px;
+}
+@media(max-width: 800px) {
+  .atlas-public .atlas-detail-section-nav-top a { font-size: 12px; }
+}

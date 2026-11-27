@@ -151,3 +151,33 @@ test('an open RFQ cannot carry into a different product on navigation', async ()
   await screen.findByRole('heading', { name: 'منتج مشابه', level: 1 });
   expect(screen.queryByRole('dialog', { name: 'طلب عرض سعر بالجملة' })).not.toBeInTheDocument();
 });
+
+test('continuous overview, details and recommended destinations preserve page content and track the fragment', async () => {
+  await open();
+  const nav = screen.getByRole('navigation', { name: 'أقسام المنتج' });
+  const overview = within(nav).getByRole('link', { name: 'نظرة عامة' });
+  const details = within(nav).getByRole('link', { name: 'التفاصيل' });
+  const recommended = within(nav).getByRole('link', { name: 'مقترحات' });
+  expect(overview).toHaveAttribute('href', '#product-overview');
+  expect(details).toHaveAttribute('href', '#product-details');
+  expect(recommended).toHaveAttribute('href', '#product-discover');
+  expect(overview).toHaveAttribute('aria-current', 'location');
+  act(() => { window.history.pushState({}, '', '/products/' + pid + '#product-details'); window.dispatchEvent(new Event('hashchange')); });
+  expect(details).toHaveAttribute('aria-current', 'location');
+  expect(overview).not.toHaveAttribute('aria-current');
+  expect(screen.getByRole('heading', { name: source.name, level: 1 })).toBeInTheDocument();
+  expect(screen.getByText(source.description)).toBeInTheDocument();
+  expect(await screen.findByRole('region', { name: 'منتجات مشابهة' })).toBeInTheDocument();
+  act(() => { window.history.pushState({}, '', '/products/' + pid + '#product-discover'); window.dispatchEvent(new Event('hashchange')); });
+  expect(recommended).toHaveAttribute('aria-current', 'location');
+  act(() => navigate('/products/' + otherId));
+  await screen.findByRole('heading', { name: 'منتج مشابه', level: 1 });
+  expect(within(screen.getByRole('navigation', { name: 'أقسام المنتج' })).getByRole('link', { name: 'نظرة عامة' })).toHaveAttribute('aria-current', 'location');
+});
+
+test('a direct legacy review fragment resolves to details after asynchronous product load', async () => {
+  window.history.replaceState({}, '', '/products/' + pid + '#product-reviews');
+  await open();
+  expect(within(screen.getByRole('navigation', { name: 'أقسام المنتج' })).getByRole('link', { name: 'التفاصيل' })).toHaveAttribute('aria-current', 'location');
+  expect(screen.getByRole('region', { name: 'تقييمات المورد وتعليقاته' })).toBeInTheDocument();
+});

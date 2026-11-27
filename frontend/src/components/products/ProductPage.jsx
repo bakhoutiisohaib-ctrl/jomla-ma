@@ -6,6 +6,7 @@ import { Notice } from '../common/WorkspaceUI';
 import { usePublicMeta, usePublicResource } from '../common/usePublicPage';
 import ShareLink from '../common/ShareLink';
 import ProductGallery from './ProductGallery';
+import ProductSectionNav from './ProductSectionNav';
 import ProductSupplierReviews from './ProductSupplierReviews';
 import RelatedProducts from './RelatedProducts';
 import SupplierRating from './SupplierRating';
@@ -32,7 +33,8 @@ export default function ProductPage({ id, search, user, sessionLoading, onBack, 
       {error && <section className="panel"><h1>{l('المنتج غير متاح', 'Produit indisponible')}</h1><Notice error>{error.status === 404 ? l('هذا المنتج غير موجود أو غير متاح للعرض العام.', 'Ce produit n’existe pas ou n’est pas disponible publiquement.') : error.message}</Notice><Link to="/">{l('العودة للسوق', 'Retour au catalogue')}</Link></section>}
       {product && <>
         <nav className="actions atlas-breadcrumbs" aria-label={l('مسار الصفحة', 'Fil d’Ariane')}><Link to="/">{l('السوق', 'Catalogue')}</Link>{store?._id && <><span aria-hidden="true">/</span><Link to={storePath(store._id)}>{store.name}</Link></>}<span aria-hidden="true">/</span><span>{product.category}</span></nav>
-        <div className="atlas-detail-layout">
+        <ProductSectionNav />
+        <div className="atlas-detail-layout" id="product-overview" tabIndex="-1">
           <ProductGallery key={id} product={product} />
           <section className="atlas-detail-summary"><span className="atlas-eyebrow">{product.category}</span><h1>{product.name}</h1>
             <div className="atlas-detail-stock"><span className={'badge ' + (available ? 'green' : 'amber')}>{available ? l('متوفر بحسب المورد', 'Disponible selon le fournisseur') : l('غير متوفر', 'Indisponible')}</span><span>{product.city || supplier?.city}</span></div>
@@ -50,11 +52,12 @@ export default function ProductPage({ id, search, user, sessionLoading, onBack, 
             </aside>}
           </section>
         </div>
-        <nav className="atlas-detail-section-nav" aria-label={l('أقسام المنتج', 'Sections du produit')}><a href="#product-description">{l('الوصف والمواصفات', 'Description et caractéristiques')}</a><a href="#product-reviews">{l('التقييمات', 'Avis')}</a><a href="#product-discover">{l('منتجات أخرى', 'Autres produits')}</a></nav>
+        <div id="product-details" className="atlas-detail-content" tabIndex="-1">
         <section className="atlas-detail-section" id="product-description"><div className="atlas-detail-info-grid"><div><h2>{l('عن هذا المنتج', 'À propos de ce produit')}</h2><p className="atlas-detail-description">{product.description || l('لم يضف المورد وصفاً بعد.', 'Le fournisseur n’a pas encore ajouté de description.')}</p></div>
           <div><h2>{l('المواصفات المتاحة', 'Caractéristiques disponibles')}</h2><dl className="atlas-detail-specs"><dt>{l('الفئة', 'Catégorie')}</dt><dd>{product.category}</dd><dt>{l('وحدة البيع', 'Unité de vente')}</dt><dd>{product.unit}</dd><dt>{l('الحد الأدنى للطلب', 'Commande minimum')}</dt><dd>{product.moq} {product.unit}</dd><dt>{l('العملة', 'Devise')}</dt><dd>{product.currency}</dd><dt>{l('موقع العرض', 'Localisation de l’offre')}</dt><dd>{product.city}{product.country ? ' · ' + product.country : ''}</dd></dl></div>
         </div><ShareLink path={productPath(id)} /></section>
         {supplierId && <ProductSupplierReviews key={supplierId + ':' + (user?._id || 'guest')} supplierId={supplierId} user={user} />}
+        </div>
         <RelatedProducts key={id} product={product} user={user} onRequireLogin={onRequireLogin} onRfqCreated={onRfqCreated} />
       </>}
       {product && rfqProductId === id && <RFQModal key={id + ':' + (user?._id || 'visitor')} product={product} user={user} onClose={() => setRfqProductId(null)} onRequireLogin={() => onRequireLogin(productPath(id) + '?rfq=1')} onSuccess={onRfqCreated} />}
