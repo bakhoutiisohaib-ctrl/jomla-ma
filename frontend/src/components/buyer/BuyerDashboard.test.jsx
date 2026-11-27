@@ -1,5 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import BuyerDashboard from './BuyerDashboard'
+import { QuoteCartProvider } from '../cart/QuoteCartContext'
+import { setSession } from '../../api/session'
 import { LanguageProvider } from '../../i18n/LanguageContext'
 import { apiRequest } from '../../api/config'
 jest.mock('../../api/config', () => ({ apiRequest: jest.fn() }))
@@ -202,3 +204,49 @@ test('status filtering shows only the chosen existing state',async()=>{
   expect(screen.queryByRole('button',{name:'العروض والمحادثة'})).not.toBeInTheDocument();expect(screen.getByText('لا توجد طلبات بهذه الحالة')).toBeInTheDocument();
 });
 
+
+test('workspace summary filters actual requests and toggles back to all', async () => {
+  const base=apiRequest.getMockImplementation()
+  const pending={...rfq,_id:'rfq-pending',status:'pending',productId:{name:'Pending fixture',unit:'piece'}}
+  const accepted={...rfq,_id:'rfq-accepted',status:'accepted',productId:{name:'Accepted fixture',unit:'piece'}}
+  apiRequest.mockImplementation((path,options)=>path==='/rfq/buyer'?Promise.resolve({data:[rfq,pending,accepted]}):base(path,options))
+  renderBuyer()
+  await screen.findByText('Pending fixture')
+  const review=screen.getByRole('button',{name:/تحتاج مراجعتك/})
+  expect(review).toHaveTextContent('1')
+  fireEvent.click(review)
+  expect(review).toHaveAttribute('aria-pressed','true')
+  expect(screen.getByLabelText('تصفية الحالة')).toHaveValue('review')
+  expect(screen.queryByText('Pending fixture')).not.toBeInTheDocument()
+  fireEvent.click(review)
+  expect(screen.getByLabelText('تصفية الحالة')).toHaveValue('all')
+  expect(screen.getByText('Pending fixture')).toBeInTheDocument()
+  expect(screen.getByText('Accepted fixture')).toBeInTheDocument()
+})
+
+test('workspace links to real selection and favorites with account scoped cart count',async()=>{
+  sessionStorage.clear()
+  const id='buyer-test'
+  setSession('test.'+btoa(JSON.stringify({id,exp:9999999999}))+'.signature')
+  sessionStorage.setItem('jomla:quote-selection:v1:'+id,JSON.stringify(['111111111111111111111111','222222222222222222222222']))
+  render(<LanguageProvider><QuoteCartProvider><BuyerDashboard user={{name:'Buyer',id}} onBack={jest.fn()}/></QuoteCartProvider></LanguageProvider>)
+  expect(screen.getByRole('link',{name:'سلة العروض (2)'})).toHaveAttribute('href','/cart')
+  expect(screen.getByRole('link',{name:'المفضلة'})).toHaveAttribute('href','/favorites')
+  expect(screen.getByRole('link',{name:'السوق'})).toHaveAttribute('href','/')
+  await screen.findByText('أحذية بالجملة')
+  sessionStorage.clear()
+})
+
+test('failed requests load never claims zero or a confirmed empty list',async()=>{
+  const base=apiRequest.getMockImplementation()
+  apiRequest.mockImplementation((path,options)=>path==='/rfq/buyer'?Promise.reject(new Error('Synthetic request failure')):base(path,options))
+  renderBuyer()
+  await screen.findByText(/الأرقام غير مؤكدة/)
+  expect(screen.getByRole('button',{name:/تحتاج مراجعتك/})).toBeDisabled()
+  expect(screen.getByRole('button',{name:/تحتاج مراجعتك/})).toHaveTextContent('—')
+  expect(screen.queryByText('لا توجد طلبات بهذه الحالة')).not.toBeInTheDocument()
+  apiRequest.mockImplementation(base)
+  fireEvent.click(screen.getByRole('button',{name:'تحديث'}))
+  await screen.findByText('أحذية بالجملة')
+  expect(screen.getByRole('button',{name:/تحتاج مراجعتك/})).toBeEnabled()
+})

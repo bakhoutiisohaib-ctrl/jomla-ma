@@ -1,4 +1,6 @@
 import BrandHomeLink from '../common/BrandHomeLink';
+import { Link } from '../../navigation';
+import { useQuoteCart } from '../cart/QuoteCartContext';
 import LanguageSwitch from '../../i18n/LanguageSwitch';
 import { useEffect, useRef, useState } from 'react';
 import { apiRequest } from '../../api/config';
@@ -50,7 +52,9 @@ export default function BuyerDashboard(props) {
 function BuyerContent({user,onBack,onLogout,sessionToken}) {
   const {lang}=useTranslation(),l=useLabels();
   const c={...localizeCopy(copy, lang),creating:l('طلب قيد الإنشاء','Demande en cours de création'),unavailable:l('الطلب غير متاح لهذا الحساب.','Demande indisponible pour ce compte.')};
-  const w=useBuyerWorkspace(c);
+  const w=useBuyerWorkspace(c), cart=useQuoteCart();
+  const requestUnavailable=Boolean(w.loadErrors['/rfq/buyer']);
+  const countRequests=predicate=>w.loading || requestUnavailable ? '—' : w.rfqs.filter(predicate).length;
   const [tab,setTab]=useState('rfqs'),[filter,setFilter]=useState('all'),[message,setMessage]=useState(''),[showSourcing,setShowSourcing]=useState(false);
   const [choice,setChoice]=useState(null),[pane,setPane]=useState('offers'),[sourcingTarget,setSourcingTarget]=useState(null);
   const confirmTitle=useRef(null),messageRevision=useRef(0);
@@ -60,6 +64,8 @@ function BuyerContent({user,onBack,onLogout,sessionToken}) {
   const selected=w.selected, money=(value,currency)=>value==null?'—':currency?formatMoney(value,currency,lang):value+' '+l('عملة غير محددة','Devise non précisée');
   const statuses=['creating','pending','responded','offering','deciding','accepted','rejected'];
   const shown=w.rfqs.filter(r=>filter==='all' || (filter==='review'?['creating','responded','offering','deciding'].includes(r.status):r.status===filter));
+  const tabs=[{key:'rfqs',icon:'message',label:c.rfqs},{key:'sourcing',icon:'search',label:c.sourcing},{key:'notifications',icon:'bell',label:c.notifications+' ('+(w.unread ?? '—')+')'}];
+  const quickLinks=[{to:'/cart',icon:'package',label:l('سلة العروض','Sélection de devis','Quote cart'),count:cart?.items.length},{to:'/favorites',icon:'heart',label:l('المفضلة','Favoris','Favorites')},{to:'/',icon:'store',label:l('السوق','Catalogue','Marketplace')}];
   function closeTrade(){setChoice(null);w.chooseRequest(null);}
   function choose(id){setMessage('');setChoice(null);messageRevision.current++;w.chooseRequest(id);}
   const choiceReady=choice && selected && selected.status==='responded' && String(selected.currentOfferId)===String(choice.offer._id) && w.offers.some(o=>o._id===choice.offer._id && o.status==='active');
@@ -84,13 +90,21 @@ function BuyerContent({user,onBack,onLogout,sessionToken}) {
   return <div className="atlas-buyer" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
     <a className="buyer-skip" href="#buyer-main">{l('تجاوز إلى المحتوى','Aller au contenu')}</a>
     <header className="buyer-header"><BrandHomeLink className="buyer-brand"><span>ج</span><div><strong dir="ltr">jomla.ma</strong><small>{l('مساحة المشتري','Espace acheteur')}</small></div></BrandHomeLink><nav aria-label={l('الحساب واللغة','Compte et langue')}><button onClick={onBack}>{l('السوق','Catalogue')}</button><LanguageSwitch /><button onClick={()=>setTab('notifications')} aria-label={l('تنبيهات الحساب','Alertes du compte')+': '+(w.unread ?? l('غير مؤكد','Non confirmé'))}><MarketIcon name="bell"/>{w.unread>0 && <span className="buyer-bell-count">{w.unread>99?'99+':w.unread}</span>}</button>{onLogout && <button onClick={onLogout}>{l('خروج','Déconnexion')}</button>}</nav><p>{user?.name}</p></header>
-    <div className="buyer-shell"><aside className="buyer-sidebar"><p className="buyer-eyebrow">{l('احتياجات تجارتك','Les besoins de votre activité')}</p><nav aria-label={c.title}>{['rfqs','sourcing','notifications'].map(key=><button key={key} aria-pressed={tab===key} onClick={()=>setTab(key)}>{c[key]}{key==='notifications'?' ('+(w.unread ?? '—')+')':''}</button>)}</nav><p className="muted">{l('قبول عرض لا يعني دفعاً أو شحناً أو تسليماً مكتملًا.','Accepter une offre ne signifie pas qu’un paiement, un envoi ou une livraison a eu lieu.')}</p></aside>
+    <div className="buyer-shell"><aside className="buyer-sidebar"><p className="buyer-eyebrow">{l('احتياجات تجارتك','Les besoins de votre activité','Your business needs')}</p>
+      <nav className="buyer-workspace-nav" aria-label={c.title}>{tabs.map(item=><button key={item.key} aria-pressed={tab===item.key} onClick={()=>setTab(item.key)}><MarketIcon name={item.icon}/><span>{item.label}</span></button>)}</nav>
+      <nav className="buyer-quick-nav" aria-label={l('روابط سريعة','Accès rapides','Quick links')}>{quickLinks.map(item=><Link key={item.to} to={item.to}><MarketIcon name={item.icon}/><span>{item.label}{item.count!=null?' ('+item.count+')':''}</span></Link>)}</nav>
+      <p className="muted">{l('قبول عرض لا يعني دفعاً أو شحناً أو تسليماً مكتملًا.','Accepter une offre ne signifie pas qu’un paiement, un envoi ou une livraison a eu lieu.','Accepting an offer does not confirm payment, shipping or delivery.')}</p></aside>
     <main id="buyer-main" tabIndex="-1"><div className="buyer-page-heading"><div><p className="buyer-eyebrow">{l('Jomla.ma · مساحة عملك','Jomla.ma · Votre espace')}</p><h1>{c.title}</h1></div><button disabled={w.busy} onClick={()=>{w.setError('');w.refresh();if(w.selectedId)w.loadThread(w.selectedId);}}>{c.refresh}</button></div>
     {!selected && <><Notice error>{w.error || errors}</Notice><Notice>{w.feedback}</Notice></>}
     {w.loading && <p role="status">{c.waiting}</p>}
-    {tab==='rfqs' && <><div className="buyer-stat-grid"><div><span>{l('تحتاج مراجعتك','À examiner')}</span><strong>{w.loading?'—':w.rfqs.filter(r=>['creating','responded','offering','deciding'].includes(r.status)).length}</strong></div><div><span>{c.pending}</span><strong>{w.loading?'—':w.rfqs.filter(r=>r.status==='pending').length}</strong></div><div><span>{l('اتفاقات مقبولة','Accords acceptés')}</span><strong>{w.loading?'—':w.rfqs.filter(r=>r.status==='accepted').length}</strong></div></div>
+    {tab==='rfqs' && <><div className="buyer-stat-grid">{[
+      {key:'review',label:l('تحتاج مراجعتك','À examiner','Needs review'),icon:'message',value:countRequests(r=>['creating','responded','offering','deciding'].includes(r.status))},
+      {key:'pending',label:c.pending,icon:'package',value:countRequests(r=>r.status==='pending')},
+      {key:'accepted',label:l('اتفاقات مقبولة','Accords acceptés','Accepted agreements'),icon:'store',value:countRequests(r=>r.status==='accepted')}
+    ].map(item=><div key={item.key}><button type="button" className="buyer-stat-action" aria-pressed={filter===item.key} disabled={w.loading || requestUnavailable} onClick={()=>setFilter(value=>value===item.key?'all':item.key)}><MarketIcon name={item.icon}/><span>{item.label}</span><strong>{item.value}</strong></button></div>)}</div>
+      {requestUnavailable && <p className="buyer-data-warning" role="status">{l('تعذر تحديث الطلبات. الأرقام غير مؤكدة، وقد تكون القائمة المعروضة قديمة.','Impossible d’actualiser les demandes. Les chiffres ne sont pas confirmés et la liste peut être ancienne.','Could not refresh requests. Counts are unconfirmed and the list may be outdated.')}</p>}
       <div className="buyer-section-heading"><h2>{c.rfqs}</h2><label>{l('تصفية الحالة','Filtrer par état')}<select value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">{l('كل الحالات','Tous les états')}</option><option value="review">{l('تحتاج مراجعة أو استكمال','À examiner ou finaliser')}</option>{statuses.map(s=><option key={s} value={s}>{c[s]}</option>)}</select></label></div>
-      {!w.loading && !shown.length && <section className="buyer-empty"><h3>{l('لا توجد طلبات بهذه الحالة','Aucune demande dans cet état')}</h3><p>{c.noRequests}</p><button onClick={onBack}>{c.catalog}</button></section>}
+      {!w.loading && !requestUnavailable && !shown.length && <section className="buyer-empty"><h3>{l('لا توجد طلبات بهذه الحالة','Aucune demande dans cet état')}</h3><p>{c.noRequests}</p><button onClick={onBack}>{c.catalog}</button></section>}
       <section className="buyer-request-grid" aria-label={c.rfqs}>{shown.map(r=>{const values=r.decision?.agreement || r.offer;return <article key={r._id} className={'buyer-request status-'+r.status}><div className="buyer-request-heading"><span className="trade-status">{c[r.status] || r.status}</span>{['responded','deciding'].includes(r.status) && <small>{l('يحتاج متابعتك','À suivre')}</small>}</div><h2>{agreedProduct(r)?.name || c.original}</h2><p>{c.supplier}: {r.decision?.agreement?.supplier?.name || r.supplierId?.name || '—'}</p><p>{c.quantity}: {r.decision?.agreement?.quantity ?? r.quantity} {agreedProduct(r)?.unit}</p>{values && <div className="buyer-quote-amount"><strong>{money(values.unitPrice,values.currency || r.currency)}</strong><small>/ {r.decision?.agreement?.unit || agreedProduct(r)?.unit}</small><p>{c.total}: {money(values.totalPrice,values.currency || r.currency)}</p></div>}{r.status==='accepted' && <p className="trade-help">{l('اتفاق تجاري؛ لا توجد حالة دفع أو تسليم في هذا المسار.','Accord commercial ; aucun état de paiement ou de livraison dans ce parcours.')}</p>}{r.status==='creating'?<RfqCreationRecovery id={r._id} onRefresh={w.refresh}/>:<button className={['responded','deciding'].includes(r.status)?'primary':''} disabled={w.busy} onClick={()=>choose(r._id)}>{c.view}</button>}</article>;})}</section>
     </>}
     {tab==='sourcing' && <section className="buyer-sourcing"><div className="buyer-section-heading"><h2>{c.sourcing}</h2><button className="primary" onClick={()=>setShowSourcing(true)}>{c.newSourcing}</button></div>{!w.loading && !w.sourcing.length && <p className="buyer-empty">{c.noRequests}</p>}{w.sourcing.map(s=><SourcingDecisionCard key={s._id} sourcing={s} user={user} sessionToken={sessionToken} busy={w.busy} onUpdated={()=>w.refresh()}/>)}</section>}
