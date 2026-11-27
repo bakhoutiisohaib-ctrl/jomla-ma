@@ -9,18 +9,35 @@ const Product = require('../models/Product')
 const AuditLog = require('../models/AuditLog')
 const Analytics = require('../models/Analytics')
 const { generateToken } = require('../middleware/auth')
+const crypto=require('crypto')
+const Confirmation=require('../models/TradeConfirmation')
+const Sourcing=require('../models/SourcingRequest')
+const RFQ=require('../models/QuoteRequest')
+const {definition}=require('../services/sourcingCreationIndex')
+async function acceptSourcing(buyer,owner){
+  const r=await request(app).post('/api/sourcing').set(auth(buyer.token)).set('Idempotency-Key',crypto.randomUUID()).send({productName:'طلب تجريبي',buyerPhone:'+212655443322',quantity:100,unit:'زوج'});
+  expect(r.status).toBe(201);const id=r.body.sourcing._id;
+  const q=await request(app).post('/api/sourcing/'+id+'/quote').set(auth(owner.token)).set('Idempotency-Key',crypto.randomUUID()).send({unitPrice:12,deliveryDays:3});
+  expect(q.status).toBe(200);const offerId=q.body.quote._id;
+  expect((await request(app).put('/api/sourcing/'+id+'/quotes/'+offerId+'/action').set(auth(buyer.token)).send({action:'accept'})).status).toBe(200);
+  return '/api/trade-confirmations/sourcing/'+id+'/'+offerId;
+}
+const confirm=(url,who,body={confirmed:true})=>request(app).post(url).set(auth(who.token)).send(body);
+async function completed(buyer,owner){const url=await acceptSourcing(buyer,owner);expect((await confirm(url,buyer)).body.trade.completed).toBe(false);const r=await confirm(url,owner);expect(r.status).toBe(200);expect(r.body.trade.completed).toBe(true);return url;}
 
 let server
 let sequence = 0
 const auth = token => ({ Authorization: 'Bearer ' + token })
 async function account(role = 'buyer') {
-  const user = await Supplier.create({ name: 'مستخدم موثوق ' + ++sequence, email: 'trust-' + sequence + '@test.ma', password: 'fixture-hash', role })
+  const user = await Supplier.create({ name: 'مستخدم موثوق ' + ++sequence, email: 'trust-' + sequence + '@test.ma', password: 'fixture-hash', role, city:'الرباط',phone:'+212655443322',profilePending:false })
   return { user, token: generateToken(user) }
 }
 beforeAll(async () => {
   server = await MongoMemoryServer.create({ instance: { storageEngine: 'wiredTiger' } })
   await mongoose.connect(server.getUri())
   await Review.init()
+  await Confirmation.init()
+  await Sourcing.collection.createIndex(definition.key,definition.options)
 })
 beforeEach(async () => {
   await Promise.all(Object.values(mongoose.connection.collections).map(c => c.deleteMany({})))
@@ -30,7 +47,7 @@ afterAll(async () => {
   if (server) await server.stop()
 })
 
-test('reviews require buyer/admin identity and refuse forged names, supplier replies and dates', async () => {
+test('reviews require buyer identity and mutual confirmation and refuse forged names, supplier replies and dates', async () => {
   const owner = await account('supplier')
   const buyer = await account()
   const body = { supplierId: String(owner.user._id), stars: 4, comment: 'تقييم قائم على تجربتي' }
@@ -39,6 +56,13 @@ test('reviews require buyer/admin identity and refuse forged names, supplier rep
   for (const extra of [{ userName: 'شخص آخر' }, { reply: { text: 'رد مورد مزور' } }, { date: '2000-01-01' }]) {
     expect((await request(app).post('/api/reviews').set(auth(buyer.token)).send({ ...body, ...extra })).status).toBe(400)
   }
+  expect((await request(app).post('/api/reviews').set(auth(buyer.token)).send(body)).status).toBe(403)
+  const url=await acceptSourcing(buyer,owner)
+  expect((await request(app).post('/api/reviews').set(auth(buyer.token)).send(body)).status).toBe(403)
+  expect((await confirm(url,buyer)).status).toBe(200)
+  expect((await request(app).post('/api/reviews').set(auth(buyer.token)).send(body)).status).toBe(403)
+  const admin=await account('admin');expect((await request(app).post('/api/reviews').set(auth(admin.token)).send(body)).status).toBe(403)
+  expect((await confirm(url,owner)).status).toBe(200)
   const result = await request(app).post('/api/reviews').set(auth(buyer.token)).send(body)
   expect(result.status).toBe(201)
   expect(result.body.review.userName).toBe(buyer.user.name)
@@ -64,14 +88,18 @@ test('rating stats aggregate all reviews regardless of page and hide internal bu
   const owner = await account('supplier')
   for (const stars of [1, 3, 5]) {
     const buyer = await account()
+    await completed(buyer,owner)
     const result = await request(app).post('/api/reviews').set(auth(buyer.token)).send({ supplierId: String(owner.user._id), stars })
     expect(result.status).toBe(201)
   }
+  await Review.create({supplierId:owner.user._id,userName:'Legacy',stars:1,comment:'Historical'})
   const response = await request(app).get('/api/reviews/' + owner.user._id + '?page=2&limit=1')
   expect(response.status).toBe(200)
   expect(response.body.data).toHaveLength(1)
   expect(response.body.stats).toEqual({ avg: 3, total: 3 })
-  expect(response.body.pagination.total).toBe(3)
+  expect(response.body.pagination.total).toBe(4)
+  expect(response.body.legacyTotal).toBe(1)
+  expect(response.body.data[0]).not.toHaveProperty('tradeConfirmationId')
   expect(response.body.data[0]).not.toHaveProperty('buyerId')
 })
 
@@ -80,6 +108,7 @@ test('only the owning supplier can reply and only an admin can remove a review w
   const other = await account('supplier')
   const buyer = await account()
   const admin = await account('admin')
+  await completed(buyer,owner)
   const created = await request(app).post('/api/reviews').set(auth(buyer.token)).send({ supplierId: String(owner.user._id), stars: 1, comment: 'تجربة تحتاج تحسيناً' })
   const id = created.body.review._id
   expect((await request(app).post('/api/suppliers/me/reviews/' + id + '/reply').set(auth(other.token)).send({ text: 'رد منتحل' })).status).toBe(404)
@@ -91,12 +120,14 @@ test('only the owning supplier can reply and only an admin can remove a review w
   expect((await request(app).delete('/api/reviews/' + id).set(auth(admin.token)).send({})).status).toBe(400)
   expect((await request(app).delete('/api/reviews/' + id).set(auth(admin.token)).send({ reason: 'تقييم مخالف بعد المراجعة' })).status).toBe(200)
   expect(await Review.findById(id)).toBeNull()
+  expect((await request(app).post('/api/reviews').set(auth(buyer.token)).send({supplierId:String(owner.user._id),stars:5})).status).toBe(409)
   expect(await AuditLog.countDocuments({ action: 'REVIEW_DELETED', targetId: id, phase: 'completed', 'performedBy.id': admin.user._id })).toBe(1)
 })
 
 test('concurrent reviews from one account create at most one rating', async () => {
   const owner = await account('supplier')
   const buyer = await account()
+  await completed(buyer,owner)
   const submit = () => request(app).post('/api/reviews').set(auth(buyer.token)).send({ supplierId: String(owner.user._id), stars: 3 })
   const results = await Promise.all([submit(), submit()])
   expect(results.map(result => result.status).sort()).toEqual([201, 409])
@@ -119,3 +150,47 @@ test('analytics requires authentication, restricts event metadata and protects s
   expect(await Analytics.countDocuments()).toBe(1)
 })
 
+
+test('actual RFQ receipt, both independent role confirmations, replay, isolation and public privacy', async()=>{
+ const f=await require('./helpers/tradeFixtures')()
+ const buyer={user:f.buyer,token:f.tokens.buyer},owner={user:f.supplier,token:f.tokens.supplier}
+ const body={supplierId:String(f.supplier._id),stars:5,comment:'تعامل فعلي'}
+ const eligibility=()=>request(app).get('/api/reviews/eligibility/'+f.supplier._id).set(auth(buyer.token))
+ const created=await request(app).post('/api/rfq').set(auth(buyer.token)).set('Idempotency-Key',crypto.randomUUID()).send({productId:String(f.product._id),quantity:40,buyerPhone:f.buyer.phone})
+ expect(created.status).toBe(201);const id=created.body.rfq._id
+ const offered=await request(app).put('/api/rfq/'+id+'/respond').set(auth(owner.token)).set('Idempotency-Key',crypto.randomUUID()).send({unitPrice:88,deliveryDays:3,notes:'عرض تجريبي'})
+ expect(offered.status).toBe(200);const offerId=offered.body.offer._id
+ const url='/api/trade-confirmations/rfq/'+id+'/'+offerId
+ expect((await confirm(url,buyer)).status).toBe(409)
+ const accepted=await request(app).put('/api/rfq/'+id+'/action').set(auth(buyer.token)).send({action:'accept',offerId})
+ expect(accepted.status).toBe(200)
+ expect((await eligibility()).body.eligible).toBe(false)
+ expect((await confirm(url,{token:f.tokens.otherBuyer})).status).toBe(404)
+ expect((await confirm(url,{token:f.tokens.otherSupplier})).status).toBe(404)
+ expect((await confirm(url,{token:f.tokens.staff})).status).toBe(403)
+ expect((await confirm(url,buyer,{confirmed:true,supplierId:String(f.supplier._id)})).status).toBe(400)
+ const list=await request(app).get('/api/trade-confirmations?kind=rfq').set(auth(buyer.token))
+ expect(list.status).toBe(200);expect(list.body.data[0].sourceId).toBe(id)
+ expect((await request(app).get('/api/trade-confirmations?kind=rfq').set(auth(f.tokens.otherBuyer))).body.data).toEqual([])
+ const replies=await Promise.all([confirm(url,buyer),confirm(url,owner),confirm(url,buyer)])
+ expect(replies.map(x=>x.status)).toEqual([200,200,200])
+ expect(await Confirmation.countDocuments()).toBe(1)
+ const saved=await Confirmation.findOne().lean();expect(saved.buyerConfirmedAt).toBeInstanceOf(Date);expect(saved.supplierConfirmedAt).toBeInstanceOf(Date)
+ expect((await confirm(url,buyer)).body.trade.completed).toBe(true)
+ const replayed=await Confirmation.findById(saved._id).lean();expect(replayed.buyerConfirmedAt).toEqual(saved.buyerConfirmedAt)
+ expect((await eligibility()).body.eligible).toBe(true)
+ expect((await request(app).post('/api/reviews').set(auth(buyer.token)).send({...body,basis:'mutual_confirmation'})).status).toBe(400)
+ const review=await request(app).post('/api/reviews').set(auth(buyer.token)).send({...body,productId:String(f.product._id)})
+ expect(review.status).toBe(201);expect(review.body.review.basis).toBe('mutual_confirmation');expect(review.body.review.tradeConfirmationId).toBeUndefined()
+ expect((await eligibility()).body.reason).toBe('already_reviewed')
+ const pub=await request(app).get('/api/reviews/'+f.supplier._id)
+ expect(pub.body.stats).toEqual({avg:5,total:1});expect(pub.body.data[0].buyerId).toBeUndefined();expect(pub.body.data[0].tradeConfirmationId).toBeUndefined()
+ expect((await RFQ.findById(id)).status).toBe('accepted')
+})
+test('legacy accepted without immutable receipt cannot be confirmed or rated',async()=>{
+ const f=await require('./helpers/tradeFixtures')()
+ const id=new mongoose.Types.ObjectId(),offerId=new mongoose.Types.ObjectId()
+ await RFQ.create({_id:id,buyerId:f.buyer._id,supplierId:f.supplier._id,productId:f.product._id,buyerName:f.buyer.name,buyerPhone:f.buyer.phone,quantity:40,status:'accepted',currentOfferId:offerId})
+ expect((await confirm('/api/trade-confirmations/rfq/'+id+'/'+offerId,{token:f.tokens.buyer})).status).toBe(409)
+ expect(await Confirmation.countDocuments()).toBe(0)
+})

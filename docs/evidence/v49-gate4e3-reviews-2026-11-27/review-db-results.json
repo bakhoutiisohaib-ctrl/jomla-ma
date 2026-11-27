@@ -1,0 +1,10 @@
+{
+  "confirmations": 1,
+  "buyerConfirmed": true,
+  "supplierConfirmed": true,
+  "acceptedAgreementLinked": true,
+  "reviews": 1,
+  "score": 4,
+  "ownerReply": true,
+  "basis": "mutual_confirmation"
+}

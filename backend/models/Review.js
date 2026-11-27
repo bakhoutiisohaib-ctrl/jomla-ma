@@ -4,6 +4,8 @@ const ReviewSchema = new mongoose.Schema({
   productId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
   supplierId: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier', required: true },
   buyerId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
+  basis: { type: String, enum: ['mutual_confirmation'], immutable: true },
+  tradeConfirmationId: { type: mongoose.Schema.Types.ObjectId, immutable: true, select: false },
   userName:   { type: String, required: true },
   stars:      { type: Number, min: 1, max: 5, required: true, validate: Number.isInteger },
   comment:    { type: String, trim: true, maxlength: 500, default: '' },

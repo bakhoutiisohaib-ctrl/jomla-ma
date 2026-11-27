@@ -12,6 +12,8 @@ import StoresPanel from './StoresPanel';
 import ProductEditor from './ProductEditor';
 import WholesaleWorkspace from '../wholesale/WholesaleWorkspace';
 import SupplierVerificationPanel from './SupplierVerificationPanel';
+import TradeCompletionPanel from '../common/TradeCompletionPanel';
+import SupplierReviewReply from './SupplierReviewReply';
 import JobsPanel from './JobsPanel';
 import { SupplierHeader, SupplierSidebar, advancedSupplierTabs } from './SupplierWorkspace';
 import SupplierSetupGuide from './SupplierSetupGuide';
@@ -258,7 +260,7 @@ export default function SupplierDashboard({
   const unread = loadedMetrics.notifications && unreadTotal!=null ? unreadTotal : '—';
   const metric = (key,value) => loadedMetrics[key] && value!=null ? value : '—';
   const wholesaleTab = ['wholesale', l('فرص الجملة', 'Opportunités de gros'), can('manage_products')];
-  const tabs = [['overview', l('نظرة عامة', 'Vue d’ensemble'), true], ['organization', l('الشركة والفريق', 'Entreprise et équipe'), true], ['stores', l('متاجري', 'Mes boutiques'), can('manage_store')], ['products', l('منتجاتي', 'Mes produits'), can('manage_products')], ['drafts', l('المسودات', 'Brouillons'), can('manage_products')], ['add', l('إضافة منتج', 'Ajouter un produit'), can('manage_products')], ['jobs', l('مهام الصور', 'Tâches des images'), can('manage_products')], ['rfq', l('طلبات الأسعار', 'Demandes de devis'), can('manage_rfq')], ['sourcing', l('فرص التوريد', 'Opportunités de sourcing'), can('manage_rfq')], ['verification', l('توثيق المورد', 'Vérification'), profile.role === 'supplier'], ['reviews', l('التقييمات', 'Avis'), profile.role === 'supplier'], ['notifications', l('الإشعارات', 'Notifications') + ' (' + unread + ')', true]];
+  const tabs = [['overview', l('نظرة عامة', 'Vue d’ensemble'), true], ['organization', l('الشركة والفريق', 'Entreprise et équipe'), true], ['stores', l('متاجري', 'Mes boutiques'), can('manage_store')], ['products', l('منتجاتي', 'Mes produits'), can('manage_products')], ['drafts', l('المسودات', 'Brouillons'), can('manage_products')], ['add', l('إضافة منتج', 'Ajouter un produit'), can('manage_products')], ['jobs', l('مهام الصور', 'Tâches des images'), can('manage_products')], ['rfq', l('طلبات الأسعار', 'Demandes de devis'), can('manage_rfq')], ['sourcing', l('فرص التوريد', 'Opportunités de sourcing'), can('manage_rfq')], ['verification', l('توثيق المورد', 'Vérification'), profile.role === 'supplier'], ['trades', l('تأكيد التعاملات','Confirmation des transactions','Confirm transactions'), profile.role === 'supplier'], ['reviews', l('التقييمات', 'Avis'), profile.role === 'supplier'], ['notifications', l('الإشعارات', 'Notifications') + ' (' + unread + ')', true]];
   tabs.splice(tabs.findIndex(([key]) => key === 'drafts'), 0, wholesaleTab);
   function moveTab(key) {
     setPendingTab(null);
@@ -309,16 +311,8 @@ export default function SupplierDashboard({
     {tab === 'rfq' && can('manage_rfq') && <section className="panel"><div className="actions"><h2>{l('طلبات الأسعار الواردة', 'Demandes de devis reçues')}</h2><button onClick={refresh}>{l('تحديث', 'Actualiser')}</button></div>{rfqs.map(r => <article className="panel" key={r._id}><h3>{agreedProduct(r)?.name}</h3><p>{r.buyerName} · {r.decision?.agreement?.quantity ?? r.quantity} {agreedProduct(r)?.unit}</p><span className="badge">{statusLabel(r.status, lang)}</span>{r.offer && <p>{formatMoney(r.decision?.agreement?.unitPrice ?? r.offer.unitPrice, r.decision?.agreement?.currency || r.currency || 'MAD', lang)} × {r.decision?.agreement?.quantity ?? r.quantity}</p>}<button disabled={!loadedMetrics.rfq} onClick={() => openThread(r)}>{l('تفاصيل ومحادثة', 'Détails et conversation')}</button></article>)}{!loadedMetrics.rfq && <p role="status">{l('قائمة الطلبات غير مؤكدة. حدّث مساحة العمل.','Demandes non confirmées. Actualisez.','Request list unconfirmed. Refresh.')}</p>}{loadedMetrics.rfq && !rfqs.length && <p className="empty">{l('لا توجد طلبات', 'Aucune demande')}</p>}</section>}
     {tab === 'sourcing' && can('manage_rfq') && <section className="panel"><h2>{l('طلبات توريد مفتوحة', 'Demandes de sourcing ouvertes')}</h2>{sourcing.map(s => <article className="panel" key={s._id}><h3>{s.productName}</h3><p>{s.quantity} {s.unit} · {s.buyerCity}</p><p>{s.notes}</p><p>{l('عدد العروض', 'Nombre d’offres')}: {s.quotesCount}</p><button onClick={() => openSourcing(s._id)}>{s.offerRecovery ? l('استكمال العرض المحفوظ', 'Reprendre l’offre enregistrée') : l('تقديم عرض محفوظ', 'Soumettre une offre')}</button></article>)}</section>}
     {tab === 'verification' && profile.role === 'supplier' && <SupplierVerificationPanel owner={profile._id || profile.id} onConfirmed={saved=>setProfile(saved)}/>}
-    {tab === 'reviews' && <section className="panel"><h2>{l('تقييمات العملاء', 'Avis clients')}</h2>{reviews.map(r => <article className="panel" key={r._id}><strong>{r.userName || r.buyerName || r.name}</strong><p>{'★'.repeat(r.stars || 0)} {r.comment}</p>{r.reply?.text && <p className="notice">{r.reply.text}</p>}<form className="actions" onSubmit={e => {
-            e.preventDefault();
-            const input = e.currentTarget.elements.reply;
-            action(() => apiRequest('/suppliers/me/reviews/' + r._id + '/reply', {
-              method: 'POST',
-              body: {
-                text: input.value
-              }
-            }));
-          }}><input aria-label={l('رد على التقييم', 'Réponse à l’avis')} name="reply" required /><button disabled={busy}>{l('رد', 'Répondre')}</button></form></article>)}{!reviews.length && <p>{l('لا توجد تقييمات', 'Aucun avis')}</p>}</section>}
+    {tab === 'trades' && profile.role === 'supplier' && <TradeCompletionPanel user={profile}/>}
+    {tab === 'reviews' && <section className="panel"><h2>{l('تقييمات العملاء', 'Avis clients')}</h2>{reviews.map(r => <article className="panel" key={r._id}><strong>{r.userName || r.buyerName || r.name}</strong><p>{'★'.repeat(r.stars || 0)} {r.comment}</p><p className="muted">{r.basis==='mutual_confirmation'?l('تعامل أقره الطرفان','Transaction confirmée mutuellement','Mutually confirmed transaction'):l('تقييم تاريخي','Avis historique','Legacy review')}</p>{r.reply?.text && <p className="notice">{r.reply.text}</p>}<SupplierReviewReply key={revision+':'+r._id} review={r} owner={profile._id||profile.id} onSaved={saved=>setReviews(rows=>rows.map(row=>row._id===saved._id?saved:row))} onRefresh={()=>{setReviews([]);refresh();}}/></article>)}{!reviews.length && <p>{l('لا توجد تقييمات', 'Aucun avis')}</p>}</section>}
     {tab === 'notifications' && <section className="panel"><div className="actions"><h2>{l('الإشعارات', 'Notifications')}</h2><button onClick={() => action(() => apiRequest('/notifications/read-all', {
             method: 'PUT'
           }))}>{l('تحديد الكل كمقروء', 'Tout marquer comme lu')}</button><button onClick={refresh}>{l('تحديث', 'Actualiser')}</button></div>{notifications.map(n => <article className="message" key={n._id}><p>{lang === 'en' ? n.titleEn || notificationLabel(n.type, lang) : lang === 'fr' ? n.titleFr || n.title || notificationLabel(n.type, lang) : n.titleAr || n.title || notificationLabel(n.type, lang)}</p><p>{lang === 'en' ? n.bodyEn : lang === 'fr' ? n.bodyFr || n.body || n.message : n.bodyAr || n.body || n.message}</p><button onClick={() => {

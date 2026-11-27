@@ -6,11 +6,11 @@ const pid = '111111111111111111111111', sid = '222222222222222222222222', storeI
 const otherId = '444444444444444444444444', recentId = '555555555555555555555555', buyerId = '666666666666666666666666';
 const source = { _id: pid, name: 'منتج المعرض التجريبي', description: 'الوصف المنشور من المورد فقط', category: 'المنزل', price: 35, currency: 'MAD', moq: 10, unit: 'قطعة', city: 'الرباط', country: 'MA', availability: 'in_stock', supplierId: { _id: sid, name: 'مورد الاختبار', city: 'الرباط' }, storeId, imageUrl: '/uploads/main.png', images: ['/uploads/main.png', '/uploads/second.png', 'https://untrusted.example/image.png'], priceTiers: [{ minQty: 10, maxQty: 49, price: 35 }, { minQty: 50, price: 30 }] };
 const response = (body, status = 200) => Promise.resolve({ ok: status < 400, status, json: async () => body });
-let product, productStatus, reviewStatus, searchStatus, stats, reviews, posts;
+let product, productStatus, reviewStatus, searchStatus, stats, reviews, posts, eligibilityReason, reviewAcknowledged;
 beforeEach(() => {
   window.history.replaceState({}, '', '/products/' + pid); localStorage.clear(); sessionStorage.clear();
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
-  product = { ...source }; productStatus = 200; reviewStatus = 200; searchStatus = 200; stats = { avg: 0, total: 0 }; reviews = []; posts = [];
+  product = { ...source }; productStatus = 200; reviewStatus = 200; searchStatus = 200; stats = { avg: 0, total: 0 }; reviews = []; posts = []; eligibilityReason='eligible';reviewAcknowledged=true;
   let serial = 0; URL.createObjectURL = jest.fn(() => 'blob:detail-' + ++serial); URL.revokeObjectURL = jest.fn();
   global.fetch = jest.fn((url, options = {}) => {
     const parsed = new URL(url, 'http://localhost'), path = parsed.pathname;
@@ -19,7 +19,8 @@ beforeEach(() => {
     if (path === '/api/products/' + otherId) return response({ product: { ...source, _id: otherId, name: 'منتج مشابه', images: [] }, store: { _id: storeId, name: 'متجر الاختبار' } });
     if (path === '/api/products/search') return searchStatus !== 200 ? response({ message: 'Unavailable' }, searchStatus) : response({ data: parsed.searchParams.has('category') ? [product, { ...source, _id: otherId, name: 'منتج مشابه' }] : [product, { ...source, _id: otherId, name: 'منتج مشابه' }, { ...source, _id: recentId, name: 'منتج آخر', category: 'نسيج' }] });
     if (path === '/api/reviews/' + sid) return response({ data: reviews, stats, pagination: { hasNextPage: parsed.searchParams.get('page') === '1' && stats.total > 5, pages: Math.ceil(stats.total / 5) } }, reviewStatus);
-    if (path === '/api/reviews' && options.method === 'POST') { posts.push(JSON.parse(options.body)); return response({ message: 'created' }, 201); }
+    if (path === '/api/reviews/eligibility/' + sid) return response({supplierId:sid,buyerId,eligible:eligibilityReason==='eligible',reason:eligibilityReason});
+    if (path === '/api/reviews' && options.method === 'POST') { const body=JSON.parse(options.body);posts.push(body); return response(reviewAcknowledged?{ review:{...body,_id:'777777777777777777777777',buyerId,basis:'mutual_confirmation'} }:{message:'unconfirmed'}, 201); }
     if (path === '/api/suppliers/me/profile') return response({ _id: buyerId, role: 'buyer', name: 'Test buyer', phone: '+212600000010' });
     return response({ data: [], unreadCount: 0 });
   });
@@ -323,4 +324,26 @@ test('recommendations expand from real bounded results without duplicate cards o
   act(() => document.dispatchEvent(new Event('visibilitychange')));
   await waitFor(() => expect(document.querySelectorAll('#product-discover article')).toHaveLength(11));
   expect(screen.queryByRole('heading', {name:'Synthetic item 0'})).not.toBeInTheDocument();
+});
+
+test('unilateral or absent confirmation hides publishing until eligibility refresh succeeds',async()=>{
+  eligibilityReason='no_confirmation';
+  localStorage.setItem('supplierToken','test.'+btoa(JSON.stringify({id:buyerId,exp:9999999999}))+'.signature');
+  await open();const section=screen.getByRole('region',{name:'تقييمات المورد وتعليقاته'});
+  await within(section).findByText(/يمكنك التقييم بعد إقرار/);
+  expect(within(section).queryByLabelText('تقييمك')).not.toBeInTheDocument();
+  eligibilityReason='eligible';fireEvent.click(within(section).getByRole('button',{name:'تحديث الأهلية'}));
+  await within(section).findByLabelText('تقييمك');expect(posts).toEqual([]);
+});
+test('unconfirmed review response never displays success or enables a blind second submission',async()=>{
+  reviewAcknowledged=false;
+  localStorage.setItem('supplierToken','test.'+btoa(JSON.stringify({id:buyerId,exp:9999999999}))+'.signature');
+  await open();const section=screen.getByRole('region',{name:'تقييمات المورد وتعليقاته'});
+  fireEvent.change(await within(section).findByLabelText('تقييمك'),{target:{value:'4'}});
+  fireEvent.change(within(section).getByLabelText('تعليقك'),{target:{value:'تجربة واضحة'}});
+  fireEvent.click(within(section).getByRole('button',{name:'نشر التقييم'}));
+  await within(section).findByText(/لم يتم التحقق من نشر التقييم/);
+  expect(within(section).queryByText('تم نشر تقييمك للمورد.')).not.toBeInTheDocument();
+  expect(within(section).queryByRole('button',{name:'نشر التقييم'})).not.toBeInTheDocument();
+  expect(posts).toHaveLength(1);
 });

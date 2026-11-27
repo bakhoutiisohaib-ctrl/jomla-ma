@@ -135,6 +135,7 @@ app.use('/api/tracking', trackingRoutes)
 
 const reviewRoutes = require('./routes/reviews')
 app.use('/api/reviews', reviewRoutes)
+app.use('/api/trade-confirmations', require('./routes/tradeConfirmations'))
 
 const productAIRoutes = require('./routes/productAI')
 app.use('/api/product-ai', productAIRoutes)

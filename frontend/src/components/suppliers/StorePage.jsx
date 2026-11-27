@@ -44,7 +44,7 @@ export default function StorePage({ id, search, user, onBack, onRequireLogin, on
         <button disabled={!data.pagination?.hasNextPage} onClick={() => browse(q, page + 1)}>{l('التالي', 'Suivant')}</button>
       </nav>
       </section></div>
-      <ReviewSection supplierId={supplier._id} />
+      <ReviewSection supplierId={supplier._id} user={user} />
     </>}
   </main></>;
 }

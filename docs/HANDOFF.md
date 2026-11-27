@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 - Gate 4E.3 transaction-linked reviews scoped PASS: final isolated BE 54/54 (4 suites), full FE 468/468 (44 suites), build PASS, 27/27 actual Chrome + DB records (six new review journey records). Bilateral attestation required; legacy ratings excluded, no independent purchase claim; owner reply and audited removal/repost safeguards. [Report](v49-gate4e3-reviews-2026-11-27.md). Gate 4 OPEN pending integrated acceptance. Limits documented.
+
 2026-11-27 - Gate 4E.2 optional supplier verification scoped PASS: isolated BE 46/46, full FE 466/466 (44 suites), final targeted recheck 25/25 after cleanup lint correction, build PASS, 7/7 actual browser + DB. Pending dossier revision fence; rejection/resubmission/approval, public store/product always available, badge only after approval. [Report](v49-gate4e2-verification-2026-11-27.md). Gate 4 OPEN; next 4E.3 review eligibility. Limits documented.
 
 2026-11-27 - Gate 4E.1 wholesale acknowledgement/lifecycle scoped PASS: 18/18 focused, 464/464 full FE (43 suites), build PASS, final 5/5 isolated browser + DB (same draft/published/paused opportunity; public 404/200/404, effective tier price). Earlier taxonomy timeout under RAM pressure resolved on unchanged test after owner freed memory; initial browser harness corrected for advanced mode. [Report](v49-gate4e1-wholesale-2026-11-27.md). Gate 4 OPEN; next 4E.2 optional verification, then trade-eligible reviews. Scope limits remain open.

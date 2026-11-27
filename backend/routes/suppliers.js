@@ -340,11 +340,12 @@ router.get('/me/reviews', authenticate, requirePermission('manage_store'), async
 }))
 // A supplier may reply but must not erase a buyer's independent review.
 router.delete('/me/reviews/:id', authenticate, (req, res) => res.status(403).json({ message: 'إزالة التقييمات تتم بمراجعة إدارة المنصة' }))
-router.post('/me/reviews/:id/reply', authenticate, requirePermission('manage_store'), asyncHandler(async (req, res) => {
-  if (typeof req.body.text !== 'string' || !req.body.text.trim() || req.body.text.length > 2000) return res.status(400).json({ message: 'نص رد صالح مطلوب' })
+router.post('/me/reviews/:id/reply', authenticate, requireRole('supplier'), validateMongoId, asyncHandler(async (req, res) => {
+  if (Object.keys(req.body || {}).some(key=>key!=='text') || typeof req.body.text !== 'string' || !req.body.text.trim() || req.body.text.length > 2000) return res.status(400).json({ message: 'نص رد صالح مطلوب' })
   const Review = require('../models/Review')
   const review = await Review.findOne({ _id: req.params.id, supplierId: req.supplier.ownerId })
   if (!review) return res.status(404).json({ message: 'التقييم غير موجود' })
+  if(review.reply?.text===req.body.text.trim())return res.json({message:'الرد محفوظ بالفعل',review})
   await auditedChange({
     action: 'REVIEW_REPLIED', targetType: 'Review', targetId: review._id, actor: req.supplier
   }, async () => {
