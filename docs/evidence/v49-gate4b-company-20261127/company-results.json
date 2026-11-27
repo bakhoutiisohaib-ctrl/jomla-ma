@@ -1,0 +1,19 @@
+[
+  {
+    "journey": "owner_pending_store",
+    "activationBlocked": true
+  },
+  {
+    "journey": "owner_creates_invitation",
+    "storeOnly": true
+  },
+  {
+    "journey": "staff_accepts_store_only",
+    "productsHidden": true,
+    "rfqHidden": true
+  },
+  {
+    "journey": "owner_revokes_staff",
+    "privateDestinationsHidden": true
+  }
+]
