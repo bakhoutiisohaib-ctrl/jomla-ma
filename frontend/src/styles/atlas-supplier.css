@@ -21,3 +21,11 @@
 .supplier-setup li>button { font-size: 12px; text-align: start; background: white; color: #3e5c32; border-color: #c9d6bd; min-height: 44px; }
 @media(max-width:1000px) { .supplier-setup ol { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media(max-width:500px) { .supplier-setup ol { grid-template-columns: 1fr; }.supplier-setup li { padding: 15px; } }
+
+/* Two office views share the same capability-filtered destinations. */
+.supplier-mode{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:4px;background:#f1f4ee;border-radius:9px;margin-bottom:12px}
+.supplier-sidebar .supplier-mode button{justify-content:center;text-align:center;padding:6px;min-width:0}
+.supplier-sidebar .supplier-mode button[aria-pressed=true]{box-shadow:none;background:#fff;border:1px solid #a0b29a}
+.supplier-sidebar nav .atlas-icon,.supplier-add-symbol{width:20px;height:20px;flex:0 0 20px}
+.supplier-add-symbol{display:grid;place-items:center;font-size:22px;line-height:1}
+@media(max-width:700px){.supplier-header nav{flex-wrap:wrap;max-width:100%;margin-inline-start:0}.supplier-sidebar nav button{gap:6px}.supplier-sidebar nav .atlas-icon,.supplier-add-symbol{width:18px;height:18px;flex-basis:18px}}

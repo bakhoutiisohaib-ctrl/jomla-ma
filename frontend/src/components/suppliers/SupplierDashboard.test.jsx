@@ -143,3 +143,53 @@ test('leaving the editor offers stay or explicit discard without auto-saving or 
  expect(apiRequest.mock.calls.some(([,o])=>['POST','PUT'].includes(o?.method))).toBe(false);
 })
 
+
+test('office starts simple, advanced tools remain accessible and returning to simple keeps the current editor',async()=>{
+ show();
+ expect(screen.getByRole('button',{name:'مبسط'})).toHaveAttribute('aria-pressed','true');
+ expect(screen.queryByRole('button',{name:'توثيق المورد',exact:true})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'متقدم'}));
+ fireEvent.click(screen.getByRole('button',{name:'توثيق المورد',exact:true}));
+ expect(screen.getByRole('heading',{name:'طلب مراجعة وتوثيق المورد'})).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'مبسط'}));
+ expect(screen.getByRole('heading',{name:'نظرة عامة'})).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'إضافة منتج',exact:true}));
+ fireEvent.change(screen.getByLabelText('عنوان المنتج'),{target:{value:'Synthetic unsaved'}});
+ fireEvent.click(screen.getByRole('button',{name:'متقدم'}));
+ fireEvent.click(screen.getByRole('button',{name:'مبسط'}));
+ expect(screen.getByLabelText('عنوان المنتج')).toHaveValue('Synthetic unsaved');
+ await act(async()=>{});
+});
+
+test('advanced mode cannot expose staff capabilities',async()=>{
+ const staff={...user,role:'staff',permissions:[]};
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(p,o)=>p==='/suppliers/me/profile'?staff:base(p,o));
+ render(<LanguageProvider><SupplierDashboard supplier={staff} onBack={()=>{}} onLogout={()=>{}}/></LanguageProvider>);
+ fireEvent.click(screen.getByRole('button',{name:'متقدم'}));
+ expect(screen.queryByRole('button',{name:'توثيق المورد',exact:true})).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'مهام الصور',exact:true})).not.toBeInTheDocument();
+ await act(async()=>{});
+});
+
+test('office counts use pagination totals and failed RFQ reads do not show zero',async()=>{
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(p,o)=>{
+  if(p.startsWith('/stores/mine'))return {data:[],pagination:{total:103}};
+  if(p==='/rfq/supplier')throw Error('Synthetic RFQ load failure');
+  return base(p,o);
+ });
+ show();
+ await screen.findByText('Synthetic RFQ load failure');
+ expect(document.querySelector('.supplier-content .stat-grid').textContent).toContain('103');
+ expect(document.querySelector('.supplier-priorities button strong')).toHaveTextContent('—');
+ expect(document.querySelectorAll('.supplier-content .stat-grid strong')[1]).toHaveTextContent('—');
+});
+
+test('notification summary uses the server total, not the bounded inbox length',async()=>{
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(p,o)=>p.startsWith('/notifications')?{data:[],unreadCount:125}:base(p,o));
+ show();
+ expect(await screen.findByRole('button',{name:'الإشعارات (125)'})).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'تنبيهات الحساب: 125'})).toHaveTextContent('99+');
+});

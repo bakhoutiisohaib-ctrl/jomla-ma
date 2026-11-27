@@ -12,7 +12,7 @@ import StoresPanel from './StoresPanel';
 import ProductEditor from './ProductEditor';
 import WholesaleWorkspace from '../wholesale/WholesaleWorkspace';
 import JobsPanel from './JobsPanel';
-import { SupplierHeader, SupplierSidebar } from './SupplierWorkspace';
+import { SupplierHeader, SupplierSidebar, advancedSupplierTabs } from './SupplierWorkspace';
 import SupplierSetupGuide from './SupplierSetupGuide';
 import SupplierOfferForm from './SupplierOfferForm';
 import SourcingOfferForm from './SourcingOfferForm';
@@ -32,6 +32,7 @@ export default function SupplierDashboard({
   const [profile, setProfile] = useState(supplier),
     [tab, setTab] = useState('overview'),
     [revision, setRevision] = useState(0);
+  const [advanced, setAdvanced] = useState(false), [loadedMetrics, setLoadedMetrics] = useState({}), [storeTotal, setStoreTotal] = useState(null);
   const [products, setProducts] = useState([]),
     [stores, setStores] = useState([]),
     [rfqs, setRfqs] = useState([]),
@@ -39,6 +40,7 @@ export default function SupplierDashboard({
     [reviews, setReviews] = useState([]);
   const [notifications, setNotifications] = useState([]),
     [analytics, setAnalytics] = useState(null);
+  const [unreadTotal, setUnreadTotal] = useState(null);
   const [page, setPage] = useState(1),
     [pages, setPages] = useState(1),
     [total, setTotal] = useState(0),
@@ -119,21 +121,26 @@ export default function SupplierDashboard({
     let active = true;
     setError('');
     const tasks = [];
-    const fetchInto = (path, setter) => tasks.push(apiRequest(path).then(data => {
-      if (active) setter(data);
+    const token = getSessionToken();
+    setLoadedMetrics({});
+    const fetchInto = (path, setter, metric) => tasks.push(apiRequest(path,{token}).then(data => {
+      if (active && token === getSessionToken()) {
+        setter(data);
+        if (metric) setLoadedMetrics(previous => ({...previous,[metric]:true}));
+      }
     }));
-    if (can('manage_store') || can('manage_products')) fetchInto('/stores/mine?limit=100', d => setStores(d.data || []));
+    if (can('manage_store') || can('manage_products')) fetchInto('/stores/mine?limit=100', d => {setStores(d.data || []);setStoreTotal(Number.isSafeInteger(d.pagination?.total) && d.pagination.total>=0 ? d.pagination.total : null);}, 'stores');
     if (can('manage_products') && tab !== 'drafts') fetchInto('/products/mine?page=' + page + '&limit=12', d => {
       setProducts(d.data || []);
       setPages(d.pagination?.pages || 1);
-      setTotal(d.pagination?.total || 0);
-    });
-    if (tab === 'overview' && can('manage_products')) fetchInto('/jobs/mine?status=failed&limit=1', d => setFailedJobs(d.pagination?.total ?? null));
+      setTotal(Number.isSafeInteger(d.pagination?.total) && d.pagination.total>=0 ? d.pagination.total : null);
+    }, 'products');
+    if (tab === 'overview' && can('manage_products')) fetchInto('/jobs/mine?status=failed&limit=1', d => setFailedJobs(d.pagination?.total ?? null),'jobs');
     if (can('manage_rfq')) {
-      fetchInto('/rfq/supplier', d => setRfqs(d.data || []));
+      fetchInto('/rfq/supplier', d => {if(!Array.isArray(d.data)) throw new Error('Invalid RFQ list');setRfqs(d.data);},'rfq');
       fetchInto('/sourcing?status=open', d => setSourcing(d.data || []));
     }
-    fetchInto('/notifications?limit=50', d => setNotifications(d.data || []));
+    fetchInto('/notifications?limit=50', d => {setNotifications(d.data || []);setUnreadTotal(Number.isSafeInteger(d.unreadCount) && d.unreadCount>=0 ? d.unreadCount : null);},'notifications');
     if (['overview', 'reviews'].includes(tab) && profile.role === 'supplier') fetchInto('/suppliers/me/reviews', d => setReviews(d.data || []));
     if (tab === 'overview' && can('manage_products')) fetchInto('/suppliers/me/analytics', setAnalytics);
     Promise.allSettled(tasks).then(results => {
@@ -148,8 +155,22 @@ export default function SupplierDashboard({
   }, [can, page, tab, revision, profile.role]);
   useEffect(() => {
     if (tab !== 'notifications') return;
-    const timer = setInterval(() => apiRequest('/notifications?limit=50').then(d => setNotifications(d.data || [])).catch(e => setError(e.message)), 30000);
-    return () => clearInterval(timer);
+    let active = true, controller;
+    const token = getSessionToken();
+    const timer = setInterval(() => {
+      controller?.abort();
+      controller = new AbortController();
+      const signal = controller.signal;
+      const current = () => active && !signal.aborted && token === getSessionToken();
+      apiRequest('/notifications?limit=50',{token,signal,cache:'no-store'}).then(d => {
+        if (current()) {
+          setNotifications(d.data || []);
+          setUnreadTotal(Number.isSafeInteger(d.unreadCount) && d.unreadCount>=0 ? d.unreadCount : null);
+          setLoadedMetrics(previous=>({...previous,notifications:true}));
+        }
+      }).catch(e => {if(current()){setUnreadTotal(null);setError(e.message);}});
+    }, 30000);
+    return () => {active=false;controller?.abort();clearInterval(timer);};
   }, [tab]);
   useEffect(() => {
     if (tab !== 'drafts' || !can('manage_products')) return;
@@ -218,13 +239,15 @@ export default function SupplierDashboard({
       if (revision === conversationRevision.current) setThread(result);
     });
   }
-  const unread = notifications.filter(n => !n.readAt).length;
+  const unread = loadedMetrics.notifications && unreadTotal!=null ? unreadTotal : '—';
+  const metric = (key,value) => loadedMetrics[key] && value!=null ? value : '—';
   const wholesaleTab = ['wholesale', l('فرص الجملة', 'Opportunités de gros'), can('manage_products')];
   const tabs = [['overview', l('نظرة عامة', 'Vue d’ensemble'), true], ['organization', l('الشركة والفريق', 'Entreprise et équipe'), true], ['stores', l('متاجري', 'Mes boutiques'), can('manage_store')], ['products', l('منتجاتي', 'Mes produits'), can('manage_products')], ['drafts', l('المسودات', 'Brouillons'), can('manage_products')], ['add', l('إضافة منتج', 'Ajouter un produit'), can('manage_products')], ['jobs', l('مهام الصور', 'Tâches des images'), can('manage_products')], ['rfq', l('طلبات الأسعار', 'Demandes de devis'), can('manage_rfq')], ['sourcing', l('فرص التوريد', 'Opportunités de sourcing'), can('manage_rfq')], ['verification', l('توثيق المورد', 'Vérification'), profile.role === 'supplier'], ['reviews', l('التقييمات', 'Avis'), profile.role === 'supplier'], ['notifications', l('الإشعارات', 'Notifications') + ' (' + unread + ')', true]];
   tabs.splice(tabs.findIndex(([key]) => key === 'drafts'), 0, wholesaleTab);
   function moveTab(key) {
     setPendingTab(null);
     if (key === 'market') { onBack?.(); return; }
+    if(advancedSupplierTabs.includes(key)) setAdvanced(true);
     setTab(key); setPage(1); setError(''); setMessage('');
     if (key === 'add') { setEditing(null); setRecoveredDraft(null); }
   }
@@ -233,16 +256,20 @@ export default function SupplierDashboard({
     if (tab === 'add') { setPendingTab(key); return; }
     moveTab(key);
   }
+  function changeMode(value) {
+    setAdvanced(value);
+    if (!value && advancedSupplierTabs.includes(tab)) moveTab('overview');
+  }
   const listProducts = tab === 'drafts' ? drafts.slice((page - 1) * 12, page * 12) : products;
   const listPages = tab === 'drafts' ? Math.ceil(drafts.length / 12) : pages;
   return <div className="atlas-supplier"><SupplierHeader profile={profile} unread={unread} onNotifications={() => chooseTab('notifications')} onBack={() => chooseTab('market')} onLogout={onLogout}>{profile.role === 'admin' && <button onClick={onGoAdmin}>{l('الإشراف', 'Administration')}</button>}</SupplierHeader>
-    <div className="supplier-shell"><SupplierSidebar tabs={tabs} tab={tab} onTab={chooseTab} /><main id="supplier-main" tabIndex="-1" className="supplier-content">
+    <div className="supplier-shell"><SupplierSidebar tabs={tabs} tab={tab} onTab={chooseTab} advanced={advanced} onModeChange={changeMode} /><main id="supplier-main" tabIndex="-1" className="supplier-content">
     <div className="supplier-page-heading"><div><p className="supplier-eyebrow">{l('Jomla.ma · مساحة عملك', 'Jomla.ma · Votre espace')}</p><h1>{tabs.find(([key])=>key===tab)?.[1]}</h1></div><div className="actions">{tab!=='add' && <button disabled={busy} onClick={refresh}>{l('تحديث مساحة العمل','Actualiser l’espace')}</button>}{can('manage_products') && tab !== 'add' && <button className="primary" onClick={()=>chooseTab('add')}>{l('إضافة منتج جديد','Créer un produit')}</button>}</div></div>
     {pendingTab && <section className="supplier-leave-warning" role="alert"><strong>{l('احفظ مسودتك قبل المغادرة','Enregistrez votre brouillon avant de quitter')}</strong><p>{l('ستفقد المدخلات غير المحفوظة إذا غادرت المحرر. يمكنك البقاء وحفظ مسودة، أو المغادرة دون حفظ.', 'Les saisies non enregistrées seront perdues. Restez pour enregistrer un brouillon, ou quittez sans enregistrer.')}</p><div className="actions"><button onClick={()=>setPendingTab(null)}>{l('البقاء في المحرر','Rester dans l’éditeur')}</button><button onClick={()=>moveTab(pendingTab)}>{l('مغادرة دون حفظ','Quitter sans enregistrer')}</button></div></section>}
     <Notice error>{error}</Notice><Notice>{message}</Notice>
     {tab === 'wholesale' && can('manage_products') && <><h2>{wholesaleTab[1]}</h2><WholesaleWorkspace /></>}
-    {tab === 'overview' && <section className="supplier-attention panel"><div><p className="supplier-eyebrow">{l('ابدأ بالأهم','Vos priorités')}</p><h2>{l('ما يحتاج متابعتك','À suivre')}</h2><p className="muted">{l('راجع الطلبات والمسودات ومهام الصور قبل النشر. لا يُنشر أي منتج تلقائياً.', 'Suivez les demandes, les brouillons et les images. Aucun produit n’est publié automatiquement.')}</p></div><div className="supplier-priorities">{can('manage_rfq') && <button onClick={()=>chooseTab('rfq')}><strong>{rfqs.filter(r=>['pending','responded','offering'].includes(r.status)).length}</strong>{l('طلبات أسعار مفتوحة','Demandes de devis ouvertes')}</button>}{can('manage_products') && <><button onClick={()=>chooseTab('drafts')}><strong>↗</strong>{l('مراجعة المسودات','Vérifier les brouillons')}</button><button onClick={()=>chooseTab('jobs')}><strong>{failedJobs ?? '—'}</strong>{l('مهام صور فاشلة','Tâches d’images en échec')}</button><button onClick={()=>chooseTab('products')}><strong>↗</strong>{l('مراجعة حالة المنتجات','Vérifier les produits')}</button></>}</div><p className="supplier-help">{l('اعتماد المتجر الإداري يتيح النشر. توثيق المورد اختياري ولا يضمن جودة المنتج أو الاتفاق.', 'L’approbation administrative de la boutique permet la publication. La vérification du fournisseur reste facultative et ne garantit ni produit ni accord.')}</p></section>}
-    {tab === 'overview' && <section className="panel"><h2>{l('مساحة المورد', 'Espace fournisseur')}</h2><p className="muted">{l('الخطوات: ملف الشركة ← متجر ومراجعة الإدارة ← صورة وبيانات المنتج ← اعتماد النشر.', 'Parcours : entreprise → boutique et approbation → image et données produit → publication confirmée.')}</p><div className="stat-grid"><div className="stat">{l('منتجاتي', 'Mes produits')}<strong>{total}</strong></div><div className="stat">{l('طلبات الأسعار', 'Demandes de devis')}<strong>{rfqs.length}</strong></div><div className="stat">{l('المتاجر', 'Boutiques')}<strong>{stores.length}</strong></div></div><p>{l('التوثيق التجاري الاختياري', 'Vérification commerciale facultative')}: {statusLabel(profile.verificationStatus, lang)}</p>{profile.role === 'staff' && !profile.organizationId && <Notice>{l('حساب الموظف يحتاج قبول دعوة من مالك الشركة قبل إدارة المنتجات أو العروض.', 'Acceptez une invitation du propriétaire avant de gérer produits et devis.')}</Notice>}{analytics?.categoryStats?.length > 0 && <details><summary>{l('إحصاءات الكتالوج حسب الفئة', 'Statistiques du catalogue par catégorie')}</summary>{analytics.categoryStats.map(s => <p key={s._id}>{s._id || l('بدون فئة','Sans catégorie')}: {s.count} · {l('متوسط السعر', 'Prix moyen')}: {s.avgPrice == null ? '—' : Number(s.avgPrice).toFixed(2)}</p>)}</details>}</section>}
+    {tab === 'overview' && <section className="supplier-attention panel"><div><p className="supplier-eyebrow">{l('ابدأ بالأهم','Vos priorités')}</p><h2>{l('ما يحتاج متابعتك','À suivre')}</h2><p className="muted">{l('راجع الطلبات والمسودات ومهام الصور قبل النشر. لا يُنشر أي منتج تلقائياً.', 'Suivez les demandes, les brouillons et les images. Aucun produit n’est publié automatiquement.')}</p></div><div className="supplier-priorities">{can('manage_rfq') && <button onClick={()=>chooseTab('rfq')}><strong>{metric('rfq',rfqs.filter(r=>['pending','responded','offering'].includes(r.status)).length)}</strong>{l('طلبات أسعار مفتوحة','Demandes de devis ouvertes')}</button>}{can('manage_products') && <><button onClick={()=>chooseTab('drafts')}><strong>↗</strong>{l('مراجعة المسودات','Vérifier les brouillons')}</button><button onClick={()=>chooseTab('jobs')}><strong>{metric('jobs',failedJobs)}</strong>{l('مهام صور فاشلة','Tâches d’images en échec')}</button><button onClick={()=>chooseTab('products')}><strong>↗</strong>{l('مراجعة حالة المنتجات','Vérifier les produits')}</button></>}</div><p className="supplier-help">{l('اعتماد المتجر الإداري يتيح النشر. توثيق المورد اختياري ولا يضمن جودة المنتج أو الاتفاق.', 'L’approbation administrative de la boutique permet la publication. La vérification du fournisseur reste facultative et ne garantit ni produit ni accord.')}</p></section>}
+    {tab === 'overview' && <section className="panel"><h2>{l('مساحة المورد', 'Espace fournisseur')}</h2><p className="muted">{l('الخطوات: ملف الشركة ← متجر ومراجعة الإدارة ← صورة وبيانات المنتج ← اعتماد النشر.', 'Parcours : entreprise → boutique et approbation → image et données produit → publication confirmée.')}</p><div className="stat-grid"><div className="stat">{l('منتجاتي', 'Mes produits')}<strong>{can('manage_products') ? metric('products',total) : '—'}</strong></div><div className="stat">{l('طلبات الأسعار', 'Demandes de devis')}<strong>{can('manage_rfq') ? metric('rfq',rfqs.length) : '—'}</strong></div><div className="stat">{l('المتاجر', 'Boutiques')}<strong>{can('manage_store') || can('manage_products') ? metric('stores',storeTotal) : '—'}</strong></div></div><p>{l('التوثيق التجاري الاختياري', 'Vérification commerciale facultative')}: {statusLabel(profile.verificationStatus, lang)}</p>{profile.role === 'staff' && !profile.organizationId && <Notice>{l('حساب الموظف يحتاج قبول دعوة من مالك الشركة قبل إدارة المنتجات أو العروض.', 'Acceptez une invitation du propriétaire avant de gérer produits et devis.')}</Notice>}{advanced && analytics?.categoryStats?.length > 0 && <details><summary>{l('إحصاءات الكتالوج حسب الفئة', 'Statistiques du catalogue par catégorie')}</summary>{analytics.categoryStats.map(s => <p key={s._id}>{s._id || l('بدون فئة','Sans catégorie')}: {s.count} · {l('متوسط السعر', 'Prix moyen')}: {s.avgPrice == null ? '—' : Number(s.avgPrice).toFixed(2)}</p>)}</details>}</section>}
     {tab === 'overview' && <SupplierSetupGuide can={can} onTab={chooseTab} />}
     {tab === 'organization'  && <OrganizationPanel profile={profile} onChanged={refresh} />}
     {tab === 'stores' && can('manage_store') && <StoresPanel stores={stores} city={profile.city} onChanged={refresh} />}
