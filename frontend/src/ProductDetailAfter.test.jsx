@@ -181,3 +181,63 @@ test('a direct legacy review fragment resolves to details after asynchronous pro
   expect(within(screen.getByRole('navigation', { name: 'أقسام المنتج' })).getByRole('link', { name: 'التفاصيل' })).toHaveAttribute('aria-current', 'location');
   expect(screen.getByRole('region', { name: 'تقييمات المورد وتعليقاته' })).toBeInTheDocument();
 });
+
+test('RTL gallery counter, swipe, keyboard and click suppression preserve the real image sequence', async () => {
+  await open();
+  const gallery = screen.getByRole('region', { name: 'صور المنتج' });
+  const trigger = within(gallery).getByRole('button', { name: 'تكبير صورة المنتج' });
+  const counter = within(gallery).getByText('1 / 2');
+  expect(counter).toHaveAttribute('dir', 'ltr');
+  fireEvent.touchStart(trigger, { touches: [{ identifier: 1, clientX: 40, clientY: 100 }] });
+  fireEvent.touchEnd(trigger, { touches: [], changedTouches: [{ identifier: 1, clientX: 150, clientY: 103 }] });
+  expect(counter).toHaveTextContent('2 / 2');
+  fireEvent.click(trigger, { detail: 1 });
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  fireEvent.keyDown(trigger, { key: 'ArrowRight' });
+  expect(counter).toHaveTextContent('1 / 2');
+  fireEvent.touchStart(trigger, { touches: [{ identifier: 1, clientX: 40, clientY: 100 }] });
+  fireEvent.touchEnd(trigger, { touches: [], changedTouches: [{ identifier: 1, clientX: 45, clientY: 210 }] });
+  expect(counter).toHaveTextContent('1 / 2');
+  fireEvent.touchStart(trigger, { touches: [{ identifier: 1, clientX: 40, clientY: 100 }] });
+  fireEvent.touchMove(trigger, { touches: [{ identifier: 1 }, { identifier: 2 }] });
+  fireEvent.touchEnd(trigger, { touches: [], changedTouches: [{ identifier: 1, clientX: 150, clientY: 100 }] });
+  expect(counter).toHaveTextContent('1 / 2');
+  fireEvent.click(trigger, { detail: 0 });
+  expect(screen.getByRole('dialog', { name: 'صور المنتج' })).toBeInTheDocument();
+});
+
+test('LTR swipe and arrow navigation use the opposite reading direction and single tap opens zoom', async () => {
+  localStorage.setItem('jomla_lang', 'en');
+  await open();
+  const trigger = document.querySelector('.atlas-gallery-main');
+  const counter = document.querySelector('.atlas-gallery-counter');
+  fireEvent.touchStart(trigger, { touches: [{ identifier: 1, clientX: 160, clientY: 100 }] });
+  fireEvent.touchEnd(trigger, { touches: [], changedTouches: [{ identifier: 1, clientX: 45, clientY: 102 }] });
+  expect(counter).toHaveTextContent('2 / 2');
+  fireEvent.keyDown(trigger, { key: 'ArrowLeft' });
+  expect(counter).toHaveTextContent('1 / 2');
+  fireEvent.touchStart(trigger, { touches: [{ identifier: 1, clientX: 100, clientY: 100 }] });
+  fireEvent.touchEnd(trigger, { touches: [], changedTouches: [{ identifier: 1, clientX: 102, clientY: 102 }] });
+  fireEvent.click(trigger, { detail: 1 });
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+});
+
+test('gallery favorite uses existing guest login returnTo and never nests a button', async () => {
+  await open();
+  const gallery = screen.getByRole('region', { name: 'صور المنتج' });
+  const heart = gallery.querySelector('.atlas-favorite-heart');
+  expect(heart).toBeEnabled();
+  expect(heart.closest('.atlas-gallery-frame')).toBeTruthy();
+  expect(heart.parentElement.querySelector('.atlas-gallery-main').contains(heart)).toBe(false);
+  fireEvent.click(heart);
+  expect(window.location.pathname).toBe('/login');
+  expect(new URLSearchParams(window.location.search).get('returnTo')).toBe('/products/' + pid);
+});
+
+test('invalid images collection and untrusted video fields never create media playback or network requests', async () => {
+  product = { ...product, images: '/uploads/second.png', videoUrl: 'https://untrusted.example/demo.mp4' };
+  await open();
+  expect(document.querySelector('video')).toBeNull();
+  expect(document.querySelector('.atlas-gallery-counter')).toHaveTextContent('1 / 1');
+  expect(fetch.mock.calls.some(([url]) => String(url).includes('untrusted.example') || String(url).includes('second.png'))).toBe(false);
+});
