@@ -6,6 +6,7 @@ const { escapeRegex } = require('./constants')
 const { parseBusinessTypeInput, declaredBusinessTypes } = require('./businessTypes')
 const { parseTaxonomyPath, applyTaxonomyFilter } = require('./taxonomy')
 const { parseSupplierTrust, verifiedSupplierPredicate } = require('./supplierTrust')
+const { regexes } = require('./searchIntent')
 
 const badRequest = message => Object.assign(new Error(message), { status: 400 })
 const PUBLIC_FIELDS = 'name category taxonomyPath pricingMode price currency country moq unit priceTiers inStock availability availabilityConfirmed city supplierId supplierPhone storeId views description images imageUrl createdAt matchType matchBasis effectiveUnitPrice'
@@ -92,9 +93,9 @@ async function catalogCategories(input = {}) {
   return { data: result?.data || [], pagination: { page: options.page, limit: options.limit, total, pages: Math.ceil(total / options.limit), hasNextPage: options.page * options.limit < total, hasPrevPage: options.page > 1 } }
 }
 
-async function searchCatalog(input, { words, visual = false, supplierId, storeId } = {}) {
+async function searchCatalog(input, { words, visual = false, supplierId, storeId, intent } = {}) {
   const options = parseOptions(input)
-  const filter = await publicCatalogFilter({ supplierId, businessType: options.businessType, supplierTrust: options.supplierTrust })
+  const filter = await publicCatalogFilter({ supplierId, businessType: options.businessType, supplierTrust: intent?.verified ? 'verified' : options.supplierTrust })
   if (storeId) filter.$and = [{ storeId }]
   if (options.city) filter.city = new RegExp(escapeRegex(options.city), 'i')
   if (options.category) filter.category = categoryPredicate(options)
@@ -106,25 +107,50 @@ async function searchCatalog(input, { words, visual = false, supplierId, storeId
       filter.$and = [...(filter.$and || []), { supplierId: { $in: suppliers.map(s => s._id) } }]
     }
   }
-  if (options.quantity) filter.moq = { $lte: options.quantity }
+  if (intent?.quantity != null && options.quantity != null && intent.quantity !== options.quantity) intent.issues.push('quantity_conflict')
+  if (intent?.currency && options.currency && intent.currency !== options.currency) intent.issues.push('currency_conflict')
+  if (intent?.sort && options.order !== 'relevance' && options.order !== intent.sort) intent.issues.push('sort_conflict')
+  const quantity = intent?.quantity ?? options.quantity
+  if (quantity) filter.moq = { $lte: quantity }
+  if (intent) {
+    const add = predicate => { filter.$and = [...(filter.$and || []), predicate] }
+    if (intent.issues.length) add({ _id: { $in: [] } })
+    if (intent.city) add({ city: { $in: regexes(intent.cityAliases,true) } })
+    if (intent.unit) add({ unit: { $in: regexes(intent.unitAliases,true) } })
+    if (intent.currency) add({ currency: intent.currency })
+    if (intent.moq != null) add({ moq: { [intent.moqStrict?'$lt':'$lte']: intent.moq } })
+    for (const group of intent.groups) {
+      const expressions = regexes(group)
+      add({ $or: ['name','category','description'].map(field=>({ [field]: { $in: expressions } })) })
+    }
+  }
   const terms = (words || searchWords(options.q)).filter(w => typeof w === 'string' && w.trim()).slice(0, 15)
-  if (terms.length) {
+  if (!intent && terms.length) {
     const regexes = terms.map(w => new RegExp(escapeRegex(w.slice(0, 120)), 'i'))
     filter.$or = [{ name: { $in: regexes } }, { category: { $in: regexes } }, { description: { $in: regexes } }]
   }
   applyTaxonomyFilter(filter, options.taxonomyPath)
   const pipeline = [{ $match: filter }]
-  if (options.quantity) {
-    pipeline.push({ $addFields: { _tiers: { $filter: { input: { $ifNull: ['$priceTiers', []] }, as: 't', cond: { $and: [{ $lte: ['$$t.minQty', options.quantity] }, { $or: [{ $eq: [{ $ifNull: ['$$t.maxQty', null] }, null] }, { $gte: ['$$t.maxQty', options.quantity] }] }] } } } } })
+  const priceQuantity = quantity || (intent && (intent.budget != null || intent.minPrice != null || intent.maxPrice != null || intent.sort) ? '$moq' : null)
+  if (priceQuantity) {
+    pipeline.push({ $addFields: { _tiers: { $filter: { input: { $ifNull: ['$priceTiers', []] }, as: 't', cond: { $and: [{ $lte: ['$$t.minQty', priceQuantity] }, { $or: [{ $eq: [{ $ifNull: ['$$t.maxQty', null] }, null] }, { $gte: ['$$t.maxQty', priceQuantity] }] }] } } } } })
     pipeline.push({ $addFields: { effectiveUnitPrice: { $ifNull: [{ $arrayElemAt: ['$_tiers.price', 0] }, '$price'] } } })
   } else pipeline.push({ $addFields: { effectiveUnitPrice: '$price' } })
   const priceFilter = {}
   if (options.minPrice != null) priceFilter.$gte = options.minPrice
   if (options.maxPrice != null) priceFilter.$lte = options.maxPrice
   if (Object.keys(priceFilter).length) pipeline.push({ $match: { pricingMode: 'fixed', effectiveUnitPrice: priceFilter } })
-  const exactExpression = !visual && options.q ? { $eq: [{ $toLower: { $ifNull: ['$name', ''] } }, options.q.toLowerCase()] } : false
+  if (intent) {
+    const bounds = {}
+    if (intent.minPrice != null) bounds[intent.strictMin?'$gt':'$gte'] = intent.minPrice
+    if (intent.maxPrice != null) bounds[intent.strictMax?'$lt':'$lte'] = intent.maxPrice
+    if (Object.keys(bounds).length || intent.budget != null || intent.sort) pipeline.push({ $match: { pricingMode: 'fixed', effectiveUnitPrice: { $type: 'number', ...bounds } } })
+    if (intent.budget != null) pipeline.push({ $match: { $expr: { $lte: [{ $multiply: [{ $toDecimal: '$effectiveUnitPrice' }, quantity || '$moq'] }, { $toDecimal: intent.budget }] } } })
+  }
+  const exactExpression = !intent && !visual && options.q ? { $eq: [{ $toLower: { $ifNull: ['$name', ''] } }, options.q.toLowerCase()] } : false
   pipeline.push({ $addFields: { _rank: { $cond: [exactExpression, 0, 1] }, _priceMissing: { $cond: [{ $eq: ['$pricingMode', 'on_request'] }, 1, 0] } } })
-  const sort = options.order === 'price_asc' ? { _rank: 1, _priceMissing: 1, effectiveUnitPrice: 1, _id: 1 } : options.order === 'price_desc' ? { _rank: 1, _priceMissing: 1, effectiveUnitPrice: -1, _id: 1 } : options.order === 'newest' ? { _rank: 1, createdAt: -1, _id: 1 } : { _rank: 1, views: -1, _id: 1 }
+  const order = intent?.sort || options.order
+  const sort = order === 'price_asc' ? { _rank: 1, _priceMissing: 1, effectiveUnitPrice: 1, _id: 1 } : order === 'price_desc' ? { _rank: 1, _priceMissing: 1, effectiveUnitPrice: -1, _id: 1 } : order === 'newest' ? { _rank: 1, createdAt: -1, _id: 1 } : { _rank: 1, views: -1, _id: 1 }
   const projection = Object.fromEntries(PUBLIC_FIELDS.split(' ').map(field => [field, 1]))
   projection._rank = 1
   const [result] = await Product.aggregate([...pipeline, { $facet: {

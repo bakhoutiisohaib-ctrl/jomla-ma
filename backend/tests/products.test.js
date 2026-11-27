@@ -310,3 +310,65 @@ test('taxonomy assignment validates shapes, supports clearing and is included in
  expect((await update({taxonomyPath:''})).body.product.taxonomyPath).toBe('')
  expect((await request(app).get('/api/products/'+id)).status).toBe(404)
 })
+
+test('V4.9 opt-in structured search uses city aliases, conjunction, quantity tier and strict price before pagination',async()=>{
+  const a=await create(published({name:'Ceramic cups',category:'Kitchen',city:'Tanger',unit:'piece',price:40,priceTiers:[{minQty:50,price:29}]}))
+  await create(published({name:'Ceramic cups',category:'Kitchen',city:'طنجة',unit:'piece',price:30}))
+  await create(published({name:'Plastic cups',category:'Kitchen',city:'طنجة',unit:'piece',price:20}))
+  await create(published({name:'Ceramic plates',category:'Kitchen',city:'طنجة',unit:'piece',price:20}))
+  await create(published({name:'Ceramic cups',category:'Kitchen',city:'فاس',unit:'piece',price:20}))
+  await create(published({name:'Ceramic cups',category:'Kitchen',city:'طنجة',unit:'pair',price:20}))
+  await create(published({name:'Ceramic cups',category:'Kitchen',city:'طنجة',unit:'piece',price:20,currency:'EUR'}))
+  await create(published({name:'Ceramic cups',category:'Kitchen',city:'طنجة',unit:'piece',moq:100,price:20}))
+  const r=await request(app).post('/api/ai-search').send({intentVersion:'v49-1',query:'أكواب خزف في طنجة أقل من ٣٠ درهم كمية ٥٠ قطعة',limit:1})
+  expect(r.status).toBe(200);expect(r.body.searchIntent).toMatchObject({city:'طنجة',quantity:50,maxPrice:30,strictMax:true,currency:'MAD',issues:[]})
+  expect(r.body.total).toBe(1);expect(r.body.products.map(x=>x._id)).toEqual([a.body.product._id]);expect(r.body.products[0].effectiveUnitPrice).toBe(29)
+  const inc=await request(app).post('/api/ai-search').send({intentVersion:'v49-1',query:'tasses céramique à Tanger au maximum 30 MAD quantité 50 pièces'})
+  expect(inc.status).toBe(200);expect(inc.body.total).toBe(2)
+})
+test('structured budget uses goods quantity tiers and never includes unknown prices or currencies',async()=>{
+  const a=await create(published({name:'Shoes',unit:'pair',price:80,priceTiers:[{minQty:50,price:40}]}))
+  await create(published({name:'Shoes',unit:'pair',price:41}))
+  await create(published({name:'Shoes',unit:'pair',pricingMode:'on_request',price:null}))
+  await create(published({name:'Shoes',unit:'pair',price:1,currency:'USD'}))
+  const r=await request(app).post('/api/ai-search').send({intentVersion:'v49-1',query:'shoes quantity 50 pairs budget 2000 MAD'})
+  expect(r.status).toBe(200);expect(r.body.total).toBe(1);expect(r.body.products[0]._id).toBe(a.body.product._id)
+})
+test('structured unsupported conditions and explicit conflicting filters fail closed without external discovery',async()=>{
+  await create(published({name:'Shoes',price:1}))
+  for(const [query,extra,issue] of [
+    ['shoes or shirts',{},'ambiguous_or'],['shoes with delivery',{},'delivery_unknown'],
+    ['shoes under 30 MAD',{currency:'USD'},'currency_conflict'],['shoes quantity 20',{quantity:30},'quantity_conflict'],
+    ['shoes under 10 EUR',{},'unparsed_number'],['shoes without leather',{},'unsupported_negation']
+  ]){
+    const r=await request(app).post('/api/ai-search').send({intentVersion:'v49-1',query,...extra})
+    expect(r.status).toBe(200);expect(r.body.searchIntent.issues).toContain(issue);expect(r.body.total).toBe(0);expect(r.body.externalDiscovery.enabled).toBe(false);expect(r.body.sourcingOffer.canRequestSourcing).toBe(false)
+  }
+})
+
+test('structured ranges, strict lower bounds, full token matches and MOQ-based prices remain accurate',async()=>{
+  const rows=[];
+  for(const fixture of [
+    {name:'Ceramic cups',price:40,priceTiers:[{minQty:10,price:20,maxQty:19},{minQty:20,price:19}]},
+    {name:'Ceramic cups',price:30},
+    {name:'Ceramic cupboard',price:25},
+    {name:'Ceramic cups',price:10},
+  ]){const r=await create(published({...fixture,category:'Kitchen',unit:'piece'}));expect(r.status).toBe(201);rows.push(r.body.product._id)}
+  const run=async query=>{const r=await request(app).post('/api/ai-search').send({intentVersion:'v49-1',query});expect(r.status).toBe(200);expect(r.body.searchIntent.issues).toEqual([]);return r.body}
+  const range=await run('ceramic cups 20 - 30 MAD');
+  expect(range.total).toBe(2);expect(range.products.map(p=>p._id).sort()).toEqual(rows.slice(0,2).sort())
+  const lower=await run('ceramic cups more than 20 MAD');expect(lower.products.map(p=>p._id)).toEqual([rows[1]])
+  const qty=await run('ceramic cups under 20 MAD quantity 20 pieces');expect(qty.products.map(p=>p._id).sort()).toEqual([rows[0],rows[3]].sort())
+  const budget=await run('ceramic cups budget 200 MAD');expect(budget.products.map(p=>p._id).sort()).toEqual([rows[0],rows[3]].sort())
+})
+test('structured decimal merchandise budget includes exact amount without floating rounding exclusions',async()=>{
+  const a=await create(published({name:'Ceramic cups',category:'Kitchen',unit:'piece',moq:1,price:0.1}));expect(a.status).toBe(201)
+  const r=await request(app).post('/api/ai-search').send({intentVersion:'v49-1',query:'ceramic cups quantity 3 pieces budget 0.30 MAD'});
+  expect(r.status).toBe(200);expect(r.body.total).toBe(1);expect(r.body.products[0]._id).toBe(a.body.product._id)
+})
+test('unsupported units, negative limits and unrecognized versions cannot silently broaden results',async()=>{
+  for(const [query,issue] of [['cups quantity 20 kilograms','unsupported_unit'],['cups under -5 MAD','negative'],['cups between 30 and 20 MAD','price_conflict']]){
+    const r=await request(app).post('/api/ai-search').send({intentVersion:'v49-1',query});expect(r.status).toBe(200);expect(r.body.searchIntent.issues).toContain(issue);expect(r.body.total).toBe(0)
+  }
+  expect((await request(app).post('/api/ai-search').send({intentVersion:'unknown',query:'cups'})).status).toBe(400)
+})

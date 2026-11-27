@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 - Gate 5A.1 structured search backend contract scoped PASS (opt-in only; UI unchanged): reverified exact V4.9 reference hash, reused catalog, parsed bounded multilingual conditions, fail-closed ambiguous/unknown conditions, final isolated BE 78/78 (5 suites), syntax/diff PASS. [Report](v49-gate5a1-search-contract-2026-11-27.md). Gate 5 OPEN; complete OR/exclusions/remaining reference behavior before UI activation.
+
 2026-11-27 - Gate 4 local technical acceptance PASS/CLOSED: final runtime a0d4a43; exact-source full FE 468/468 (44 suites), relevant isolated BE 54/54 (4 suites), CI build PASS, 55/55 browser records across seven isolated labs + direct DB proof. Six final reruns exit 0; negotiation/reviews exact-source 27 records. [Acceptance report](v49-gate4-local-acceptance-2026-11-27.md). Documentation-only close, declared obligations and production readiness remain OPEN.
 
 2026-11-27 - Gate 4E.3 transaction-linked reviews scoped PASS: final isolated BE 54/54 (4 suites), full FE 468/468 (44 suites), build PASS, 27/27 actual Chrome + DB records (six new review journey records). Bilateral attestation required; legacy ratings excluded, no independent purchase claim; owner reply and audited removal/repost safeguards. [Report](v49-gate4e3-reviews-2026-11-27.md). Gate 4 OPEN pending integrated acceptance. Limits documented.
