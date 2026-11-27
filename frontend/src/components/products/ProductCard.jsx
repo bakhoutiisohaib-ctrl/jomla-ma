@@ -3,6 +3,8 @@ import RFQModal from './RFQModal';
 import ReportModal from '../common/ReportModal';
 import ProtectedImage from '../common/ProtectedImage';
 import ProductPreview from './ProductPreview';
+import ComparableOffersDialog from './ComparableOffersDialog';
+import {parseQuantity} from './detailPricing';
 import { MarketIcon } from '../common/MarketLayout';
 import AddToQuoteCart from '../cart/AddToQuoteCart';
 import SupplierRating from './SupplierRating';
@@ -25,8 +27,6 @@ export default function ProductCard({
   onRfqCreated,
   onView,
   onRequireLogin,
-  onCompare,
-  compared = false,
   priceContext
 }) {
   const l = useLabels(),
@@ -35,7 +35,7 @@ export default function ProductCard({
     } = useTranslation();
   const [showRFQ, setShowRFQ] = useState(false),
     [showReport, setShowReport] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [showPreview, setShowPreview] = useState(false),[comparison,setComparison]=useState(null);
   const supplier = product.supplierId,
     supplierId = supplier?._id || supplier;
   const storeId = product.storeId?._id || product.storeId;
@@ -78,6 +78,7 @@ export default function ProductCard({
     </div></div>
     {showRFQ && <RFQModal product={product} user={user} onSuccess={onRfqCreated} onClose={() => setShowRFQ(false)} onRequireLogin={onRequireLogin} />}
     {showReport && <ReportModal targetType="product" targetId={product._id} targetName={product.name} onClose={() => setShowReport(false)} />}
-    {showPreview && <ProductPreview id={product._id} priceContext={priceContext} user={user} onCompare={onCompare} compared={compared} onReport={() => { setShowPreview(false); setShowReport(true); }} onClose={() => setShowPreview(false)} />}
+    {comparison&&<ComparableOffersDialog productId={comparison.id} initialQuantity={comparison.quantity} onClose={()=>setComparison(null)}/>}
+    {showPreview && <ProductPreview id={product._id} priceContext={priceContext} user={user} onCompare={fresh=>{setShowPreview(false);setComparison({id:fresh._id,quantity:parseQuantity(priceContext?.quantity)??parseQuantity(fresh.moq)});}} onReport={() => { setShowPreview(false); setShowReport(true); }} onClose={() => setShowPreview(false)} />}
   </article>;
 }

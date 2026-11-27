@@ -17,7 +17,7 @@ import BuyerDashboard from './components/buyer/BuyerDashboard';
 import SourcingModal from './components/products/SourcingModal';
 import { WorkspaceHeader, Field, Notice } from './components/common/WorkspaceUI';
 import { LanguageProvider, useTranslation } from './i18n/LanguageContext';
-import { useLabels, formatMoney } from './i18n/useLabels';
+import { useLabels } from './i18n/useLabels';
 import { apiRequest, clearSession } from './api/config';
 import { getSessionToken, useSessionToken } from './api/session';
 import MarketLayout, { MarketIcon } from './components/common/MarketLayout';
@@ -77,8 +77,7 @@ function AppContent() {
   const [error, setError] = useState(''),
     [image, setImage] = useState(null),
     [visual, setVisual] = useState(null);
-  const [external, setExternal] = useState(null),
-    [compare, setCompare] = useState([]);
+  const [external, setExternal] = useState(null);
   const [sourcing, setSourcing] = useState(false),
     [refresh, setRefresh] = useState(0);
   const requestScope=useMemo(()=>({term,filters,number,image,lang,refresh,intentRemovals}),[term,filters,number,image,lang,refresh,intentRemovals]);
@@ -86,7 +85,6 @@ function AppContent() {
   useEffect(() => {
     if (!sessionToken) {
       setUser(null);
-      setCompare([]);
       setSourcing(false);
       return;
     }
@@ -164,7 +162,6 @@ function AppContent() {
           ['price_asc', 'price_desc'].includes(filters.order)
       });
       setProducts(latestProducts);
-      setCompare(current => current.map(selected => latestProducts.find(p => p._id === selected._id) || selected));
       setPagination(data.pagination || {
         page: number,
         pages: Math.max(1, Math.ceil((data.total || 0) / 12)),
@@ -231,7 +228,6 @@ function AppContent() {
     clearSession(token);
     setUser(null);
     if (['buyer', 'supplier', 'admin'].includes(page)) navigate('/', { replace: true });
-    setCompare([]);
     setSourcing(false);
     setRefresh(n => n + 1);
     try {
@@ -256,15 +252,6 @@ function AppContent() {
   const registerAs = role => {
     navigate(authContinuationPath('/register', route.search, role));
   };
-  function toggleCompare(product) {
-    setCompare(current => current.some(p => p._id === product._id) ? current.filter(p => p._id !== product._id) : current.length < 4 ? [...current, product] : current);
-  }
-  function comparisonPrice(product) {
-    const quantity = Number(priceContext.moqPriceSearch ? product.moq : priceContext.quantity);
-    if (!Number.isSafeInteger(quantity) || quantity <= 0) return product.price;
-    const tier = product.priceTiers?.find(t => t.minQty <= quantity && (t.maxQty == null || t.maxQty >= quantity));
-    return tier?.price ?? product.price;
-  }
   function searchMarket(event) {
     event.preventDefault(); setImage(null); setIntentRemovals([]);setTerm(query.trim()); setNumber(1); setRefresh(x => x + 1); setPage('home');
   }
@@ -344,10 +331,9 @@ function AppContent() {
       <div className="atlas-catalog-tools">{(term || image || Object.values(filters).some(Boolean)) && <button className="atlas-clear-filters" onClick={clearSearch}>{l('إعادة ضبط البحث', 'Réinitialiser la recherche')}</button>}</div>
       {!catalogLoading&&structured&&<StructuredSearchSummary result={structured} onRemove={removeCondition} onClear={clearSearch}/>}
       {!catalogLoading&&visual&&<VisualSearchSummary result={visual} onClear={clearImage}/>}
-      {catalogLoading ? <p role="status">{l('جاري تحميل النتائج…', 'Chargement…')}</p> : error ? <button onClick={()=>setRefresh(n=>n+1)}>{l('إعادة المحاولة','Réessayer','Retry')}</button> : <>{!structured&&!visual&&<p className="muted">{pagination.total} {l('نتيجة', 'résultat(s)')}</p>}<div className="product-grid atlas-dense-product-grid">{products.map(p => <ProductCard key={p._id} product={p} priceContext={priceContext} user={user} onRfqCreated={() => setPage('buyer')} onRequireLogin={requireLogin} onCompare={toggleCompare} compared={compare.some(c => c._id === p._id)} />)}</div></>}
+      {catalogLoading ? <p role="status">{l('جاري تحميل النتائج…', 'Chargement…')}</p> : error ? <button onClick={()=>setRefresh(n=>n+1)}>{l('إعادة المحاولة','Réessayer','Retry')}</button> : <>{!structured&&!visual&&<p className="muted">{pagination.total} {l('نتيجة', 'résultat(s)')}</p>}<div className="product-grid atlas-dense-product-grid">{products.map(p => <ProductCard key={p._id} product={p} priceContext={priceContext} user={user} onRfqCreated={() => setPage('buyer')} onRequireLogin={requireLogin} />)}</div></>}
       {!catalogLoading && !products.length && !error && (!structured||structured.canRequestSourcing)&&(!visual||visual.canRequestSourcing) && <section className="panel empty"><h2>{visual?l('لم نجد صورة مشابهة كافية','Aucune image suffisamment similaire','No sufficiently similar image'):structured?l('لا توجد منتجات تطابق هذه الشروط','Aucun produit ne correspond à ces critères','No products match these conditions'):t('product_not_found')}</h2><p>{visual?l('جرّب صورة أخرى أو صف المنتج في طلب توريد.','Essayez une autre image ou décrivez le produit dans une demande.','Try another image or describe the product in a sourcing request.'):structured?l('يمكنك تعديل شروط البحث أو طلب توريد خاص.','Modifiez vos critères ou demandez un sourcing spécifique.','Edit your conditions or request sourcing.'):t('product_not_found_desc')}</p><button className="primary" onClick={() => user ? setSourcing(true) : requireLogin()}>{t('submit_sourcing_btn')}</button></section>}
       <div className="pager"><button disabled={number <= 1 || catalogLoading} onClick={() => setNumber(n => n - 1)}>{l('السابق', 'Précédent')}</button><span>{number} / {Math.max(1, pagination.pages || 1)}</span><button disabled={number >= (pagination.pages || 1) || catalogLoading} onClick={() => setNumber(n => n + 1)}>{l('التالي', 'Suivant')}</button></div>
-      {!catalogLoading && compare.length > 0 && <section className="panel"><div className="actions"><h2>{l('مقارنة المنتجات', 'Comparer les produits')} ({compare.length}/4)</h2><button onClick={() => setCompare([])}>{l('مسح', 'Effacer')}</button></div><div className="table-wrap"><table><thead><tr><th>{l('المنتج', 'Produit')}</th><th>{l('السعر', 'Prix')}</th><th>MOQ</th><th>{l('المدينة', 'Ville')}</th><th>{l('المورد', 'Fournisseur')}</th></tr></thead><tbody>{compare.map(p => <tr key={p._id}><td>{p.name}</td><td>{Number(priceContext.quantity) > 0 && Number(priceContext.quantity) < p.moq ? l('أقل من الحد الأدنى', 'Quantité inférieure au minimum') : p.pricingMode === 'on_request' ? l('عند الطلب', 'Sur demande') : formatMoney(comparisonPrice(p), p.currency, lang)}</td><td>{p.moq} {p.unit}</td><td>{p.city}</td><td>{p.supplierId?.name}</td></tr>)}</tbody></table></div></section>}
       {!catalogLoading&&external?.enabled && <section className="panel"><span className="badge amber">{t('external_notice_badge')}</span><h2>{l('نتائج اكتشاف خارجية تجريبية', 'Découvertes externes expérimentales')}</h2><p>{t('external_notice_desc')}</p>{external.results?.map(result => <article className="panel" key={result.url}><h3><a href={result.url} target="_blank" rel="noopener noreferrer">{result.title}</a></h3><p>{result.description}</p><p className="muted">{result.sourceName} · {l('خارجي — غير موثق', 'Externe — non vérifié')}</p></article>)}</section>}
       </>}
     </main>

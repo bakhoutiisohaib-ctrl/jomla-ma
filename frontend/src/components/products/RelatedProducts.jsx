@@ -1,10 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePublicResource } from '../common/usePublicPage';
-import { useLabels, formatMoney } from '../../i18n/useLabels';
-import { useTranslation } from '../../i18n/LanguageContext';
-import { Link, productPath } from '../../navigation';
+import { useLabels } from '../../i18n/useLabels';
+import { Link } from '../../navigation';
 import ProductCard from './ProductCard';
-import { cardPrice } from './cardPrice';
 
 const STEP = 4, WINDOW = 24;
 const idOf = item => typeof item?._id === 'string' && /^[a-f\d]{24}$/i.test(item._id) ? item._id.toLowerCase() : null;
@@ -19,8 +17,7 @@ function candidates(result, current, excluded = []) {
 }
 
 export default function RelatedProducts({ product, visible, setVisible, user, onRequireLogin, onRfqCreated }) {
-  const l = useLabels(), { lang } = useTranslation();
-  const [comparedIds, setComparedIds] = useState([]);
+  const l = useLabels();
   const moreRef = useRef(null);
   const path = typeof product.taxonomyPath === 'string' ? product.taxonomyPath : '';
   const category = typeof product.category === 'string' ? product.category : '';
@@ -35,7 +32,6 @@ export default function RelatedProducts({ product, visible, setVisible, user, on
   const more = relatedAll.length > visible || discoveryAll.length > visible;
   // Revalidation stays on the same two bounded public resources; no
   // accumulated snapshots of previous pages, including withdrawn products.
-  const compared = [...related, ...discoveries].filter(item => comparedIds.includes(idOf(item)));
   useEffect(() => {
     if (!more || typeof IntersectionObserver !== 'function' || !moreRef.current) return;
     let active = true;
@@ -48,22 +44,7 @@ export default function RelatedProducts({ product, visible, setVisible, user, on
     observer.observe(moreRef.current);
     return () => { active = false; observer.disconnect(); };
   }, [more, visible, setVisible]);
-  function toggle(item) {
-    const id = idOf(item);
-    if (!id) return;
-    setComparedIds(ids => {
-      const current = ids.filter(value => [...related, ...discoveries].some(candidate => idOf(candidate) === value));
-      return current.includes(id) ? current.filter(value => value !== id) : current.length < 4 ? [...current, id] : current;
-    });
-  }
-  function priceText(item) {
-    const price = cardPrice(item), money = value => formatMoney(value, item.currency, lang);
-    if (price.kind === 'request') return l('عند الطلب', 'Sur demande', 'On request');
-    if (price.kind === 'unknown') return l('السعر غير متاح', 'Prix indisponible', 'Price unavailable');
-    if (price.kind === 'range') return <><bdi>{money(price.min)}</bdi> – <bdi>{money(price.max)}</bdi> <small>{l('حسب الكمية', 'Selon quantité', 'By quantity')}</small></>;
-    return money(price.value);
-  }
-  function cards(items) { return <div className="product-grid atlas-dense-product-grid">{items.map(item => <ProductCard key={idOf(item)} product={item} user={user} onRequireLogin={onRequireLogin} onRfqCreated={onRfqCreated} onCompare={toggle} compared={comparedIds.includes(idOf(item))} />)}</div>; }
+  function cards(items) { return <div className="product-grid atlas-dense-product-grid">{items.map(item => <ProductCard key={idOf(item)} product={item} user={user} onRequireLogin={onRequireLogin} onRfqCreated={onRfqCreated} />)}</div>; }
   return <section id="product-discover" className="atlas-detail-discover" tabIndex="-1" aria-label={l('واصل استكشاف المنتجات', 'Continuez votre découverte', 'Keep exploring products')}>
     <header className="atlas-detail-section-heading"><div><p className="atlas-eyebrow">{l('واصل التصفح', 'CONTINUEZ À EXPLORER', 'KEEP EXPLORING')}</p><h2>{l('اختيارات أخرى لتجارتك', 'D’autres idées pour votre activité', 'More ideas for your business')}</h2></div><Link to="/">{l('كل المنتجات', 'Tout le catalogue', 'Full catalogue')}</Link></header>
     {!!related.length && <section aria-label={l('منتجات مشابهة', 'Produits similaires', 'Similar products')}><h3>{l('منتجات مشابهة', 'Produits similaires', 'Similar products')}</h3><p className="atlas-detail-muted">{l('منتجات منشورة من الفئة نفسها.', 'Des produits publiés dans la même catégorie.', 'Published products in the same category.')}</p>{cards(related)}</section>}
@@ -73,6 +54,5 @@ export default function RelatedProducts({ product, visible, setVisible, user, on
     {!related.length && !discoveries.length && !same.loading && !recent.loading && <p>{same.error || recent.error ? l('تعذر تحميل الاقتراحات حالياً. يمكنك متابعة الكتالوج.', 'Les suggestions sont indisponibles. Vous pouvez parcourir le catalogue.', 'Suggestions are unavailable. You can browse the catalogue.') : l('لا توجد اقتراحات أخرى متاحة حالياً.', 'Aucune autre suggestion disponible pour le moment.', 'No other suggestions currently available.')}</p>}
     {more && <div className="atlas-discover-more"><button type="button" ref={moreRef} onClick={() => setVisible(value => Math.min(WINDOW, value + STEP))}>{l('عرض المزيد من المنتجات', 'Voir plus de produits', 'Show more products')}</button></div>}
     {!more && !!(related.length + discoveries.length) && !same.loading && !recent.loading && <p className="atlas-discover-more"><Link to="/">{l('تابع التصفح في السوق', 'Continuer dans le catalogue', 'Continue in the catalogue')}</Link></p>}
-    {!!compared.length && <section className="atlas-detail-section"><h3>{l('مقارنة المنتجات', 'Comparer les produits', 'Compare products')} ({compared.length}/4)</h3><div className="table-wrap"><table><thead><tr><th>{l('المنتج', 'Produit', 'Product')}</th><th>{l('السعر', 'Prix', 'Price')}</th><th>MOQ</th></tr></thead><tbody>{compared.map(item => <tr key={idOf(item)}><td><Link to={productPath(item._id)}>{item.name}</Link></td><td>{priceText(item)}</td><td>{item.moq} {item.unit}</td></tr>)}</tbody></table></div></section>}
   </section>;
 }

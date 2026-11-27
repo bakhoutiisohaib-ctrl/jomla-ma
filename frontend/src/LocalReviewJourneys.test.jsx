@@ -1,3 +1,4 @@
+import {comparisonFixture} from './comparisonFixture';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import App from './App';
 import { setSession, clearSession } from './api/session';
@@ -18,6 +19,7 @@ beforeEach(() => {
     const path = new URL(url, 'http://localhost').pathname;
     if (path.endsWith('/suppliers/login')) return reply({ token: jwt(uid), supplier: buyer });
     if (path.endsWith('/me/profile')) return reply(buyer);
+    if(path.endsWith('/comparable'))return reply(comparisonFixture(product,Number(new URL(url,'http://localhost').searchParams.get('quantity'))));
     if (path.endsWith('/products/' + pid)) return reply(productStatus === 200 ? { product, store: { _id: sid, name: 'متجر الاختبار' } } : { message: 'Unavailable' }, productStatus);
     if (path.endsWith('/rfq') && options.method === 'POST') { rfqAttempts++; return rfqAttempts === 1 ? Promise.reject(new Error('offline after submission')) : reply({ rfq: { _id: '444444444444444444444444', status: 'pending' } }, 201); }
     return reply({ data: [product], pagination: { total: 1, pages: 1 }, unreadCount: 0 });
@@ -73,11 +75,16 @@ test('compact cards keep detail links and move comparison and reporting into the
   const dialog = await screen.findByRole('dialog');
   const compare = await within(dialog).findByRole('button', { name: 'مقارنة' });
   fireEvent.click(compare);
-  expect(within(dialog).getByRole('button', { name: 'إزالة المقارنة' })).toHaveAttribute('aria-pressed', 'true');
-  fireEvent.click(within(dialog).getByRole('button', { name: 'أضف لسلة العروض' }));
-  expect(within(dialog).getByRole('button', { name: 'في سلة العروض' })).toBeDisabled();
+  const comparison=screen.getByRole('dialog',{name:'مقارنة منتجات من النوع نفسه'});
+  await waitFor(()=>expect(comparison.querySelector('.atlas-comparison-row')).toHaveTextContent(product.name));
+  fireEvent.click(within(comparison).getByRole('button',{name:'إغلاق'}));
+  fireEvent.click(trigger);
+  const reopened=await screen.findByRole('dialog',{name:'معاينة سريعة'});
+  await within(reopened).findByText(product.description);
+  fireEvent.click(within(reopened).getByRole('button', { name: 'أضف لسلة العروض' }));
+  expect(within(reopened).getByRole('button', { name: 'في سلة العروض' })).toBeDisabled();
   expect(screen.getByRole('link', { name: 'سلة طلبات العروض (1)' })).toBeInTheDocument();
-  fireEvent.click(within(dialog).getByRole('button', { name: 'إبلاغ عن المنتج' }));
+  fireEvent.click(within(reopened).getByRole('button', { name: 'إبلاغ عن المنتج' }));
   expect(screen.queryByRole('dialog', { name: 'معاينة سريعة' })).not.toBeInTheDocument();
   expect(within(screen.getByRole('dialog')).getByText(product.name, { selector: 'strong' })).toBeInTheDocument();
 });

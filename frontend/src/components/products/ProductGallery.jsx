@@ -6,7 +6,7 @@ import { useTranslation } from '../../i18n/LanguageContext';
 import { mediaUrl } from '../../api/media';
 import { useLabels } from '../../i18n/useLabels';
 
-export default function ProductGallery({ product }) {
+export default function ProductGallery({ product, onCompare }) {
   const l = useLabels(), { lang } = useTranslation();
   const touchOrigin = useRef(null), suppressClickUntil = useRef(0);
   const photos = [...new Set([product.imageUrl, ...(Array.isArray(product.images) ? product.images : [])].filter(value => mediaUrl(value)))];
@@ -78,7 +78,7 @@ export default function ProductGallery({ product }) {
       </div>}
     </> : <p className="atlas-gallery-empty">{l('لا توجد صورة متاحة.', 'Aucune image disponible.')}</p>}
     {expanded && current && <AtlasDialog title={l('صور المنتج', 'Images du produit')} subtitle={product.name} onClose={() => setExpanded(false)}>
-      <div className="atlas-zoom-toolbar">
+      <div className="atlas-zoom-toolbar">{onCompare&&<button type="button" onClick={()=>{setExpanded(false);onCompare();}}>{l('مقارنة منتجات من النوع نفسه','Comparer le même type','Compare same product type')}</button>}
         <button type="button" disabled={zoom >= 3} onClick={() => setZoom(value => Math.min(3, value + 0.5))}>{l('تكبير', 'Zoom avant')} ＋</button>
         <button type="button" disabled={zoom <= 1} onClick={() => setZoom(value => Math.max(1, value - 0.5))}>{l('تصغير', 'Zoom arrière')} −</button>
         <button type="button" onClick={() => setZoom(1)}>{l('الحجم الأصلي', 'Réinitialiser')}</button>

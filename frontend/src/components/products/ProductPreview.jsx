@@ -11,7 +11,7 @@ import { detailPricing, parseQuantity } from './detailPricing';
 import { Notice } from '../common/WorkspaceUI';
 import '../../styles/atlas-preview.css';
 
-export default function ProductPreview({ id, priceContext, onClose, user, onCompare, compared = false, onReport }) {
+export default function ProductPreview({ id, priceContext, onClose, user, onCompare, onReport }) {
   const l = useLabels(), { lang } = useTranslation();
   // Load from the public detail route, with the same visibility revalidation as the product page.
   const { data, loading, error } = usePublicResource('/products/' + id);
@@ -46,7 +46,7 @@ export default function ProductPreview({ id, priceContext, onClose, user, onComp
           <Link className="button-link" to={productPath(id)} onClick={onClose}>{l('التفاصيل وطلب عرض سعر', 'Détails et demande de devis')}</Link>
           <AddToQuoteCart product={product} user={user} />
           <div className="atlas-preview-secondary">
-            {onCompare && <button type="button" aria-pressed={compared} onClick={() => onCompare(product)}>{compared ? l('إزالة المقارنة', 'Retirer de la comparaison') : l('مقارنة', 'Comparer')}</button>}
+            {onCompare && <button type="button" onClick={() => onCompare(product)}>{l('مقارنة','Comparer','Compare')}</button>}
             {supplierId && <Link to={store?._id ? storePath(store._id) : supplierPath(supplierId)} onClick={onClose}>{l('زيارة المتجر', 'Voir la boutique')}</Link>}
             {onReport && <button type="button" onClick={onReport}>{l('إبلاغ عن المنتج', 'Signaler ce produit')}</button>}
           </div>

@@ -7,6 +7,7 @@ import ShareLink from '../common/ShareLink';
 import ProductGallery from './ProductGallery';
 import ProductSectionNav from './ProductSectionNav';
 import ProductQuantityPricing from './ProductQuantityPricing';
+import ComparableOffersDialog from './ComparableOffersDialog';
 import { parseQuantity, validOrderQuantity } from './detailPricing';
 import ProductSupplierReviews from './ProductSupplierReviews';
 import RelatedProducts from './RelatedProducts';
@@ -21,6 +22,7 @@ export default function ProductPage({ id, search, user, sessionLoading, onBack, 
   const [rfqIntent, setRfqIntent] = useState(null), [enteredQuantity, setEnteredQuantity] = useState(null);
   // Only the display budget survives visibility revalidation; cards never do.
   const [recommendationLimit, setRecommendationLimit] = useState(4);
+  const [comparison,setComparison]=useState(null);
   const product = data?.product, store = data?.store, supplier = product?.supplierId;
   usePublicMeta(product?.name, product?.description, product ? productPath(id) : '');
   const supplierId = supplier?._id || supplier;
@@ -48,11 +50,12 @@ export default function ProductPage({ id, search, user, sessionLoading, onBack, 
         <nav className="actions atlas-breadcrumbs" aria-label={l('مسار الصفحة', 'Fil d’Ariane')}><Link to="/">{l('السوق', 'Catalogue')}</Link>{store?._id && <><span aria-hidden="true">/</span><Link to={storePath(store._id)}>{store.name}</Link></>}<span aria-hidden="true">/</span><span>{product.category}</span></nav>
         <ProductSectionNav />
         <div className="atlas-detail-layout" id="product-overview" tabIndex="-1">
-          <ProductGallery key={id} product={product} />
+          <ProductGallery key={id} product={product} onCompare={()=>setComparison({id,quantity:parseQuantity(rawQuantity)})}/>
           <section className="atlas-detail-summary"><span className="atlas-eyebrow">{product.category}</span><h1>{product.name}</h1>
             <div className="atlas-detail-stock"><span className={'badge ' + (available ? 'green' : 'amber')}>{available ? l('متوفر بحسب المورد', 'Disponible selon le fournisseur') : l('غير متوفر', 'Indisponible')}</span><span>{product.city || supplier?.city}</span></div>
             <ProductQuantityPricing product={product} quantity={rawQuantity} onQuantityChange={setEnteredQuantity} />
             <div className="atlas-detail-request" role="region" aria-label={l('إجراءات المنتج', 'Actions du produit', 'Product actions')}><button className="primary" disabled={sessionLoading || !available || quantity === null || Boolean(user && user.role !== 'buyer')} onClick={() => !user ? onRequireLogin(rfqPath(quantity)) : setRfqIntent({ id, quantity })}>{l('طلب عرض سعر', 'Demander un devis')}</button>
+            <button type="button" onClick={()=>setComparison({id,quantity:parseQuantity(rawQuantity)})}>{l('مقارنة','Comparer','Compare')}</button>
             {!sessionLoading && <AddToQuoteCart product={product} user={user} />}
             {store?._id && <Link className="atlas-detail-store-action button-link" to={storePath(store._id)}>{l('المتجر', 'Boutique', 'Store')}</Link>}</div>
             {!user && <p className="muted atlas-rfq-note">{l('تصفح دون حساب. إرسال الطلب يتطلب دخول المشتري.', 'Consultation libre. Un compte acheteur est requis pour envoyer la demande.')}</p>}
@@ -72,6 +75,7 @@ export default function ProductPage({ id, search, user, sessionLoading, onBack, 
         </div>
         <RelatedProducts key={id} product={product} visible={recommendationLimit} setVisible={setRecommendationLimit} user={user} onRequireLogin={onRequireLogin} onRfqCreated={onRfqCreated} />
       </>}
+      {product&&comparison?.id===id&&<ComparableOffersDialog productId={id} initialQuantity={comparison.quantity} onClose={()=>setComparison(null)}/>}
       {product && available && rfqIntent?.id === id && <RFQModal key={id + ':' + (user?._id || 'visitor')} product={product} user={user} initialQuantity={rfqIntent.quantity} onClose={() => setRfqIntent(null)} onRequireLogin={() => onRequireLogin(rfqPath(rfqIntent.quantity))} onSuccess={onRfqCreated} />}
     </main></>;
 }
