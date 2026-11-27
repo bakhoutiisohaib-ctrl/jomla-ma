@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-27 - Gate 3B registration/contact/recovery lifecycle automated scoped PASS: 85/85 focused, 428/428 full FE (42 suites), build PASS, 10/10 isolated actual BE contracts. [Report](v49-gate3b-contact-2026-11-27.md). New-account browser journey and live email remain open. Gate 3 OPEN; next 3C buyer dashboard/navigation.
+
 2026-11-27 - Gate 3A auth continuation/login lifecycle scoped PASS: 76/76 focused recheck, 422/422 full FE (42 suites), build PASS, eight real regression browser records plus RFQ DB verification. [Report](v49-gate3a-auth-2026-11-27.md). Email link delivery, external providers not tested; Gate 3 OPEN. Next 3B registration/contact/session lifecycle.
 
 2026-11-27 - Gate 2 local technical acceptance PASS/CLOSED: quick preview validated fresh tier/quantity prices and fixed portal cart icon; 88/88 focused, full FE 419/419 (42 suites), final build PASS, 37/37 final browser records across six independent isolated labs including two real RFQ DB checks. [Report](v49-gate2-local-acceptance-2026-11-27.md). Video and pre-RFQ chat remain open; no physical device or production sign-off. Next Gate 3 buyer account; preserve original project and no deploy.
