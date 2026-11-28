@@ -169,7 +169,7 @@ function AppContent() {
       });
     } catch (e) {
       if (!signal?.aborted && e.name !== 'AbortError') {
-        setError(e.data?.code==='VISUAL_INSUFFICIENT_DETAIL'?labelFor(lang,'الصورة فارغة أو تفاصيلها غير كافية. جرّب صورة واضحة للمنتج.','Image vide ou sans détails suffisants. Essayez une image claire.','Blank or insufficiently detailed image. Try a clear product photo.'):(e.message==='UNCONFIRMED_SEARCH'||e.message==='UNCONFIRMED_VISUAL')?labelFor(lang,'تعذر تأكيد نتائج البحث. أعد المحاولة.','Résultats non confirmés. Réessayez.','Search results could not be confirmed. Retry.'):e.message);
+        setError(filters.supplierTrust==='rated'&&e.status===503?labelFor(lang,'تعذر حساب فلتر التقييمات حالياً. أعد المحاولة.','Calcul des notes indisponible. Réessayez.','Rating filter temporarily unavailable. Retry.'):e.data?.code==='VISUAL_INSUFFICIENT_DETAIL'?labelFor(lang,'الصورة فارغة أو تفاصيلها غير كافية. جرّب صورة واضحة للمنتج.','Image vide ou sans détails suffisants. Essayez une image claire.','Blank or insufficiently detailed image. Try a clear product photo.'):(e.message==='UNCONFIRMED_SEARCH'||e.message==='UNCONFIRMED_VISUAL')?labelFor(lang,'تعذر تأكيد نتائج البحث. أعد المحاولة.','Résultats non confirmés. Réessayez.','Search results could not be confirmed. Retry.'):e.message);
         setStructured(null);setPagination({pages:1,total:0});
         setProducts([]);
       }
@@ -202,7 +202,7 @@ function AppContent() {
       if (storeNumber > last) { correctingPage = true; setStoreNumber(last); return; }
       setStores(d.data); setStorePagination(p);
     }).catch(e => {
-      if (!c.signal.aborted && e.name !== 'AbortError') setStoreError(e.message);
+      if (!c.signal.aborted && e.name !== 'AbortError') setStoreError(filters.supplierTrust==='rated'&&e.status===503?labelFor(lang,'تعذر حساب فلتر التقييمات حالياً. أعد المحاولة.','Calcul des notes indisponible. Réessayez.','Rating filter temporarily unavailable. Retry.'):e.message);
     }).finally(() => { if (!c.signal.aborted && !correctingPage) setStoreLoading(false); });
     return () => c.abort();
   }, [page, filters.businessType, filters.supplierTrust, storeNumber, refresh, lang]);
@@ -297,7 +297,7 @@ function AppContent() {
         <span aria-live="polite">{storeNumber} / {storePagination.pages}</span>
         <button type="button" disabled={storeNumber>=storePagination.pages} onClick={()=>browseStores(storeNumber+1)}>{l('التالي','Suivant','Next')}</button>
       </nav>}
-      {!stores.length && <p>{filters.supplierTrust === 'verified' ? l('لا توجد متاجر لموردين موثقين تطابق هذا الاختيار حالياً.','Aucune boutique de fournisseur vérifié ne correspond à cette sélection actuellement.','No verified supplier stores match this selection currently.') : filters.supplierTrust==='declared_ma' ? l('لا توجد متاجر تطابق تصريح المغرب حالياً.','Aucune boutique ne correspond à cette déclaration de pays.','No stores match the declared Morocco filter.') : filters.businessType ? l('لا توجد متاجر مطابقة لهذا النشاط حالياً.', 'Aucune boutique pour cette activité actuellement.', 'No stores for this activity currently.') : l('لا توجد متاجر معتمدة بعد', 'Aucune boutique approuvée pour le moment')}</p>}</>}</section> : <>
+      {!stores.length && <p>{filters.supplierTrust === 'verified' ? l('لا توجد متاجر لموردين موثقين تطابق هذا الاختيار حالياً.','Aucune boutique de fournisseur vérifié ne correspond à cette sélection actuellement.','No verified supplier stores match this selection currently.') : filters.supplierTrust==='rated' ? l('لا توجد متاجر تطابق معيار التقييم حالياً.','Aucune boutique ne correspond au seuil de notation.','No stores meet the rating threshold.') : filters.supplierTrust==='declared_ma' ? l('لا توجد متاجر تطابق تصريح المغرب حالياً.','Aucune boutique ne correspond à cette déclaration de pays.','No stores match the declared Morocco filter.') : filters.businessType ? l('لا توجد متاجر مطابقة لهذا النشاط حالياً.', 'Aucune boutique pour cette activité actuellement.', 'No stores for this activity currently.') : l('لا توجد متاجر معتمدة بعد', 'Aucune boutique approuvée pour le moment')}</p>}</>}</section> : <>
       <TaxonomyBrowser value={filters.taxonomyPath} onChange={taxonomyPath => {
         if (taxonomyPath === filters.taxonomyPath) return;
         setProducts([]); setExternal(null); setVisual(null); setLoading(true); setNumber(1);

@@ -8,18 +8,19 @@ const product={_id:'4'.repeat(24),name:'Synthetic verified item',category:'Texti
 const other={...product,_id:'6'.repeat(24),name:'Synthetic pending item',supplierId:pending,storeId:'7'.repeat(24)};
 const stores=[{_id:product.storeId,name:'Synthetic verified store',supplierId:supplier},{_id:other.storeId,name:'Synthetic pending store',supplierId:pending}];
 const response=(data,status=200)=>Promise.resolve({ok:status<400,status,json:async()=>data});
-let seen, pendingReply, delayUnfiltered, noVerifiedStores;
+let seen, pendingReply, delayUnfiltered, noVerifiedStores, ratedOutage;
 const requestBody=opt=>typeof opt.body==='string'?JSON.parse(opt.body):opt.body;
 beforeEach(()=>{
  localStorage.clear();sessionStorage.clear();window.history.replaceState({},'','/');
- seen=[];pendingReply=null;delayUnfiltered=false;noVerifiedStores=false;
+ seen=[];pendingReply=null;delayUnfiltered=false;noVerifiedStores=false;ratedOutage=false;
  global.fetch=jest.fn((url,opt={})=>{
   const u=new URL(url,'http://localhost'),p=u.pathname,b=requestBody(opt);
   const trust=u.searchParams.get('supplierTrust')||b?.supplierTrust||b?.get?.('supplierTrust')||'';
   const page=Number(u.searchParams.get('page')||b?.page||1);
   const type=u.searchParams.get('businessType')||b?.businessType||b?.get?.('businessType')||'';
   seen.push({p,trust,page,type,signal:opt.signal});
-  const filter=items=>trust==='verified'?items.slice(0,1):trust==='declared_ma'?items.slice(1):items;
+  if(ratedOutage&&trust==='rated'&&(p.endsWith('/stores')||p.endsWith('/products/search')))return response({message:'Supplier rating filter temporarily unavailable'},503);
+  const filter=items=>trust==='verified'?items.slice(0,1):['declared_ma','rated'].includes(trust)?items.slice(1):items;
   const result=data=>({data,pagination:{page,limit:12,total:data.length,pages:data.length?1:0,hasNextPage:false,hasPrevPage:false}});
   if(p.endsWith('/stores')){
    const data=result(trust && noVerifiedStores ? [] : filter(stores));
@@ -41,7 +42,7 @@ test('verified is optional and unavailable signals cannot be selected; verified 
  render(<App/>);await screen.findByText(other.name);
  const toggle=within(trust()).getByRole('button',{name:'موردون موثقون'});
  expect(toggle).toHaveAttribute('aria-pressed','false');
- for(const label of ['الأعلى تقييماً','سرعة الاستجابة'])expect(within(trust()).getByRole('button',{name:label})).toBeDisabled();
+ for(const label of ['سرعة الاستجابة'])expect(within(trust()).getByRole('button',{name:label})).toBeDisabled();
  choose('المصنعون');choose('موردون موثقون');
  await waitFor(()=>expect(screen.queryByText(other.name)).toBeNull());
  await screen.findByText(product.name);
@@ -105,4 +106,33 @@ test('declared Morocco directory empty state is scoped and clear restores all st
  await screen.findByText('لا توجد متاجر تطابق تصريح المغرب حالياً.');
  expect(screen.queryByText('لا توجد متاجر معتمدة بعد')).toBeNull();
  choose('إلغاء فلترة الثقة');await screen.findByText(stores[0].name);await screen.findByText(stores[1].name);
+});
+
+test('rated threshold is a separate filter, not a verification badge or sort order',async()=>{
+ render(<App/>);await screen.findByText(product.name);choose('الأعلى تقييماً');
+ await screen.findByText(other.name);await waitFor(()=>expect(screen.queryByText(product.name)).toBeNull());
+ expect(within(trust()).getByRole('button',{name:'الأعلى تقييماً'})).toHaveAttribute('aria-pressed','true');
+ expect(screen.getByText(/معدل 4\.5\/5 فأكثر/)).toBeInTheDocument();
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/products/categories')&&r.trust==='rated')).toBe(true));
+ fireEvent.change(screen.getByLabelText('البحث في الكتالوج'),{target:{value:'shoe'}});fireEvent.submit(screen.getByRole('search'));
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/ai-search')&&r.trust==='rated')).toBe(true));
+ fireEvent.click(screen.getByRole('button',{name:'بحث بالصورة'}));fireEvent.change(screen.getByLabelText('صورة البحث'),{target:{files:[new File(['synthetic'],'sample.png',{type:'image/png'})]}});
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/image-search')&&r.trust==='rated')).toBe(true));
+ choose('المغرب (بتصريح المورد)');await waitFor(()=>expect(seen.filter(r=>r.p.endsWith('/image-search')).at(-1)).toMatchObject({trust:'declared_ma',page:1}));
+ expect(within(trust()).getByRole('button',{name:'الأعلى تقييماً'})).toHaveAttribute('aria-pressed','false');
+});
+test('rated directory empty result uses threshold-specific copy',async()=>{
+ window.history.replaceState({},'','/stores');noVerifiedStores=true;render(<App/>);await screen.findByText(stores[1].name);choose('الأعلى تقييماً');
+ await screen.findByText('لا توجد متاجر تطابق معيار التقييم حالياً.');expect(screen.queryByText('لا توجد متاجر معتمدة بعد')).toBeNull();
+ choose('إلغاء فلترة الثقة');await screen.findByText(stores[0].name);
+});
+
+test.each(['/','/stores'])('rating verification outage never shows stale unfiltered results on %s',async route=>{
+ window.history.replaceState({},'',route);ratedOutage=true;render(<App/>);
+ const stale=route==='/'?product.name:stores[0].name,match=route==='/'?other.name:stores[1].name;
+ await screen.findByText(stale);choose('الأعلى تقييماً');
+ await screen.findByText('تعذر حساب فلتر التقييمات حالياً. أعد المحاولة.');
+ expect(screen.queryByText(stale)).toBeNull();expect(screen.queryByText(match)).toBeNull();
+ ratedOutage=false;choose('إعادة المحاولة');await screen.findByText(match);
+ expect(screen.queryByText(stale)).toBeNull();
 });

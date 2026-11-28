@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6C.2B.2 rated supplier UI scoped PASS: FE 56/56 (6 suites), strict CI build PASS; threshold copy and localized fail-closed retry. [Report](v49-gate6c-f1b2-rated-filter-ui-20261128.md). Next 6C.2B.3 browser and bounded load acceptance.
+
 2026-11-28 - Gate 6C.2B.1 bounded rated supplier backend scoped PASS: BE 111/111 (5 suites), real eligible reviews, 3+ counted and rounded 4.5+ threshold, fail closed on resource/evidence errors. [Report](v49-gate6c-f1b1-rated-supplier-backend-20261128.md). F1B OPEN; next UI and valid-evidence multi-supplier load/browser acceptance.
 
 2026-11-28 - Gate 6C.2A.3 country browser scoped PASS: FE 74/74, CI build PASS, Chrome 6/6 and DB PASS. Corrected same-account profile refresh clearing confirmed notice. [Report](v49-gate6c-f1a3-country-browser-20261128.md). 6C.2A scoped closed; next bounded rating metric F1B.
