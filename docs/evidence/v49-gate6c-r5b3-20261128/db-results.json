@@ -1,0 +1,34 @@
+{
+  "reports": [
+    {
+      "kind": "rfq",
+      "role": "buyer",
+      "status": "resolved",
+      "moderation": "none"
+    },
+    {
+      "kind": "sourcing",
+      "role": "supplier",
+      "status": "dismissed",
+      "moderation": "none"
+    }
+  ],
+  "confirmations": [
+    {
+      "kind": "rfq",
+      "buyer": true,
+      "supplier": false
+    },
+    {
+      "kind": "sourcing",
+      "buyer": false,
+      "supplier": true
+    }
+  ],
+  "submissionAudits": 2,
+  "decisionAudits": 2,
+  "reviews": 0,
+  "faults": 1,
+  "exactActorAndAgreementIdentity": true,
+  "supplierActive": true
+}
