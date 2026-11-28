@@ -274,9 +274,9 @@ export default function SupplierDashboard({
     {tab === 'organization'  && <OrganizationPanel profile={profile} onChanged={refresh} />}
     {tab === 'stores' && can('manage_store') && <StoresPanel stores={stores} ready={Boolean(loadedMetrics.stores)} city={profile.city} onChanged={refresh} />}
     {tab === 'jobs' && can('manage_products') && <JobsPanel onReview={draft => { setEditing(null); setRecoveredDraft(draft); setTab('add'); }} />}
-    {tab === 'add' && can('manage_products') && <ProductEditor key={editing?._id || recoveredDraft?.jobId || 'new'} product={editing} initialDraft={recoveredDraft} stores={stores} city={profile.city} onCancel={() => chooseTab('products')} onSaved={draft => {
+    {tab === 'add' && can('manage_products') && <ProductEditor key={editing?._id || recoveredDraft?.jobId || 'new'} product={editing} actorId={profile._id||profile.id} initialDraft={recoveredDraft} stores={stores} city={profile.city} onCancel={() => chooseTab('products')} onSaved={(draft,details) => {
         setPendingTab(null);
-        setMessage(draft ? l('حفظت المسودة الخاصة', 'Brouillon privé enregistré') : l('نشر المنتج بعد اعتمادك', 'Produit publié après confirmation'));
+        setMessage(details?.indexUnavailable?l('حُفظ المنتج؛ فهرسة الصورة غير مؤكدة. راجع مهام الصور.','Produit enregistré ; indexation non confirmée. Vérifiez les tâches des images.','Product saved; image indexing unconfirmed. Check image jobs.'):(draft ? l('حفظت المسودة الخاصة', 'Brouillon privé enregistré') : l('نشر المنتج بعد اعتمادك', 'Produit publié après confirmation')));
         setTab('products');
         refresh();
       }} />}

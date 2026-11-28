@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6B.2B product editor revision/recovery scoped PASS: initial FE 59/59, full FE 501/501 (48 suites), final recovery-only UI placement recheck 61/61 (3), strict CI build and final actual Chrome 4/4 + DB PASS. Revision 3, three distinct jobs, draft private, one injected queue fault. [Report](v49-gate6b2b-product-update-20261128.md). R2 local keyed flow accepted; Gate 6 OPEN; next 6B.3 verification consistency.
+
 2026-11-28 - Gate 6B.2A revision-fenced product update backend scoped PASS: dedicated 10 new tests, expanded 166/166 (8 suites), additional publication journeys 55/55 (5 suites), 221/221 across distinct runs. First expanded 3 failures traced to ephemeralForTest rejecting journaling; three disposable fixtures now wiredTiger, unchanged assertions. Atomic revision/latest receipt, private status reads, stable queue identity. [Report](v49-gate6b2a-product-update-20261128.md). Gate 6 OPEN; next 6B.2B ProductEditor integration.
 
 2026-11-28 - Gate 6B.1B shared buyer/supplier durable message UI scoped PASS: targeted FE 53/53, final full FE 495/495 (48 suites), strict build PASS, real Chrome fault/reload 5/5 + DB PASS (2 free messages, 2 notices, 2 completed receipts). Same-tab opaque key only, keyed independent confirmation; no new backend changes. [Report](v49-gate6b1b-message-ui-20261128.md). Gate 6 OPEN; next 6B.2 product update reliability (R2).

@@ -8,8 +8,11 @@ import { useTaxonomy, TaxonomyFields, taxonomyLabel } from '../common/ProductTax
 
 export default function ProductWizard({ product, form, update, stores, tiers, setTiers, rights, setRights,
   approved, setApproved, source, setSource, license, setLicense, file, selectFile, slot, setSlot,
-  imageAction, busy, saving, recoveryPending = false, onRecover, error, message, save, onCancel }) {
+  imageAction, busy, saving, recoveryPending = false, onRecover, onCheckEdit, onReloadEdit, onFinishEdit, error, message, save, onCancel }) {
   const l = useLabels(), { lang } = useTranslation(), heading = useRef(null);
+  const recoveryRef=useRef(null);
+  const editingRecovery=Boolean(product&&recoveryPending);
+  useEffect(()=>{if(editingRecovery){const panel=recoveryRef.current;panel?.focus({preventScroll:true});panel?.scrollIntoView?.({block:"center",behavior:"instant"});}},[editingRecovery]);
   const [step, setStep] = useState(0);
   const [preview, setPreview] = useState(null);
   useEffect(()=>{
@@ -39,11 +42,13 @@ export default function ProductWizard({ product, form, update, stores, tiers, se
     issues.push([1,l('راجع الشرائح: كميات صحيحة، دون تداخل، وبداية لا تقل عن MOQ.', 'Vérifiez les paliers : quantités entières, sans chevauchement et à partir du MOQ.')]);
   if (product?.moderationStatus==='hidden') issues.push([0,l('المنتج محجوب إشرافياً؛ الحفظ كمسودة متاح.', 'Produit masqué par la modération ; le brouillon reste disponible.')]);
   const resetApproval = setter => value => { setter(value); setApproved(false); };
+  const recoveryActions=recoveryPending && <div className="actions">{onCheckEdit&&<button type="button" disabled={saving||busy} onClick={onCheckEdit}>{l('التحقق من محاولة التعديل','Vérifier la tentative de modification','Check edit attempt')}</button>}{onReloadEdit&&<button type="button" disabled={saving||busy} onClick={onReloadEdit}>{l('مراجعة النسخة الحالية دون إعادة الإرسال','Vérifier la version actuelle sans renvoi','Review current version without resending')}</button>}{onFinishEdit&&<button type="button" disabled={saving||busy} onClick={onFinishEdit}>{l('العودة إلى المنتجات مع تنبيه الفهرسة','Retour aux produits avec avertissement d’indexation','Return to products with indexing warning')}</button>}{onRecover&&<button type="button" className="primary" disabled={busy || saving} onClick={onRecover}>{saving?l('جارٍ الاستكمال…','Reprise en cours…'):l('استكمال محاولة الحفظ','Reprendre l’enregistrement')}</button>}</div>;
   return <section className="panel supplier-editor">
     <p className="supplier-eyebrow">{l('كتالوج شركتك', 'Le catalogue de votre entreprise')}</p>
     <h2>{product ? l('تحرير المنتج', 'Modifier le produit') : l('إضافة منتج جملة', 'Ajouter un produit de gros')}</h2>
     <p className="muted">{l('احفظ مسودة في أي خطوة. لا يُنشر شيء قبل مراجعتك واعتمادك الصريح.', 'Enregistrez un brouillon à chaque étape. Rien n’est publié sans votre vérification et votre accord explicite.')}</p>
     {product?.isDraft===false && <Notice>{l('المنتج الحالي منشور. حفظه كمسودة خاصة يلغي نشره؛ لا يتغير قبل إجراء حفظ صريح منك.', 'Le produit actuel est publié. L’enregistrer en brouillon privé le dépublie ; rien ne change sans votre action explicite.')}</Notice>}
+    {editingRecovery&&<div className="supplier-edit-recovery" role="region" aria-label={l("استرجاع محاولة التعديل","Récupération de la modification","Edit recovery")} ref={recoveryRef} tabIndex={-1}><Notice>{message}</Notice><Notice error>{error}</Notice>{recoveryActions}</div>}
     <ol className="supplier-steps" aria-label={l('خطوات إضافة المنتج','Étapes du produit')}>{steps.map((title,i)=><li key={title}><button type="button" disabled={saving} aria-current={step===i?'step':undefined} onClick={()=>go(i)}><span>{i+1}</span>{title}</button></li>)}</ol>
     <form onSubmit={e=>e.preventDefault()}>
       <fieldset className="supplier-editor-fields" disabled={saving || recoveryPending}><legend className="supplier-sr">{steps[step]}</legend>
@@ -88,8 +93,7 @@ export default function ProductWizard({ product, form, update, stores, tiers, se
         <label className="check supplier-publish-consent"><input type="checkbox" checked={approved} onChange={e=>setApproved(e.target.checked)} />{l('راجعت الصورة والوصف والسعر والكمية والتوفر وأعتمد نشر هذه البيانات.','J’ai vérifié l’image, la description, les prix, les quantités et la disponibilité et j’approuve cette publication.')}</label>
         <p className="muted">{l('أي تعديل يلغي إقرار النشر. النشر لا ينشئ طلباً أو اتفاقاً تجارياً.', 'Toute modification annule cet accord. Publier ne crée ni commande ni accord commercial.')}</p>
       </>}
-      </fieldset><Notice>{message}</Notice><Notice error>{error}</Notice>
-      {recoveryPending && <div className="actions"><button type="button" className="primary" disabled={busy || saving} onClick={onRecover}>{saving?l('جارٍ الاستكمال…','Reprise en cours…'):l('استكمال محاولة الحفظ','Reprendre l’enregistrement')}</button></div>}
+      </fieldset>{!editingRecovery&&<><Notice>{message}</Notice><Notice error>{error}</Notice>{recoveryActions}</>}
       <div className="supplier-editor-actions"><div className="actions">{step>0 && <button type="button" disabled={saving} onClick={()=>go(step-1)}>{l('السابق','Précédent')}</button>}{step<2?<button type="button" className="primary" disabled={saving} onClick={()=>go(step+1)}>{l('التالي','Suivant')}</button>:<button type="button" className="primary" disabled={recoveryPending || busy || saving || !approved || !rights || issues.length>0} onClick={()=>save(false)}>{l('اعتماد ونشر','Approuver et publier')}</button>}</div><div className="actions"><button type="button" disabled={recoveryPending || busy || saving} onClick={()=>save(true)}>{saving?l('جارٍ الحفظ…','Enregistrement…'):l('حفظ مسودة خاصة','Enregistrer un brouillon privé')}</button><button type="button" disabled={saving || recoveryPending} onClick={onCancel}>{l('إلغاء','Annuler')}</button></div></div>
       <small className="muted">{l('احفظ قبل مغادرة الصفحة. المدخلات غير المحفوظة لا تُخزن على الجهاز ولا تستعاد بعد الإغلاق.', 'Enregistrez avant de quitter. Les saisies non enregistrées ne sont pas stockées sur l’appareil et ne sont pas récupérées après fermeture.')}</small>
     </form>

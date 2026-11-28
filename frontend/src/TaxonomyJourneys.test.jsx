@@ -42,10 +42,11 @@ beforeEach(()=>{
    if(p.endsWith('/image-search'))return reply(visualFixture(data,Number(u.searchParams.get('page'))));
    return reply({data,pagination:{page:1,pages:1,total:data.length},externalDiscovery:{enabled:false}});
   }
+  if(p.endsWith('/update-attempt'))return reply({version:1,productId:item._id,actorId:'actor-a',baseRevision:0,currentRevision:1,phase:'saved'});
   if((p.endsWith('/products')||p.endsWith('/products/'+item._id))&&['POST','PUT'].includes(opt.method)){
    writes.push({body:JSON.parse(opt.body),key:opt.headers['Idempotency-Key'],method:opt.method});
    if(failSave){failSave=false;return reply({},503)}
-   return reply({product:{_id:opt.method==='PUT'?item._id:'synthetic-taxonomy-draft',isDraft:true}},201);
+   return opt.method==='PUT'?reply({product:{_id:item._id,isDraft:true,editRevision:1},update:{version:1,baseRevision:0,revision:1,replayed:false},visualIndex:{status:'queued'}}):reply({product:{_id:'synthetic-taxonomy-draft',isDraft:true}},201);
   }
   return reply({data:[],unreadCount:0});
  });
@@ -106,8 +107,8 @@ test('supplier explicitly selects a leaf, retains legacy label and replays same 
 });
 test('supplier editing retains existing path on load failure and can explicitly clear it',async()=>{
  failTaxonomy=true;const saved=jest.fn();
- const product={...item,category:'Original label',storeId:''};
- render(<LanguageProvider><ProductEditor product={product} stores={[]} onSaved={saved} onCancel={()=>{}}/></LanguageProvider>);
+ const product={...item,editRevision:0,category:'Original label',storeId:''};
+ render(<LanguageProvider><ProductEditor product={product} actorId="actor-a" stores={[]} onSaved={saved} onCancel={()=>{}}/></LanguageProvider>);
  editorOpen();await screen.findByText('تعذر تحميل التصنيف.');
  expect(screen.getByLabelText('الفئة')).toHaveValue('Original label');
  choose('إزالة التصنيف الهرمي');choose('حفظ مسودة خاصة');
