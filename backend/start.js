@@ -3,7 +3,7 @@ const mongoose=require('mongoose')
 const {initRedis}=require('./middleware/cache')
 const {logInfo,logError}=require('./middleware/logger')
 const app=require('./server')
-let server, worker, decisionRecovery, creationRecovery, offerRecovery, rejectionRecovery, sourcingRecovery, shuttingDown = false
+let server, worker, decisionRecovery, creationRecovery, offerRecovery, rejectionRecovery, sourcingRecovery, messageRecovery, shuttingDown = false
 async function start(){
  await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/jomla-ma',{serverSelectionTimeoutMS:10000})
  logInfo('Database connected')
@@ -18,6 +18,8 @@ async function start(){
    onError: error=>logError(new Error(error.code),'RFQ supplier rejection recovery')}).start()
  sourcingRecovery=require('./services/sourcingRecovery').createSourcingRecovery({
    onError: error=>logError(new Error(error.code),'Sourcing offer recovery')}).start()
+ messageRecovery=require('./services/rfqMessageDelivery').createMessageRecovery({
+   onError: error=>logError(new Error(error.code),'RFQ message recovery')}).start()
  if ((process.env.JOB_WORKER_MODE || 'embedded') === 'embedded') {
   const {createWorker}=require('./services/jobQueue')
   const handlers=require('./services/jobHandlers')
@@ -31,6 +33,6 @@ async function start(){
  server=app.listen(Number(process.env.PORT)||5000,()=>logInfo('API listening; readiness endpoint /health/ready'))
  server.on('error',error=>{logError(new Error(error.code),'HTTP server');shutdown(1)})
 }
-async function shutdown(code=0){if(shuttingDown)return;shuttingDown=true;if(worker)await worker.stop({graceMs:15000});if(server?.listening)await new Promise(resolve=>server.close(resolve));if(decisionRecovery)await decisionRecovery.stop();if(creationRecovery)await creationRecovery.stop();if(offerRecovery)await offerRecovery.stop();if(rejectionRecovery)await rejectionRecovery.stop();if(sourcingRecovery)await sourcingRecovery.stop();await mongoose.disconnect();process.exit(code)}
+async function shutdown(code=0){if(shuttingDown)return;shuttingDown=true;if(worker)await worker.stop({graceMs:15000});if(server?.listening)await new Promise(resolve=>server.close(resolve));if(decisionRecovery)await decisionRecovery.stop();if(creationRecovery)await creationRecovery.stop();if(offerRecovery)await offerRecovery.stop();if(rejectionRecovery)await rejectionRecovery.stop();if(sourcingRecovery)await sourcingRecovery.stop();if(messageRecovery)await messageRecovery.stop();await mongoose.disconnect();process.exit(code)}
 process.on('SIGINT',()=>shutdown());process.on('SIGTERM',()=>shutdown())
-start().catch(async error=>{logError(new Error(error.name),'Startup failed; API was not started');if(worker)await worker.stop({graceMs:1000});if(decisionRecovery)await decisionRecovery.stop();if(creationRecovery)await creationRecovery.stop();if(offerRecovery)await offerRecovery.stop();if(rejectionRecovery)await rejectionRecovery.stop();if(sourcingRecovery)await sourcingRecovery.stop();await mongoose.disconnect();process.exitCode=1})
+start().catch(async error=>{logError(new Error(error.name),'Startup failed; API was not started');if(worker)await worker.stop({graceMs:1000});if(decisionRecovery)await decisionRecovery.stop();if(creationRecovery)await creationRecovery.stop();if(offerRecovery)await offerRecovery.stop();if(rejectionRecovery)await rejectionRecovery.stop();if(sourcingRecovery)await sourcingRecovery.stop();if(messageRecovery)await messageRecovery.stop();await mongoose.disconnect();process.exitCode=1})

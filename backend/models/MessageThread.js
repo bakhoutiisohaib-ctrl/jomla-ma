@@ -7,7 +7,15 @@ const MessageItemSchema = new mongoose.Schema({
   senderId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
   content:     { type: String, required: true, trim: true, maxlength: 5000 },
   attachment:  { type: String },
-  sentAt:      { type: Date, default: Date.now }
+  sentAt:      { type: Date, default: Date.now },
+  delivery: { type: new mongoose.Schema({
+    version: { type: Number, enum: [1], required: true },
+    hash: { type: String, required: true, match: /^[a-f0-9]{64}$/ },
+    recipientId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    phase: { type: String, enum: ['pending','completed'], required: true },
+    attempts: { type: Number, min: 0, default: 0 },
+    nextAttemptAt: Date
+  }, { _id: false }), default: undefined }
 }, { _id: true })
 
 const MessageThreadSchema = new mongoose.Schema({
@@ -26,5 +34,6 @@ const MessageThreadSchema = new mongoose.Schema({
 })
 
 MessageThreadSchema.index({ rfqId: 1 }, { unique: true })
+MessageThreadSchema.index({ 'messages.delivery.nextAttemptAt': 1 }, { sparse: true })
 
 module.exports = mongoose.model('MessageThread', MessageThreadSchema)

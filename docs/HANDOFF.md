@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6B.1A durable RFQ message/notice backend scoped PASS: initial 7/7, expanded isolated BE 175/175 (9 suites), final attempt-lookup/security recheck 41/41 (4 suites), 12 new delivery tests. Atomic embedded receipt, actor-scoped key, journaled deterministic notice, bounded recovery, read-only attempt status. [Report](v49-gate6b1a-message-delivery-20261128.md). Gate 6 OPEN; next 6B.1B buyer/supplier UI durable attempt identity. Keyless legacy retries not deduplicated.
+
 2026-11-28 - Gate 6A exact-source full local regression PASS: BE 746/746 (42 suites, one clean run), FE 485/485 (47 suites), both complete tracked inventories matched, zero skipped/failed, CI build PASS. No runtime changes. Reference hash and original Codex base verified. [Audit, open obligations and ordered Gate 6 plan](v49-gate6a-baseline-20261128.md). Gate 6 OPEN; next 6B.1 durable RFQ message/notification recovery.
 
 2026-11-28 - Gate 5 local integrated acceptance PASS/CLOSED: clean baseline BE 105/105 (6), full FE 484/484 (47), CI build PASS; reproduced/fixed inherited dictionary lookup crash, final targeted FE 16/16 and strict build PASS; corrected-source fresh Chrome 22/22 (10 text, 6 visual, 6 comparison) + all DB/API checks. [Report](v49-gate5-local-acceptance-20261128.md). Full FE predates limited fix; physical camera, production/full parity and prior-gate obligations remain. Next Gate 6.

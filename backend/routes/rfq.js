@@ -3,7 +3,7 @@ const mongoose = require('mongoose')
 const QuoteRequest = require('../models/QuoteRequest')
 const QuoteOffer = require('../models/QuoteOffer')
 const MessageThread = require('../models/MessageThread')
-const Notification = require('../models/Notification')
+const { sendMessage, messageAttempt, publicThread } = require('../services/rfqMessageDelivery')
 const { authenticate, requirePermission, requireRole } = require('../middleware/auth')
 const { validateMongoId } = require('../middleware/validators')
 const { asyncHandler } = require('../middleware/errorHandler')
@@ -19,7 +19,6 @@ const supplierParty = (req, rfq) => ['supplier', 'admin', 'staff'].includes(req.
   (req.supplier.role !== 'staff' || req.supplier.permissions?.some(p => ['all', 'manage_rfq'].includes(p)))
 const buyerParty = (req, rfq) => String(rfq.buyerId) === String(req.supplier.id)
 const permitted = (req, rfq) => buyerParty(req, rfq) || supplierParty(req, rfq)
-const notice = (userId, type, resourceId) => Notification.create({ userId, type, resourceType: 'rfq', resourceId })
 
 router.post('/', requireRole('buyer'), require('../services/buyerProfile').requireBuyerContact, asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'no-store')
@@ -83,10 +82,18 @@ router.get('/:id/thread', validateMongoId, asyncHandler(async (req, res) => {
   if (!rfq) return res.status(404).json({ message: 'الطلب غير موجود' })
   if (!permitted(req, rfq)) return res.status(403).json({ message: 'المحادثة خاصة بأطراف الطلب' })
   if (rfq.status === 'creating') return res.status(202).json({ thread: null, offers: [], rfq, processing: true })
-  const [thread, offers] = await Promise.all([MessageThread.findOne({ rfqId: rfq._id }), QuoteOffer.find({ rfqId: rfq._id }).sort({ createdAt: -1 })])
+  const [thread, offers] = await Promise.all([MessageThread.findOne({ rfqId: rfq._id, buyerId: rfq.buyerId, supplierId: rfq.supplierId }), QuoteOffer.find({ rfqId: rfq._id }).sort({ createdAt: -1 })])
   const visibleOffers = offers.map(offer => rfq.status === 'offering' && String(offer._id) === String(rfq.offerSubmission?.offerId)
     ? { ...offer.toJSON(), status: 'preparing' } : offer)
-  res.json({ thread, offers: visibleOffers, rfq, ...(supplierParty(req, rfq) ? { offerSubmission: submissionSummary(rfq), rejection: rejectionSummary(rfq) } : {}) })
+  res.json({ thread: publicThread(thread), offers: visibleOffers, rfq, ...(supplierParty(req, rfq) ? { offerSubmission: submissionSummary(rfq), rejection: rejectionSummary(rfq) } : {}) })
+}))
+
+router.get('/:id/messages/attempt', validateMongoId, asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'private, no-store')
+  const rfq = await QuoteRequest.findById(req.params.id)
+  if (!rfq) return res.status(404).json({ message: 'الطلب غير موجود' })
+  if (!permitted(req, rfq)) return res.status(403).json({ message: 'المحادثة خاصة بأطراف الطلب' })
+  res.json(await messageAttempt(req, rfq, buyerParty(req, rfq)))
 }))
 router.post('/:id/messages', validateMongoId, asyncHandler(async (req, res) => {
   const content = typeof req.body.content === 'string' ? req.body.content.trim() : ''
@@ -94,13 +101,8 @@ router.post('/:id/messages', validateMongoId, asyncHandler(async (req, res) => {
   const rfq = await QuoteRequest.findById(req.params.id)
   if (!rfq) return res.status(404).json({ message: 'الطلب غير موجود' })
   if (!permitted(req, rfq)) return res.status(403).json({ message: 'المحادثة خاصة بأطراف الطلب' })
-  if (!['pending', 'responded'].includes(rfq.status)) return res.status(409).json({ message: 'المحادثة مغلقة بعد اتخاذ القرار' })
-  const buyer = buyerParty(req, rfq)
-  const thread = await MessageThread.findOneAndUpdate({ rfqId: rfq._id, status: 'open' }, {
-    $push: { messages: { content, senderId: req.supplier.id, senderRole: buyer ? 'buyer' : 'supplier', senderName: req.supplier.name } },
-    $set: { lastMessageAt: new Date() } }, { new: true, runValidators: true })
-  if (!thread) return res.status(409).json({ message: 'المحادثة مغلقة' })
-  await notice(buyer ? rfq.supplierId : rfq.buyerId, 'message_received', rfq._id)
-  res.status(201).json({ message: 'تم إرسال الرسالة', thread })
+  res.set('Cache-Control', 'no-store')
+  const result = await sendMessage(req, rfq, buyerParty(req, rfq), content)
+  res.status(201).json({ message: 'تم إرسال الرسالة', ...result })
 }))
 module.exports = router
