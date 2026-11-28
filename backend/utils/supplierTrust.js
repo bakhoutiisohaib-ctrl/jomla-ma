@@ -2,7 +2,7 @@
 function parseSupplierTrust(input = {}) {
   const value = input.supplierTrust
   if (Object.keys(input).some(key => /^supplierTrust(?:\[|\.)/.test(key)) ||
-      (value !== undefined && value !== '' && !['verified','declared_ma','rated'].includes(value))) {
+      (value !== undefined && value !== '' && !['verified','declared_ma','rated','fast_response'].includes(value))) {
     throw Object.assign(new Error('Invalid supplier trust filter'), { status: 400 })
   }
   return value || ''
@@ -13,6 +13,7 @@ function verifiedSupplierPredicate(value) {
   return { isVerified: true, verificationStatus: 'verified' }
 }
 async function supplierTrustPredicate(value,scope={}){
+  if(value==='fast_response')return {_id:{$in:await require('../services/supplierResponseFilter').fastSupplierIds(scope)}}
   if(value==='rated')return {_id:{$in:await require('../services/supplierRatingFilter').ratedSupplierIds(scope)}}
   if(value!=='declared_ma')return verifiedSupplierPredicate(value)
   const Organization=require('../models/Organization')

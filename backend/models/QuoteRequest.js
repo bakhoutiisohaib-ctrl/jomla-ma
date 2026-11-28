@@ -96,6 +96,8 @@ const QuoteRequestSchema = new mongoose.Schema({
     attempts: { type: Number, default: 0 }, nextAttemptAt: Date,
     lastErrorCode: String, completedAt: Date
   }, { _id: false }), select: false, default: undefined },
+  responseMetricVersion: { type: Number, enum: [1], select: false, default: undefined },
+  firstCommercialResponse: { type: new mongoose.Schema({ kind: { type: String, enum: ['offer', 'refusal'], required: true }, refId: { type: mongoose.Schema.Types.ObjectId, required: true }, at: { type: Date, required: true } }, { _id: false }), select: false, default: undefined },
   createdAt:   { type: Date, default: Date.now }
 })
 
@@ -106,8 +108,9 @@ QuoteRequestSchema.index({ buyerId: 1, 'creation.key': 1 }, { name: 'rfq_creatio
   partialFilterExpression: { 'creation.key': { $type: 'string' } } })
 QuoteRequestSchema.index({ status: 1, 'creation.version': 1, 'creation.phase': 1, 'creation.nextAttemptAt': 1, _id: 1 })
 QuoteRequestSchema.index({ 'offerSubmission.version': 1, 'offerSubmission.phase': 1, 'offerSubmission.nextAttemptAt': 1, _id: 1 }, { name: 'rfq_offer_recovery' })
+QuoteRequestSchema.index({ supplierId: 1, responseMetricVersion: 1, 'creation.completedAt': 1 }, { name: 'rfq_response_metric' })
 for (const format of ['toJSON', 'toObject']) QuoteRequestSchema.set(format, {
-  transform: (_document, value) => { delete value.creation; delete value.offerSubmission; delete value.supplierRejection; return value }
+  transform: (_document, value) => { delete value.creation; delete value.offerSubmission; delete value.supplierRejection; delete value.responseMetricVersion; delete value.firstCommercialResponse; return value }
 })
 
 module.exports = mongoose.model('QuoteRequest', QuoteRequestSchema)
