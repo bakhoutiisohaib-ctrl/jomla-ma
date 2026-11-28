@@ -401,3 +401,52 @@ test('batched historical checks preserve exact BSON scope, RFQ closure and page-
  expect(last.body.data[0].basis).toBe('mutual_confirmation');
  expect(await Review.countDocuments()).toBe(66);
 });
+
+test('rated supplier filter uses counted evidence, minimum sample and visible scope before paging',async()=>{
+ const Store=require('../models/Store'),{mediaFixture}=require('./helpers/mediaFixture');
+ const suppliers=await Promise.all(Array.from({length:3},()=>account('supplier')));
+ const products=[],stores=[];
+ for(let i=0;i<suppliers.length;i++){
+  const {user}=suppliers[i],store=await Store.create({supplierId:user._id,name:'Synthetic rating store '+i,slug:'rated-'+i,reviewStatus:'approved',isActive:true});
+  stores.push(store);
+  products.push(await Product.create({name:'Synthetic rated shoes',category:'Synthetic footwear',description:'Synthetic rating test',price:20,city:'Rabat',moq:1,unit:'piece',supplierId:user._id,storeId:store._id,imageUrl:await mediaFixture(user),isDraft:false,inStock:true,availability:'in_stock',availabilityConfirmed:true,hasImageRights:true,imageRights:{source:'owned',declaredBy:user._id,declaredAt:new Date()},approvedBy:user._id,approvedAt:new Date()}));
+ }
+ const published=[];
+ for(const [i,stars] of [[0,[5,5,4]],[1,[5,5]],[2,[5,5,1]]]){
+  for(const score of stars){const buyer=await account();await completed(buyer,suppliers[i]);const res=await request(app).post('/api/reviews').set(auth(buyer.token)).send({supplierId:String(suppliers[i].user._id),stars:score});expect(res.status).toBe(201);published.push(res.body.review._id)}
+ }
+ await Review.create({supplierId:suppliers[0].user._id,userName:'Legacy negative',stars:1});
+ await Review.create({supplierId:suppliers[1].user._id,userName:'Forged nominal',stars:5,basis:'mutual_confirmation',tradeConfirmationId:new mongoose.Types.ObjectId()});
+ const q={supplierTrust:'rated',limit:1};
+ const list=()=>request(app).get('/api/products/search').query(q);
+ const ids=r=>r.body.data.map(x=>x._id);
+ const result=await list();expect(result.status).toBe(200);expect(ids(result)).toEqual([String(products[0]._id)]);expect(result.body.pagination.total).toBe(1);
+ expect((await request(app).get('/api/products/categories').query({supplierTrust:'rated'})).body.data).toEqual([{category:'Synthetic footwear',count:1}]);
+ expect(ids(await request(app).get('/api/stores').query(q))).toEqual([String(stores[0]._id)]);
+ expect((await request(app).post('/api/ai-search').send({query:'Synthetic rated shoes',supplierTrust:'rated'})).body.products.map(p=>p._id)).toEqual([String(products[0]._id)]);
+ expect(ids(await request(app).get('/api/products/search').query({...q,page:2}))).toEqual([]);
+ const otherStore=await request(app).get('/api/stores/'+stores[1]._id).query(q);expect(otherStore.status).toBe(200);expect(otherStore.body.products).toEqual([]);
+ await Store.updateOne({_id:stores[0]._id},{$set:{adminSuspended:true}});expect(ids(await list())).toEqual([]);
+ await Store.updateOne({_id:stores[0]._id},{$set:{adminSuspended:false}});
+ await Supplier.updateOne({_id:suppliers[0].user._id},{$set:{isActive:false}});expect(ids(await list())).toEqual([]);
+ await Supplier.updateOne({_id:suppliers[0].user._id},{$set:{isActive:true}});
+ const {indexProduct}=require('../services/visualIndex');for(const p of products)await indexProduct(p._id);
+ const image=await require('fs/promises').readFile(require('path').join(process.env.UPLOADS_DIR,require('path').basename(products[0].imageUrl)));
+ const visual=await request(app).post('/api/image-search').field('supplierTrust','rated').attach('image',image,{filename:'synthetic.png',contentType:'image/png'});
+ expect(visual.status).toBe(200);expect(visual.body.products.map(p=>p._id)).toEqual([String(products[0]._id)]);expect(visual.body.externalDiscovery).toMatchObject({enabled:false,reason:'supplier_trust_scope'});
+
+ const r=await Review.findById(published[0]).select('+tradeConfirmationId').lean();
+ await Confirmation.collection.updateOne({_id:r.tradeConfirmationId},{$set:{decisionHash:'0'.repeat(64)}});
+ expect(ids(await list())).toEqual([]);
+ expect((await request(app).get('/api/reviews/'+suppliers[0].user._id)).body.stats.total).toBe(2);
+ const fault=jest.spyOn(Confirmation,'find').mockImplementationOnce(()=>{throw Error('Synthetic evidence outage')});
+ try{const unavailable=await list();expect(unavailable.status).toBe(503);expect(unavailable.body.data).toBeUndefined()}finally{fault.mockRestore()}
+ expect(await Review.countDocuments()).toBe(10);
+});
+test('rated filter never returns partial data when its bounded scan limit is exceeded',async()=>{
+ const Store=require('../models/Store'),owner=await account('supplier'),{POLICY}=require('../services/supplierRatingFilter');
+ await Store.create({supplierId:owner.user._id,name:'Synthetic load store',slug:'rated-limit',reviewStatus:'approved',isActive:true});
+ await Review.collection.insertMany(Array.from({length:POLICY.maxReviews+1},()=>({supplierId:owner.user._id,basis:'mutual_confirmation',stars:5,date:new Date(),userName:'Synthetic unsupported'})));
+ const r=await request(app).get('/api/products/search').query({supplierTrust:'rated'});expect(r.status).toBe(503);expect(r.body.data).toBeUndefined();
+ expect(await Review.countDocuments()).toBe(POLICY.maxReviews+1);
+});

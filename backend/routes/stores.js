@@ -39,7 +39,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationParams(req)
   const businessType = parseBusinessTypeInput(req.query)
   const supplierTrust = parseSupplierTrust(req.query)
-  const owners = await Supplier.find({ role: 'supplier', ...(businessType ? { businessTypes: businessType } : {}), ...await supplierTrustPredicate(supplierTrust), isActive: { $ne: false } }).distinct('_id')
+  const owners = await Supplier.find({ role: 'supplier', ...(businessType ? { businessTypes: businessType } : {}), ...await supplierTrustPredicate(supplierTrust,{businessType}), isActive: { $ne: false } }).distinct('_id')
   const filter = { ...STORE_VISIBLE, supplierId: { $in: owners } }
   if (typeof req.query.city === 'string') filter.city = req.query.city
   if (typeof req.query.category === 'string') filter.categories = req.query.category

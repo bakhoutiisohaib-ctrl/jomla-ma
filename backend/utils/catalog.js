@@ -53,7 +53,7 @@ function searchWords(q) {
 }
 
 async function publicCatalogFilter({ supplierId, businessType, supplierTrust } = {}) {
-  const trust=await supplierTrustPredicate(supplierTrust)
+  const trust=await supplierTrustPredicate(supplierTrust,{supplierId,businessType})
   const suppliers = await Supplier.find({ role: 'supplier', isActive: { $ne: false },
     ...(supplierId ? { _id: supplierId } : {}), ...(businessType ? { businessTypes: businessType } : {}), $and:[trust] }).select('_id').lean()
   const supplierIds = suppliers.map(s => s._id)
