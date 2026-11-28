@@ -1,0 +1,594 @@
+{
+  "baseline": "adf93321e5e1f8354a3c2de1b0f538ef695b8f90",
+  "referenceSHA256": "927901518b55674939608ca9b08802eff0a1f169da3012ba716d1c33f21cf903",
+  "scope": "full local regression; Gate 6B.3 remains open",
+  "build": {
+    "exit": 0,
+    "mainJsGzipKB": 210.58,
+    "mainCssGzipKB": 21.01
+  },
+  "browser": "not run; execution blocked",
+  "manualRecovery": "not implemented",
+  "backend": {
+    "exit": 0,
+    "tests": 778,
+    "suites": 45,
+    "seconds": 363.393,
+    "failed": 0,
+    "pending": 0,
+    "todo": 0,
+    "inventoryMatched": true,
+    "inventory": [
+      {
+        "path": "backend/tests/accountRecovery.test.js",
+        "tests": 8,
+        "passed": 8,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/admin.test.js",
+        "tests": 7,
+        "passed": 7,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/backup.test.js",
+        "tests": 11,
+        "passed": 11,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/businessTypes.test.js",
+        "tests": 12,
+        "passed": 12,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/buyerOnboarding.test.js",
+        "tests": 2,
+        "passed": 2,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/externalDiscovery.test.js",
+        "tests": 6,
+        "passed": 6,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/favorites.test.js",
+        "tests": 9,
+        "passed": 9,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/jobs.test.js",
+        "tests": 15,
+        "passed": 15,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/journey.test.js",
+        "tests": 1,
+        "passed": 1,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/launchBlockers.test.js",
+        "tests": 9,
+        "passed": 9,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/mediaCancellation.test.js",
+        "tests": 5,
+        "passed": 5,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/mediaPrivacy.test.js",
+        "tests": 39,
+        "passed": 39,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/mediaRateLimits.test.js",
+        "tests": 9,
+        "passed": 9,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/mongoLifecycle.test.js",
+        "tests": 4,
+        "passed": 4,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/pilot_journey.test.js",
+        "tests": 3,
+        "passed": 3,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/pilot_security.test.js",
+        "tests": 12,
+        "passed": 12,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/pilotOperations.test.js",
+        "tests": 13,
+        "passed": 13,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/preflight.test.js",
+        "tests": 19,
+        "passed": 19,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/productAI.test.js",
+        "tests": 11,
+        "passed": 11,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/productCreationIdempotency.test.js",
+        "tests": 17,
+        "passed": 17,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/products.test.js",
+        "tests": 39,
+        "passed": 39,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/productUpdateReliability.test.js",
+        "tests": 10,
+        "passed": 10,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/publicMedia.test.js",
+        "tests": 30,
+        "passed": 30,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/publicPages.test.js",
+        "tests": 23,
+        "passed": 23,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/reportPrivacy.test.js",
+        "tests": 35,
+        "passed": 35,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/reports_and_roles.test.js",
+        "tests": 3,
+        "passed": 3,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/reportTransactions.test.js",
+        "tests": 1,
+        "passed": 1,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/requestParserSecurity.test.js",
+        "tests": 39,
+        "passed": 39,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/reviews_trust.test.js",
+        "tests": 8,
+        "passed": 8,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/rfq_consistency.test.js",
+        "tests": 40,
+        "passed": 40,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/rfq_creation.test.js",
+        "tests": 19,
+        "passed": 19,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/rfq_message_delivery.test.js",
+        "tests": 12,
+        "passed": 12,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/rfq_offer_submission.test.js",
+        "tests": 30,
+        "passed": 30,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/rfq_supplier_rejection.test.js",
+        "tests": 43,
+        "passed": 43,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/rfq.test.js",
+        "tests": 9,
+        "passed": 9,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/runtime.test.js",
+        "tests": 2,
+        "passed": 2,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/security.test.js",
+        "tests": 16,
+        "passed": 16,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/sourcing.test.js",
+        "tests": 5,
+        "passed": 5,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/sourcingCreation.test.js",
+        "tests": 35,
+        "passed": 35,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/sourcingDecision.test.js",
+        "tests": 48,
+        "passed": 48,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/sourcingOfferSubmission.test.js",
+        "tests": 48,
+        "passed": 48,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/stores_and_threads.test.js",
+        "tests": 4,
+        "passed": 4,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/supplierVerificationRecovery.test.js",
+        "tests": 10,
+        "passed": 10,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/visualIndex.test.js",
+        "tests": 14,
+        "passed": 14,
+        "status": "passed"
+      },
+      {
+        "path": "backend/tests/wholesaleOpportunities.test.js",
+        "tests": 43,
+        "passed": 43,
+        "status": "passed"
+      }
+    ]
+  },
+  "frontend": {
+    "exit": 0,
+    "tests": 504,
+    "suites": 48,
+    "seconds": 98.021,
+    "failed": 0,
+    "pending": 0,
+    "todo": 0,
+    "inventoryMatched": true,
+    "inventory": [
+      {
+        "path": "frontend/src/api/config.test.js",
+        "tests": 15,
+        "passed": 15,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/App.test.js",
+        "tests": 8,
+        "passed": 8,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/BusinessTypesJourneys.test.jsx",
+        "tests": 9,
+        "passed": 9,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/CategoryJourneys.test.jsx",
+        "tests": 5,
+        "passed": 5,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/ComparisonJourneys.test.jsx",
+        "tests": 5,
+        "passed": 5,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/admin/AdminDashboard.test.jsx",
+        "tests": 2,
+        "passed": 2,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/auth/RegisterPage.test.jsx",
+        "tests": 6,
+        "passed": 6,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/buyer/BuyerDashboard.test.jsx",
+        "tests": 24,
+        "passed": 24,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/buyer/RfqCreationRecovery.test.jsx",
+        "tests": 3,
+        "passed": 3,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/buyer/SourcingDecisionCard.test.jsx",
+        "tests": 16,
+        "passed": 16,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/buyer/useBuyerWorkspace.test.js",
+        "tests": 1,
+        "passed": 1,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/common/AtlasDialog.test.jsx",
+        "tests": 2,
+        "passed": 2,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/common/CommercialAgreement.test.jsx",
+        "tests": 6,
+        "passed": 6,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/common/MarketLayout.test.jsx",
+        "tests": 5,
+        "passed": 5,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/common/MarketShell.test.jsx",
+        "tests": 6,
+        "passed": 6,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/common/NegotiationUI.test.jsx",
+        "tests": 9,
+        "passed": 9,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/common/ProtectedImage.test.jsx",
+        "tests": 21,
+        "passed": 21,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/common/PublicMedia.test.jsx",
+        "tests": 8,
+        "passed": 8,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/common/ReportModal.test.jsx",
+        "tests": 3,
+        "passed": 3,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/common/RfqMessageComposer.test.jsx",
+        "tests": 10,
+        "passed": 10,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/products/cardPrice.test.js",
+        "tests": 22,
+        "passed": 22,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/products/detailPricing.test.js",
+        "tests": 21,
+        "passed": 21,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/products/RFQModal.test.jsx",
+        "tests": 12,
+        "passed": 12,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/products/SourcingModal.test.jsx",
+        "tests": 21,
+        "passed": 21,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/products/SupplierRating.test.jsx",
+        "tests": 12,
+        "passed": 12,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/suppliers/CompanyLifecycle.test.jsx",
+        "tests": 6,
+        "passed": 6,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/suppliers/JobsPanel.test.jsx",
+        "tests": 1,
+        "passed": 1,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/suppliers/ProductEditor.test.jsx",
+        "tests": 35,
+        "passed": 35,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/suppliers/SourcingOfferForm.test.jsx",
+        "tests": 18,
+        "passed": 18,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/suppliers/SupplierDashboard.test.jsx",
+        "tests": 19,
+        "passed": 19,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/suppliers/SupplierOfferForm.test.jsx",
+        "tests": 7,
+        "passed": 7,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/suppliers/SupplierVerificationPanel.test.jsx",
+        "tests": 4,
+        "passed": 4,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/suppliers/useSupplierRejection.test.jsx",
+        "tests": 6,
+        "passed": 6,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/components/wholesale/wholesale.test.jsx",
+        "tests": 18,
+        "passed": 18,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/FavoritesJourneys.test.jsx",
+        "tests": 9,
+        "passed": 9,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/i18n/Language.test.jsx",
+        "tests": 3,
+        "passed": 3,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/LocalAcceptance.test.jsx",
+        "tests": 6,
+        "passed": 6,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/LocalReviewJourneys.test.jsx",
+        "tests": 17,
+        "passed": 17,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/MarketHome.test.jsx",
+        "tests": 2,
+        "passed": 2,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/navigation.test.jsx",
+        "tests": 30,
+        "passed": 30,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/ProductDetailAfter.test.jsx",
+        "tests": 23,
+        "passed": 23,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/RecoveryPage.test.jsx",
+        "tests": 7,
+        "passed": 7,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/RoutingPages.test.jsx",
+        "tests": 16,
+        "passed": 16,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/StoreDirectoryJourneys.test.jsx",
+        "tests": 4,
+        "passed": 4,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/StructuredSearchJourneys.test.jsx",
+        "tests": 6,
+        "passed": 6,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/SupplierTrustJourneys.test.jsx",
+        "tests": 3,
+        "passed": 3,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/TaxonomyJourneys.test.jsx",
+        "tests": 7,
+        "passed": 7,
+        "status": "passed"
+      },
+      {
+        "path": "frontend/src/VisualSearchJourneys.test.jsx",
+        "tests": 5,
+        "passed": 5,
+        "status": "passed"
+      }
+    ]
+  }
+}
