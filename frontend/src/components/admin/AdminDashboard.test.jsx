@@ -47,3 +47,21 @@ test('administrator resumes a saved decision without submitting a new decision',
  await screen.findByText('Synthetic recovery supplier');
  expect(apiRequest.mock.calls.filter(([,o])=>o?.method).map(([p,o])=>[p,o.method,o.body])).toEqual([['/admin/suppliers/'+id+'/verification-recover','POST',{operationId:op}]]);
 });
+
+test.each([true,false])('private trade dispute administrative decision requires matching receipt (%s)',async valid=>{
+ localStorage.clear();setSession('synthetic-admin');apiRequest.mockReset();
+ const item={_id:'6'.repeat(24),targetType:'trade_confirmation',targetName:'Synthetic dispute',reason:'confirmation_dispute',status:'pending',reporterName:'Synthetic buyer',details:'Private complaint',tradeDispute:{kind:'sourcing',sourceId:'7'.repeat(24),offerId:'8'.repeat(24),role:'buyer'}};
+ let done=false;
+ apiRequest.mockImplementation(async(p,o)=>p==='/admin/stats'?{}:o?.method==='PUT'?(done=valid,{report:{...item,_id:valid?item._id:'9'.repeat(24),status:'resolved',moderationAction:'none',resolutionNotes:'Examined complaint'}}):p.startsWith('/reports?')?{data:[{...item,status:done?'resolved':'pending'}],pagination:{pages:1}}:{data:[],pagination:{pages:1}});
+ render(<LanguageProvider><AdminDashboard user={{role:'admin'}}/></LanguageProvider>);
+ fireEvent.click(screen.getByRole('button',{name:'البلاغات'}));
+ await screen.findByText('Private complaint');expect(screen.getByText(item.tradeDispute.sourceId)).toBeInTheDocument();
+ expect(screen.getByText(item.tradeDispute.offerId)).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'معالجة البلاغ'}));
+ expect(screen.queryByLabelText('الإجراء على الهدف')).not.toBeInTheDocument();
+ fireEvent.change(screen.getByLabelText('سبب القرار وملاحظاته'),{target:{value:'Examined complaint'}});
+ fireEvent.click(screen.getByRole('button',{name:'تأكيد وتسجيل'}));
+ if(valid)await screen.findByText('حفظ القرار وأثر التدقيق');
+ else {await screen.findByText(/نتيجة قرار الاعتراض غير مؤكدة/);expect(screen.queryByText('حفظ القرار وأثر التدقيق')).not.toBeInTheDocument();}
+ expect(apiRequest.mock.calls.find(([p,o])=>o?.method==='PUT')).toEqual(['/reports/'+item._id+'/resolve',{method:'PUT',token:'synthetic-admin',body:{action:'resolved',resolutionNotes:'Examined complaint',moderationAction:'none'}}]);
+});

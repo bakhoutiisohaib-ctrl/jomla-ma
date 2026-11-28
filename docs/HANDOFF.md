@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6C.1B.2 dispute UI scoped PASS: final FE 96/96 (6 suites), strict CI build PASS after correcting React Hook dependency. Buyer/supplier status and same-text recovery, admin context and receipt checks. [Report](v49-gate6c-r5b2-dispute-ui-20261128.md). R5 OPEN; next actual browser/HTTP/DB acceptance (6C.1B.3).
+
 2026-11-28 - Gate 6C.1B.1 confirmation dispute backend scoped PASS: final BE 53/53 (4 suites), exit 0; three new tests, deterministic private complaint and submission audit, recovery and admin no-moderation fence. [Report](v49-gate6c-r5b1-confirmation-dispute-20261128.md). R5 OPEN; next UI/private status and admin integration (6C.1B.2).
 
 2026-11-28 - Gate 6C.1A R5 review eligibility integrity scoped PASS: two failing regressions reproduced before fix, three new tests; final isolated BE 105/105 (5 suites), exit 0, after correcting test prerequisites. Canonical confirmation and original accepted agreement checks; no historic-data mutation or verified purchase claim. [Report](v49-gate6c-r5a-review-eligibility-20261128.md). R5 and Gate 6C remain OPEN for dispute and legacy policy.

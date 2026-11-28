@@ -16,6 +16,7 @@ export function statusLabel(status, lang = 'ar') {
     preparing: ['عرض غير جاهز بعد', 'Offre pas encore prête'],
     expired: ['منتهي الصلاحية', 'Expiré'],
     pending: ['قيد المراجعة', 'En attente'],
+    investigating: ['قيد التحقيق', 'En cours d’examen', 'Under investigation'],
     unverified: ['غير موثق', 'Non vérifié'],
     verified: ['موثق', 'Vérifié'],
     approved: ['معتمد', 'Approuvé'],
