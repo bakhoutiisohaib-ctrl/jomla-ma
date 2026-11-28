@@ -1,0 +1,113 @@
+require('./helpers/pilotIsolation')
+const request=require('supertest'),mongoose=require('mongoose')
+const {MongoMemoryServer}=require('mongodb-memory-server')
+const app=require('../server'),Supplier=require('../models/Supplier'),Store=require('../models/Store'),Audit=require('../models/AuditLog')
+const {generateToken}=require('../middleware/auth')
+const {recoverPendingVerifications,createVerificationRecovery}=require('../services/supplierVerification')
+let mongo,admin,otherAdmin,n=0
+const auth=u=>({Authorization:'Bearer '+generateToken(u)})
+async function account(role='supplier'){return Supplier.create({name:'Synthetic '+role,email:'verify-'+(++n)+'@local.test',password:'synthetic',role})}
+async function fixture(){const owner=await account(),store=await Store.create({supplierId:owner._id,name:'Synthetic shop',slug:'verify-shop',reviewStatus:'approved',isActive:true});return {owner,store}}
+const submit=(o,revision=0,ice='001234567890001')=>request(app).post('/api/suppliers/me/verify').set(auth(o)).send({iceNumber:ice,verificationRevision:revision})
+const decide=(o,action='approve',rev=1,actor=admin)=>request(app).put('/api/admin/suppliers/'+o._id+'/verify').set(auth(actor)).send({action,verificationRevision:rev,rejectionReason:action==='reject'?'Synthetic reason':undefined})
+const state=o=>Supplier.findById(o._id).select('+verificationOperation').lean()
+const events=o=>Audit.find({targetType:'Supplier',targetId:o._id,action:{$in:['SUPPLIER_VERIFICATION_SUBMITTED','SUPPLIER_VERIFIED','SUPPLIER_REJECTED']}}).lean()
+const recover=()=>recoverPendingVerifications({now:new Date(Date.now()+120000)})
+beforeAll(async()=>{mongo=await MongoMemoryServer.create({instance:{storageEngine:'wiredTiger'}});await mongoose.connect(mongo.getUri());admin=await account('admin');otherAdmin=await account('admin');await Promise.all([Supplier.init(),Store.init(),Audit.init()])},120000)
+afterEach(()=>jest.restoreAllMocks())
+afterAll(async()=>{await mongoose.disconnect();if(mongo)await mongo.stop()})
+async function proof(o,store,status,count){
+ const s=await state(o),rows=await events(o),shop=await Store.findById(store._id).select('+verificationProjection').lean()
+ expect(s.verificationStatus).toBe(status);expect(s.isVerified).toBe(status==='verified');expect(s.verificationOperation.phase).toBe('completed')
+ expect(rows).toHaveLength(count);expect(rows.every(e=>e.phase==='completed')).toBe(true)
+ expect(shop.isVerified).toBe(status==='verified');expect(shop.verificationProjection).toBe(s.verificationRevision*2+(['verified','rejected'].includes(status)?1:0))
+ return s
+}
+test('audit outage before intent leaves reserved operation, unchanged public status, recovery commits exactly once',async()=>{
+ const {owner,store}=await fixture(),fault=jest.spyOn(Audit,'updateOne').mockRejectedValueOnce(Error('synthetic audit outage'))
+ expect((await submit(owner)).status).toBe(503);fault.mockRestore()
+ let s=await state(owner);expect(s.verificationOperation.phase).toBe('reserved');expect(s.verificationStatus).toBe('unverified');expect(await events(owner)).toHaveLength(0)
+ expect((await submit(owner,0,'different')).status).toBe(409)
+ expect((await recover()).completed).toBe(1);await proof(owner,store,'pending',1)
+ expect((await submit(owner)).body.replayed).toBe(true);await proof(owner,store,'pending',1)
+})
+test('store projection outage after approval retains pending audit and never reports success; fresh worker repairs',async()=>{
+ const {owner,store}=await fixture();expect((await submit(owner)).status).toBe(200)
+ const fault=jest.spyOn(Store,'updateMany').mockRejectedValueOnce(Error('synthetic projection outage'))
+ expect((await decide(owner)).status).toBe(503);fault.mockRestore()
+ const s=await state(owner);expect(s.verificationOperation.phase).toBe('applied');expect(s.verificationStatus).toBe('verified')
+ expect((await events(owner)).filter(x=>x.phase==='pending')).toHaveLength(1);expect((await Store.findById(store._id)).isVerified).toBe(false)
+ const publicStore=await request(app).get('/api/stores/'+store._id);expect(publicStore.body.store.supplierId.verificationStatus).toBe('verified')
+ expect((await decide(owner,'reject',1,otherAdmin)).status).toBe(409)
+ expect((await submit(owner,1,'new dossier')).status).toBe(409)
+ const worker=createVerificationRecovery();try{expect((await worker.runOnce()).completed).toBe(1)}finally{await worker.stop()}
+ await proof(owner,store,'verified',2);expect((await decide(owner)).status).toBe(409)
+})
+test('lost completion acknowledgement and exact owner/admin replay do not duplicate audit events',async()=>{
+ const {owner,store}=await fixture(),original=Audit.updateOne
+ const fault=jest.spyOn(Audit,'updateOne').mockImplementation(async function(q,u,...rest){const result=await original.call(this,q,u,...rest);if(u.$set?.phase==='completed')throw Error('synthetic ack loss');return result})
+ expect((await submit(owner)).status).toBe(503);fault.mockRestore()
+ expect((await submit(owner)).status).toBe(200);await proof(owner,store,'pending',1)
+ const upd=Supplier.updateOne,fail=jest.spyOn(Supplier,'updateOne').mockImplementation(async function(q,u,...rest){if(u.$set?.['verificationOperation.phase']==='completed')throw Error('synthetic final receipt failure');return upd.call(this,q,u,...rest)})
+ expect((await decide(owner)).status).toBe(503);fail.mockRestore()
+ const r=await decide(owner);expect(r.status).toBe(200);expect(r.body.supplier.verificationOperation).toBeUndefined()
+ await proof(owner,store,'verified',2)
+})
+test('concurrent competing decisions leave one completed decision, no duplicate intents; stale projection cannot regress',async()=>{
+ const {owner,store}=await fixture();expect((await submit(owner)).status).toBe(200)
+ const results=await Promise.all([decide(owner),decide(owner,'reject',1,otherAdmin)])
+ expect(results.map(r=>r.status).sort()).toEqual([200,409])
+ const s=await state(owner);await proof(owner,store,s.verificationStatus,2)
+ expect((await submit(owner,1,'001234567890002')).status).toBe(200)
+ await proof(owner,store,'pending',3)
+ expect((await decide(owner,'approve',1)).status).toBe(409)
+})
+test('account disabled before reserved mutation cancels rather than grants verification',async()=>{
+ const {owner,store}=await fixture();expect((await submit(owner)).status).toBe(200)
+ const fault=jest.spyOn(Audit,'updateOne').mockRejectedValueOnce(Error('synthetic outage'));expect((await decide(owner)).status).toBe(503);fault.mockRestore()
+ await Supplier.updateOne({_id:owner._id},{$set:{isActive:false}})
+ await recover()
+ const s=await state(owner);expect(s.verificationStatus).toBe('pending');expect(s.isVerified).toBe(false);expect(s.verificationOperation.phase).toBe('failed')
+ expect((await events(owner)).filter(e=>e.phase==='failed')).toHaveLength(1)
+ expect((await Store.findById(store._id)).isVerified).toBe(false)
+})
+test('concurrent recoveries do not duplicate audit or overwrite newer store projection',async()=>{
+ const {owner,store}=await fixture();expect((await submit(owner)).status).toBe(200)
+ const fault=jest.spyOn(Store,'updateMany').mockRejectedValueOnce(Error('synthetic outage'));expect((await decide(owner)).status).toBe(503);fault.mockRestore()
+ await Promise.all([recover(),recover()]);await proof(owner,store,'verified',2)
+ expect((await submit(owner,1,'001234567890003')).status).toBe(200)
+ await proof(owner,store,'pending',3)
+ const api=await request(app).get('/api/admin/suppliers').set(auth(admin))
+ expect(JSON.stringify(api.body)).not.toContain('verificationOperation')
+})
+
+test('a delayed approval projection cannot restore a badge after a newer dossier was submitted',async()=>{
+ const {owner,store}=await fixture();expect((await submit(owner)).status).toBe(200)
+ const original=Store.updateMany;let release,entered;const held=new Promise(r=>{release=r}),ready=new Promise(r=>{entered=r})
+ const spy=jest.spyOn(Store,'updateMany').mockImplementationOnce(async function(...args){entered();await held;return original.apply(this,args)})
+ const first=decide(owner).then(r=>r)
+ try{
+  await ready
+  expect((await decide(owner)).status).toBe(200)
+  await proof(owner,store,'verified',2)
+  expect((await submit(owner,1,'001234567890009')).status).toBe(200)
+  await proof(owner,store,'pending',3)
+ }finally{release();await first;spy.mockRestore()}
+ await proof(owner,store,'pending',3)
+})
+test('before-reservation failure is not a stale conflict and cannot mutate state; lost reservation acknowledgement is recovered',async()=>{
+ const {owner,store}=await fixture(),original=Supplier.updateOne
+ jest.spyOn(Supplier,'updateOne').mockRejectedValueOnce(Error('synthetic before reservation'))
+ expect((await submit(owner)).status).toBe(503);jest.restoreAllMocks()
+ expect((await state(owner)).verificationOperation).toBeUndefined();expect(await events(owner)).toHaveLength(0)
+ jest.spyOn(Supplier,'updateOne').mockImplementationOnce(async function(...args){await original.apply(this,args);throw Error('synthetic lost reservation ack')})
+ expect((await submit(owner)).status).toBe(200);jest.restoreAllMocks();await proof(owner,store,'pending',1)
+})
+test('private and admin store lists read authoritative supplier badge even during projection outage',async()=>{
+ const {owner,store}=await fixture();expect((await submit(owner)).status).toBe(200)
+ const fault=jest.spyOn(Store,'updateMany').mockRejectedValueOnce(Error('synthetic outage'));expect((await decide(owner)).status).toBe(503);fault.mockRestore()
+ expect((await Store.findById(store._id)).isVerified).toBe(false)
+ const mine=await request(app).get('/api/stores/mine').set(auth(owner));expect(mine.status).toBe(200);expect(mine.body.data.find(x=>x._id===String(store._id)).isVerified).toBe(true)
+ const all=await request(app).get('/api/admin/stores?limit=100').set(auth(admin));expect(all.status).toBe(200);expect(all.body.data.find(x=>x._id===String(store._id)).isVerified).toBe(true)
+ expect((await recover()).completed).toBe(1);await proof(owner,store,'verified',2)
+})

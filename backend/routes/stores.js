@@ -8,6 +8,7 @@ const { validateMongoId } = require('../middleware/validators')
 const { asyncHandler } = require('../middleware/errorHandler')
 const { getPaginationParams, formatPaginationResponse } = require('../utils/constants')
 const { auditedChange } = require('../utils/audit')
+const verification = require('../services/supplierVerification')
 const { searchCatalog } = require('../utils/catalog')
 const { parseBusinessTypeInput } = require('../utils/businessTypes')
 const { parseSupplierTrust, verifiedSupplierPredicate } = require('../utils/supplierTrust')
@@ -30,7 +31,8 @@ router.get('/mine', authenticate, requirePermission('manage_store', 'manage_prod
   const { page, limit, skip } = getPaginationParams(req)
   const filter = { supplierId: req.supplier.ownerId }
   const stores = await Store.find(filter).sort({ createdAt: -1 }).limit(limit).skip(skip)
-  res.json(formatPaginationResponse(stores, await Store.countDocuments(filter), page, limit))
+  const owner=await Supplier.findById(req.supplier.ownerId).select("isVerified verificationStatus")
+  res.json(formatPaginationResponse(stores.map(s=>verification.storeDto(s,owner)), await Store.countDocuments(filter), page, limit))
 }))
 
 router.get('/', asyncHandler(async (req, res) => {
@@ -69,14 +71,15 @@ router.post('/', authenticate, requirePermission('manage_store'), asyncHandler(a
     description: req.body.description || '', city: req.body.city || supplier.city || '',
     address: req.body.address || '', phone: req.body.phone || supplier.phone || '',
     logoUrl: req.body.logoUrl || '', bannerUrl: req.body.bannerUrl || '',
-    categories: req.body.categories || [], isVerified: supplier.isVerified,
+    categories: req.body.categories || [], isVerified: verification.approved(supplier), verificationProjection:verification.stamp(supplier),
     reviewStatus: 'pending', isActive: false
   })
   await auditedChange({
     action: 'STORE_CREATED', targetType: 'Store', targetId: store._id, actor: req.supplier,
     details: { supplierId: supplier._id, reviewStatus: 'pending' }
   }, () => store.save())
-  res.status(201).json({ message: 'تم إنشاء المتجر وهو بانتظار مراجعة الإدارة', store })
+  const current=await verification.syncStore(store)
+  res.status(201).json({ message: 'تم إنشاء المتجر وهو بانتظار مراجعة الإدارة', ...current })
 }))
 
 router.put('/:id', authenticate, requirePermission('manage_store'), validateMongoId, asyncHandler(async (req, res) => {
@@ -94,7 +97,8 @@ router.put('/:id', authenticate, requirePermission('manage_store'), validateMong
     for (const key of [...fields, 'isActive']) if (req.body[key] !== undefined) store[key] = req.body[key]
     await store.save()
   })
-  res.json({ message: 'تم تحديث بيانات المتجر', store })
+  const owner=await Supplier.findById(store.supplierId).select('isVerified verificationStatus')
+  res.json({ message: 'تم تحديث بيانات المتجر', store:verification.storeDto(store,owner) })
 }))
 
 module.exports = router

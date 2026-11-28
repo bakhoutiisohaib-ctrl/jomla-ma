@@ -27,6 +27,7 @@ const SupplierSchema = new mongoose.Schema({
   isVerified:         { type: Boolean, default: false },
   verificationStatus: { type: String, enum: ['unverified', 'pending', 'verified', 'rejected'], default: 'unverified' },
   verificationRevision: { type: Number, default: 0, min: 0, validate: Number.isSafeInteger },
+  verificationOperation: { type: mongoose.Schema.Types.Mixed, select: false, default: undefined },
   iceNumber:          { type: String, default: '' }, // المعرف الموحد للمقاولة ICE
   tradeRegistry:      { type: String, default: '' }, // رقم السجل التجاري RC
   verificationDoc:    { type: String, default: '' }, // رابط وثيقة الترخيص أو السجل
@@ -34,5 +35,7 @@ const SupplierSchema = new mongoose.Schema({
   rejectionReason:    { type: String, default: '' },
   createdAt:          { type: Date, default: Date.now }
 })
+
+SupplierSchema.index({ 'verificationOperation.nextAttemptAt':1 }, { sparse:true })
 
 module.exports = mongoose.model('Supplier', SupplierSchema)
