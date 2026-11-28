@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6C.2C.3 response browser scoped PASS: Chrome 3/3, DB PASS, 1008 RFQs/22 owners, 85ms single and 147ms two concurrent; first fixture-only header failure corrected. [Report](v49-gate6c-f1c3-response-browser-20261128.md). Next 6C.2D integrated F1.
+
 2026-11-28 - Gate 6C.2C.2 response filter UI scoped PASS: FE 60/60 (6 suites), strict CI build PASS, localized policy/empty/retry. [Report](v49-gate6c-f1c2-response-ui-20261128.md). Next browser/load acceptance.
 
 2026-11-28 - Gate 6C.2C.1 response metric backend scoped PASS: BE 112/112 (5 suites), new RFQ private first completed commercial response; 30d/24h/3 distinct buyers/80% provisional, fail closed bounds. [Report](v49-gate6c-f1c1-response-backend-20261128.md). Next UI and browser acceptance.

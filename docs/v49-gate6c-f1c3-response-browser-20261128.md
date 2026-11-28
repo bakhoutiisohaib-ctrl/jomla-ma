@@ -1,0 +1,7 @@
+# 6C.2C.3 — Browser and bounded response metric acceptance (local scoped PASS)
+
+- Exact runtime ed09189ba7a005daec3cab560d0bb85738120172, strict CI build main.0ebbcea7.js. Disposable standalone MongoDB, actual HTTP and Chrome 390px. Eight real RFQ creations, five actual offers and one refusal; synthetic ready/response time adjustment in this fixture to simulate mature sample. Supplier A qualifies 4/5, B does not 2/3.
+- Browser 3/3: market, real evidence outage 503 with explicit retry, directory and clear. No horizontal overflow or uncaught runtime exceptions. DB RFQ/offer snapshots unchanged by browser reads. [Evidence](evidence/v49-gate6c-f1c3-response-browser-20261128/browser-results.json).
+- First run failed due to test fixture sending an offer idempotency header to refusal endpoint (correctly 400); fixed fixture only, final exit 0. No application regression concealed.
+- Bounded synthetic load: 1,008 mature nominal RFQs / 22 candidate owners, 11 exact matched stores. One call 85ms/16 offer queries; two concurrent 147ms/32 queries; four 128ms with two 200 and two deliberate 503. [Measurements](evidence/v49-gate6c-f1c3-response-browser-20261128/performance.json). Not production guarantee.
+- Visual screenshots reviewed; existing V4.9 design retained. New records only; no historical backfill, no original DB or deployment change. 6C.2C local scope closed, integrated F1 acceptance still open.

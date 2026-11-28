@@ -1,0 +1,56 @@
+{
+  "candidateOwners": 22,
+  "nominalMatureRequests": 1008,
+  "expectedMatchingStores": 11,
+  "measurements": [
+    {
+      "concurrency": 1,
+      "elapsedMs": 85,
+      "offerQueries": 16,
+      "calls": [
+        {
+          "status": 200,
+          "ms": 85
+        }
+      ]
+    },
+    {
+      "concurrency": 2,
+      "elapsedMs": 147,
+      "offerQueries": 32,
+      "calls": [
+        {
+          "status": 200,
+          "ms": 147
+        },
+        {
+          "status": 200,
+          "ms": 147
+        }
+      ]
+    },
+    {
+      "concurrency": 4,
+      "elapsedMs": 128,
+      "offerQueries": 32,
+      "calls": [
+        {
+          "status": 200,
+          "ms": 128
+        },
+        {
+          "status": 200,
+          "ms": 127
+        },
+        {
+          "status": 503,
+          "ms": 10
+        },
+        {
+          "status": 503,
+          "ms": 10
+        }
+      ]
+    }
+  ]
+}
