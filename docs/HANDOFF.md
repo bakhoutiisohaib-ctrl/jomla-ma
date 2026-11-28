@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Integrated R5 scoped local PASS: fresh BE 190/190 (9 suites), FE 164/164 (11 suites), CI build PASS, Chrome 10/10 and DB PASS at exact runtime 85a84b8. [Report](v49-gate6c-r5-integrated-20261128.md). Implemented R5 scope closed; independent proof/collusion/adjudication/real historic data and production acceptance remain explicit obligations. Next F1 bounded metrics design and implementation; Gate 6C OPEN.
+
 2026-11-28 - Gate 6C.1C.3 scoped PASS: BE 94/94 (5 suites), Chrome 3/3, isolated performance scenarios 4/4; 1001 counted reviews single 3288ms -> 217ms, four concurrent 7282ms -> 1043ms. Batched evidence, no persistent cache. [Report](v49-gate6c-r5c3-review-performance-20261128.md). 6C.1C scoped closed; next integrated R5 acceptance, not yet F1.
 
 2026-11-28 - Gate 6C.1C.2 review presentation scoped PASS: final FE 113/113 (7 suites), strict CI build PASS. Neutral excluded-opinion classification, exact supplier and public envelope checks, private stale-read handling. [Report](v49-gate6c-r5c2-review-presentation-20261128.md). R5 OPEN; next actual browser and review performance acceptance (6C.1C.3).
