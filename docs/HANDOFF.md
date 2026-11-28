@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6C.3A.4 direct conversation integrated local acceptance PASS: actual Chrome 390x844 5/5, HTTP/Mongo 10/10, fresh BE 43/43 (4 suites), FE 107/107 (5 suites), strict CI build PASS, zero runtime exceptions. [Report](v49-gate6c-f2a4-direct-chat-browser-acceptance-20261128.md). 6C.3A locally accepted; next 6C.3B.1 video upload pipeline. Gate 6C overall remains OPEN.
+
 2026-11-28 - Gate 6C.3A.3b direct notification UI scoped PASS: corrected session-bound opening and fixture/render regressions, final FE 107/107 (5 suites), strict CI build PASS, verified target before read receipt and retry. [Report](v49-gate6c-f2a3b-direct-notices-ui-20261128.md). Next 6C.3A.4 actual browser acceptance; F2 OPEN.
 
 2026-11-28 - Gate 6C.3A.3a direct notification backend scoped PASS: BE 43/43 (4 suites); embedded atomic notification, recipient-only merge and read state. [Report](v49-gate6c-f2a3a-direct-notices-backend-20261128.md). Next 6C.3A.3b notification UI and verified opening; F2 OPEN.

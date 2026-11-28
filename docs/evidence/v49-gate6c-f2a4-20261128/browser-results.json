@@ -1,0 +1,104 @@
+{
+  "steps": [
+    {
+      "step": "buyer login",
+      "status": "PASS"
+    },
+    {
+      "step": "buyer starts direct chat from product page",
+      "status": "PASS"
+    },
+    {
+      "step": "supplier opens direct-message notification and confirms read",
+      "status": "PASS"
+    },
+    {
+      "step": "supplier replies in the same direct conversation",
+      "status": "PASS"
+    },
+    {
+      "step": "buyer opens supplier-reply notification and confirms read",
+      "status": "PASS"
+    }
+  ],
+  "responses": [
+    {
+      "url": "/api/notifications",
+      "status": 200
+    },
+    {
+      "url": "/api/notifications",
+      "status": 200
+    },
+    {
+      "url": "/api/direct-conversations/product/6b0aa82c4da79ce785b00272",
+      "status": 200
+    },
+    {
+      "url": "/api/direct-conversations",
+      "status": 201
+    },
+    {
+      "url": "/api/direct-conversations/6a7f2186b57e38074d7f95f4",
+      "status": 200
+    },
+    {
+      "url": "/api/notifications?limit=50",
+      "status": 200
+    },
+    {
+      "url": "/api/notifications?limit=50",
+      "status": 200
+    },
+    {
+      "url": "/api/notifications?limit=50",
+      "status": 200
+    },
+    {
+      "url": "/api/direct-conversations/6a7f2186b57e38074d7f95f4",
+      "status": 200
+    },
+    {
+      "url": "/api/notifications/6b0aa82f4da79ce785b00273/read",
+      "status": 200
+    },
+    {
+      "url": "/api/notifications?limit=50",
+      "status": 200
+    },
+    {
+      "url": "/api/notifications?limit=50",
+      "status": 200
+    },
+    {
+      "url": "/api/direct-conversations/6a7f2186b57e38074d7f95f4/messages",
+      "status": 201
+    },
+    {
+      "url": "/api/direct-conversations/6a7f2186b57e38074d7f95f4",
+      "status": 200
+    },
+    {
+      "url": "/api/notifications",
+      "status": 200
+    },
+    {
+      "url": "/api/direct-conversations/6a7f2186b57e38074d7f95f4",
+      "status": 200
+    },
+    {
+      "url": "/api/notifications/6b0aa8304da79ce785b00274/read",
+      "status": 200
+    },
+    {
+      "url": "/api/notifications",
+      "status": 200
+    }
+  ],
+  "runtimeErrors": 0,
+  "screenshots": [
+    "buyer-product-chat.png",
+    "supplier-notice-conversation.png",
+    "buyer-notice-conversation.png"
+  ]
+}
