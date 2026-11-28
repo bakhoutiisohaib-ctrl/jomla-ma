@@ -4,7 +4,9 @@ const Message = new mongoose.Schema({
   clientId: { type: String, required: true, match: /^[a-f0-9-]{36}$/ },
   role: { type: String, required: true, enum: ['buyer', 'supplier'] },
   content: { type: String, required: true, trim: true, maxlength: 2000 },
-  sentAt: { type: Date, required: true }
+  sentAt: { type: Date, required: true },
+  noticeId: { type: oid, default: undefined },
+  noticeReadAt: { type: Date, default: undefined }
 }, { _id: false })
 
 // Independent pre-RFQ conversations cannot create offers or trade confirmations.

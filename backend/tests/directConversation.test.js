@@ -117,3 +117,59 @@ test('buyer product lookup returns only their own current-supplier conversation 
  expect((await request(app).get(path).set(auth(f.tokens.otherBuyer))).status).toBe(404)
  expect(await Conversation.countDocuments()).toBe(1)
 })
+
+test('message and recipient notification are atomic, replay never duplicates or resets read state',async()=>{
+ const p=payload('Synthetic confidential inquiry'),a=await start(p),id=a.body.conversation._id
+ expect(a.status).toBe(201)
+ const inbox=token=>request(app).get('/api/notifications').set(auth(token))
+ const mark=(notice,token)=>request(app).put('/api/notifications/'+notice+'/read').set(auth(token))
+ const first=await inbox(f.tokens.supplier);expect(first.status).toBe(200);expect(first.body.unreadCount).toBe(1)
+ expect(first.body.data).toHaveLength(1);const n=first.body.data[0]
+ expect(n).toMatchObject({type:'direct_message',resourceType:'direct_conversation',resourceId:id,readAt:null})
+ expect(JSON.stringify(first.body)).not.toContain(p.content)
+ expect(JSON.stringify((await get(id)).body)).not.toMatch(/noticeId|noticeReadAt/)
+ for(const role of ['buyer','otherBuyer','otherSupplier','staff']){
+  expect((await inbox(f.tokens[role])).body.data).toEqual([])
+  expect((await mark(n._id,f.tokens[role])).status).toBe(404)
+ }
+ const read=await mark(n._id,f.tokens.supplier);expect(read.status).toBe(200);expect(read.body.notification.readAt).toBeTruthy()
+ expect(read.headers['cache-control']).toBe('private, no-store')
+ expect((await start(p)).status).toBe(200)
+ const again=await inbox(f.tokens.supplier);expect(again.body.unreadCount).toBe(0);expect(again.body.data).toEqual([read.body.notification])
+ expect((await mark(n._id,f.tokens.supplier)).body.notification.readAt).toBe(read.body.notification.readAt)
+ const m={clientId:randomUUID(),content:'Synthetic private reply'}
+ const calls=await Promise.all(Array.from({length:4},()=>reply(id,m)));expect(calls.map(r=>r.status).sort()).toEqual([200,200,200,201])
+ const buyer=await inbox(f.tokens.buyer);expect(buyer.body.unreadCount).toBe(1);expect(buyer.body.data).toHaveLength(1);expect(buyer.body.data[0].resourceId).toBe(id)
+ expect(JSON.stringify(buyer.body)).not.toContain(m.content)
+ expect(await require('../models/Notification').countDocuments()).toBe(0)
+})
+test('lost write acknowledgement leaves exactly one visible notification; read-all scopes to recipient, legacy remains excluded',async()=>{
+ const a=await start(),id=a.body.conversation._id,m={clientId:randomUUID(),content:'Synthetic lost reply'}
+ const original=Conversation.updateOne.bind(Conversation),spy=jest.spyOn(Conversation,'updateOne').mockImplementationOnce(async(...args)=>{await original(...args);throw Error('Synthetic lost acknowledgement')})
+ expect((await reply(id,m)).status).toBe(503);spy.mockRestore()
+ const inbox=token=>request(app).get('/api/notifications').set(auth(token))
+ const markAll=token=>request(app).put('/api/notifications/read-all').set(auth(token))
+ const b=await inbox(f.tokens.buyer);expect(b.body.unreadCount).toBe(1);expect(b.body.data).toHaveLength(1)
+ expect((await reply(id,m)).status).toBe(200);expect((await inbox(f.tokens.buyer)).body.data).toEqual(b.body.data)
+ await Conversation.collection.updateOne({_id:new mongoose.Types.ObjectId(id)},{$push:{messages:{clientId:randomUUID(),role:'supplier',content:'Legacy text',sentAt:new Date()}}})
+ expect((await inbox(f.tokens.buyer)).body.data).toHaveLength(1)
+ expect((await markAll(f.tokens.staff)).status).toBe(200);expect((await inbox(f.tokens.supplier)).body.unreadCount).toBe(1)
+ expect((await markAll(f.tokens.buyer)).status).toBe(200);expect((await inbox(f.tokens.buyer)).body.unreadCount).toBe(0)
+ expect((await inbox(f.tokens.supplier)).body.unreadCount).toBe(1)
+ expect((await markAll(f.tokens.supplier)).status).toBe(200);expect((await inbox(f.tokens.supplier)).body.unreadCount).toBe(0)
+ expect((await get(id)).body.messages).toHaveLength(3)
+})
+
+test('merged notification feed keeps global newest 100 and exact unread count, without leaking text',async()=>{
+ const a=await start(),id=a.body.conversation._id,Notification=require('../models/Notification')
+ const earlier=new Date(Date.now()-60000),later=new Date(Date.now()+60000)
+ await Notification.collection.insertMany(Array.from({length:102},(_,i)=>({userId:f.supplier._id,type:'rfq_created',resourceType:'rfq',resourceId:new mongoose.Types.ObjectId(),createdAt:i===0?later:earlier,readAt:null})))
+ const r=await request(app).get('/api/notifications').set(auth(f.tokens.supplier))
+ expect(r.status).toBe(200);expect(r.body.data).toHaveLength(100);expect(r.body.unreadCount).toBe(103)
+ expect(r.body.data[0].type).toBe('rfq_created');expect(r.body.data[1]).toMatchObject({type:'direct_message',resourceId:id})
+ expect(JSON.stringify(r.body)).not.toContain('Synthetic inquiry')
+ const spy=jest.spyOn(Conversation,'aggregate').mockImplementationOnce(()=>{throw Error('Synthetic notice outage')})
+ const failed=await request(app).get('/api/notifications').set(auth(f.tokens.supplier));expect(failed.status).toBeGreaterThanOrEqual(500);expect(failed.body.data).toBeUndefined();spy.mockRestore()
+ expect((await request(app).put('/api/notifications/read-all').set(auth(f.tokens.supplier))).status).toBe(200)
+ expect((await request(app).get('/api/notifications').set(auth(f.tokens.supplier))).body.unreadCount).toBe(0)
+})

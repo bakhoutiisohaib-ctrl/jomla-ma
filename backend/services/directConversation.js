@@ -84,7 +84,7 @@ async function append(id,actor,input) {
   const prior=replay(row,actor,input)
   if(prior)return receipt(row,actor,prior,true)
   if(!await canSend(row))throw fail(409,'Conversation is read-only')
-  const message={clientId:input.clientId,content:input.content,role:actor.role,sentAt:new Date()}
+  const message={clientId:input.clientId,content:input.content,role:actor.role,sentAt:new Date(),noticeId:new mongoose.Types.ObjectId(),noticeReadAt:null}
   let result
   try{
     result=await Conversation.updateOne({_id:id,...scope(actor),buyerId:row.buyerId,supplierId:row.supplierId,productId:row.productId,
@@ -108,7 +108,7 @@ async function start(actor,input) {
   if(!product)throw notFound()
   const supplier=await Supplier.findOne({_id:product.supplierId,role:'supplier',isActive:{$ne:false}}).select('name').read('primary').maxTimeMS(5000).lean()
   if(!supplier||String(supplier._id)===actor.id||![actor.name,supplier.name,product.name].every(validName))throw notFound()
-  const now=new Date(),message={clientId:input.clientId,role:'buyer',content:input.content,sentAt:now}
+  const now=new Date(),message={clientId:input.clientId,role:'buyer',content:input.content,sentAt:now,noticeId:new mongoose.Types.ObjectId(),noticeReadAt:null}
   try{
     await new Conversation({_id:id,buyerId:actor.id,supplierId:supplier._id,productId:product._id,productName:product.name,
       buyerName:actor.name,supplierName:supplier.name,messages:[message],createdAt:now,lastMessageAt:now}).save({w:1,j:true})

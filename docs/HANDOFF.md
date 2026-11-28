@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6C.3A.3a direct notification backend scoped PASS: BE 43/43 (4 suites); embedded atomic notification, recipient-only merge and read state. [Report](v49-gate6c-f2a3a-direct-notices-backend-20261128.md). Next 6C.3A.3b notification UI and verified opening; F2 OPEN.
+
 2026-11-28 - Gate 6C.3A.2 direct chat UI scoped PASS: BE 44/44 (3 suites), FE 117/117 (6 suites), strict CI build PASS; contact from product, buyer/owner inbox, exact readback and opaque attempt recovery. [Report](v49-gate6c-f2a2-direct-chat-ui-20261128.md). Next 6C.3A.3 notifications/management, then actual Chrome acceptance; F2 OPEN.
 
 2026-11-28 - Gate 6C.3A.1 direct conversation backend scoped PASS: BE 105/105 (5 suites, 8 new tests), participant-only private conversation independent of RFQ, atomic message replay and bounded writes. [Report](v49-gate6c-f2a1-direct-conversation-20261128.md). F2 OPEN; next direct chat UI and browser acceptance; notification/abuse/retention obligations and separate video pipeline remain.
