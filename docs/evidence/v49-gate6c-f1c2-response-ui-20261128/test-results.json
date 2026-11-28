@@ -1,0 +1,26 @@
+{
+  "passed": 60,
+  "failed": 0,
+  "suites": [
+    {
+      "name": "RoutingPages.test.jsx"
+    },
+    {
+      "name": "SupplierTrustJourneys.test.jsx"
+    },
+    {
+      "name": "StructuredSearchJourneys.test.jsx"
+    },
+    {
+      "name": "VisualSearchJourneys.test.jsx"
+    },
+    {
+      "name": "MarketHome.test.jsx"
+    },
+    {
+      "name": "SupplierRating.test.jsx"
+    }
+  ],
+  "build": "main.0ebbcea7.js",
+  "ci": true
+}
