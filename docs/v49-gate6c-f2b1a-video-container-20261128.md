@@ -1,0 +1,19 @@
+# Gate 6C.3B.1A — bounded video container preflight
+
+Runtime baseline: c1d453780216c5a426d7f907a0c2a0dc69359700. This is the first independently tested slice of the video pipeline. No route is mounted; no video is accepted, stored, published, or played by the application yet.
+
+## Evidence and design decisions
+
+The existing image asset path remains untouched. Local Chrome MediaRecorder produced synthetic H.264 MP4 and VP9 WebM clips, without real user footage. The earlier isolated Mediabunny 1.66.5 experiment found that a truncated MP4 could still yield metadata and readable packets; a truncated WebM could return metadata while yielding zero packets. Fragmented MP4 reported metadata duration approximately 0.047s versus packet-derived 2.272s. Hence neither file extension, MIME, metadata, nor a permissive demuxer alone is sufficient. Mediabunny was inspected only in a private lab, not added to the project.
+
+The dependency-free videoContainer module applies a deliberately narrow structural profile: exact MP4/WebM MIME, maximum 20 MiB and 65,536 inspected elements, bounded top-level MP4 box sizes (including extended lengths), first ftyp, one moov, nonempty mdat; no open-ended MP4 boxes. WebM requires a bounded EBML header and exact webm DocType, one Segment, Info and Tracks before Clusters, at least one nonempty block envelope, and bounded immediate Cluster children. Unknown-size Segment and final Cluster are supported, but unknown-sized Cluster children and subsequent segment siblings inside that final Cluster are rejected. These are conservative application constraints, not a complete ISO BMFF or Matroska implementation. Engineering references: https://www.rfc-editor.org/rfc/rfc8794.html and https://www.w3.org/TR/mse-byte-stream-format-isobmff/ (MSE byte streams, not a general-file conformance checker).
+
+## Verification
+
+Initial targeted Jest run: 107/107, 4 suites, exit 0. Review eliminated unnecessary unbounded-to-file-size DocType string conversion (exact 4-byte check) and added cumulative WebM element-limit/parent-boundary tests and 2,048 deterministic mutations. Final targeted run and synthetic-video probes recorded in [summary](evidence/v49-gate6c-f2b1a-20261128/summary.json). Real synthetic MP4 and WebM pass preflight; both reject wrong MIME, half-file truncation, and all 256 tested tail cuts each. Test envelope builders intentionally use non-decodable fake inner bytes: their success establishes structure only, not playback.
+
+## Scope and remaining gates
+
+Provisional cap is an engineering choice, not owner-approved commercial policy. Whole valid-prefix truncation at an element boundary, nested malformed metadata, spoofed codec, external references, invalid bitstreams and duration/resource abuse are not ruled out by this layer. Unknown-size final clusters can legitimately end at an element boundary; no guarantee of original completeness is made. No claim of complete format validation or media safety. Some legitimate layouts are conservatively rejected. No application dependency changes, real upload, original database access, original HTML modification, hosting change, or frontend build in this isolated backend-only slice.
+
+Next 6C.3B.1B: choose and verify an isolated fail-closed decoder/normalizer (bounded CPU/memory/wall time, no network/external paths, actual track/codec/duration/dimensions/packet/decode checks, malformed-file tests). FFmpeg/FFprobe not available on the checked machine; no binary or dependency installed in the application. Then implement ownership/rights and immutable private storage with bounded upload/concurrency and recovery, product creation/edit receipts and public visibility, authorized delivery and withdrawal, supplier authoring and gallery UI; actual browser playback, backup/restore and integrated acceptance remain required. Do not expose or mount preflight as an upload validator alone. Gate 6C.3B remains OPEN.

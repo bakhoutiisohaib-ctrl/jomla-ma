@@ -1,0 +1,75 @@
+{
+  "gate": "6C.3B.1A",
+  "status": "PASS_SCOPED_PREFLIGHT_ONLY",
+  "sourceBase": "c1d453780216c5a426d7f907a0c2a0dc69359700",
+  "first": {
+    "passed": 107,
+    "suites": 4
+  },
+  "final": {
+    "passed": 109,
+    "suites": [
+      {
+        "name": "mediaPrivacy.test.js",
+        "passed": 39,
+        "failed": 0
+      },
+      {
+        "name": "publicMedia.test.js",
+        "passed": 30,
+        "failed": 0
+      },
+      {
+        "name": "videoContainer.test.js",
+        "passed": 35,
+        "failed": 0
+      },
+      {
+        "name": "mediaCancellation.test.js",
+        "passed": 5,
+        "failed": 0
+      }
+    ],
+    "failed": 0,
+    "pending": 0,
+    "todo": 0
+  },
+  "realSynthetic": {
+    "status": "PASS",
+    "scope": "container preflight only; accepted prefix can be structurally valid, not proof of complete original or playable content",
+    "rows": [
+      {
+        "generatedBy": "Chrome MediaRecorder synthetic canvas",
+        "mime": "video/mp4",
+        "bytes": 11928,
+        "elements": 6,
+        "halfTruncationRejected": true,
+        "wrongMimeRejected": true,
+        "tailCuts": {
+          "tested": 256,
+          "rejected": 256,
+          "accepted": 0
+        }
+      },
+      {
+        "generatedBy": "Chrome MediaRecorder synthetic canvas",
+        "mime": "video/webm",
+        "bytes": 20676,
+        "elements": 40,
+        "halfTruncationRejected": true,
+        "wrongMimeRejected": true,
+        "tailCuts": {
+          "tested": 256,
+          "rejected": 256,
+          "accepted": 0
+        }
+      }
+    ]
+  },
+  "deterministicMutations": 2048,
+  "maxBytes": 20971520,
+  "maxElements": 65536,
+  "uploadEnabled": false,
+  "dependencyChanges": false,
+  "originalDbTouched": false
+}
