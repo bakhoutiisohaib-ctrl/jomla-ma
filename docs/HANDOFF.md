@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6C.2A.1 declared company country backend scoped PASS: final BE 96/96 (6 suites), exit 0. Explicit owner declaration; default MA does not qualify; shared catalog/store/text/image scope; no verified location claim. [Report](v49-gate6c-f1a1-declared-country-20261128.md). F1 OPEN; next 6C.2A.2 declaration UI and public filter integration.
+
 2026-11-28 - Integrated R5 scoped local PASS: fresh BE 190/190 (9 suites), FE 164/164 (11 suites), CI build PASS, Chrome 10/10 and DB PASS at exact runtime 85a84b8. [Report](v49-gate6c-r5-integrated-20261128.md). Implemented R5 scope closed; independent proof/collusion/adjudication/real historic data and production acceptance remain explicit obligations. Next F1 bounded metrics design and implementation; Gate 6C OPEN.
 
 2026-11-28 - Gate 6C.1C.3 scoped PASS: BE 94/94 (5 suites), Chrome 3/3, isolated performance scenarios 4/4; 1001 counted reviews single 3288ms -> 217ms, four concurrent 7282ms -> 1043ms. Batched evidence, no persistent cache. [Report](v49-gate6c-r5c3-review-performance-20261128.md). 6C.1C scoped closed; next integrated R5 acceptance, not yet F1.

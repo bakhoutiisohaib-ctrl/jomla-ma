@@ -231,3 +231,88 @@ test('unsupported trust claims and malformed trust scope are rejected, not broad
  const bytes=await fs.readFile(path.join(process.env.UPLOADS_DIR,path.basename(imageUrl)))
  expect((await request(app).post('/api/image-search').field('supplierTrust','fast').attach('image',bytes,{filename:'synthetic.png',contentType:'image/png'})).status).toBe(400)
 })
+
+test('declared Morocco scope excludes default and stale declarations across catalog and directory',async()=>{
+ const Organization=require('../models/Organization');
+ const update=(actor,body)=>request(app).put('/api/suppliers/me/organization').set(auth(actor)).send(body);
+ const scope={supplierTrust:'declared_ma'};
+ await Organization.create({ownerSupplierId:legacy._id,name:'Synthetic default company'});
+ try{
+  expect((await update(owner,{name:'Synthetic company',country:'MA'})).status).toBe(200);
+  expect((await list(scope)).status).toBe(200);
+  expect(ids(await list(scope))).toEqual([]);
+  for(const actor of [staff,buyer,admin])expect((await update(actor,{country:'MA',declareCountry:true})).status).toBe(403);
+  for(const body of [{declareCountry:true},{country:'MA',declareCountry:'true'},{country:'ZZZ',declareCountry:true},{country:'MA',declaredCountry:'MA'}])expect((await update(owner,body)).status).toBe(400);
+  const saved=await update(owner,{country:'ma',declareCountry:true});expect(saved.status).toBe(200);
+  expect(saved.body.organization.declaredCountry).toBe('MA');
+  expect((await Supplier.findById(owner._id)).isVerified).toBe(false);
+  await change(owner,{businessTypes:['manufacturer']});
+  const filtered=await list({...scope,businessType:'manufacturer',limit:1});
+  expect(filtered.status).toBe(200);expect(ids(filtered)).toEqual([String(item._id)]);expect(filtered.body.pagination.total).toBe(1);
+  expect(ids(await list({...scope,page:2,limit:1}))).toEqual([]);
+  expect(ids(await request(app).get('/api/stores').query(scope))).toEqual([String(store._id)]);
+  expect((await request(app).get('/api/products/categories').query(scope)).body.data).toEqual([{category:'Synthetic footwear',count:1}]);
+  const text=await request(app).post('/api/ai-search').send({...scope,query:'Synthetic shoe'});
+  expect(text.status).toBe(200);expect(text.body.products.map(p=>p._id)).toEqual([String(item._id)]);
+  expect(text.body.externalDiscovery).toMatchObject({enabled:false,reason:'supplier_trust_scope'});
+  await indexProduct(item._id);await indexProduct(legacyItem._id);
+  const bytes=await fs.readFile(path.join(process.env.UPLOADS_DIR,path.basename(imageUrl)));
+  const visual=await request(app).post('/api/image-search').field('supplierTrust','declared_ma').attach('image',bytes,{filename:'synthetic.png',contentType:'image/png'});
+  expect(visual.status).toBe(200);expect(visual.body.products.map(p=>p._id)).toEqual([String(item._id)]);
+  expect(visual.body.externalDiscovery).toMatchObject({enabled:false,reason:'supplier_trust_scope'});
+  expect((await update(owner,{name:'Synthetic renamed company',country:'MA'})).status).toBe(200);
+  expect(ids(await list(scope))).toEqual([String(item._id)]);
+  expect((await update(owner,{country:'FR'})).status).toBe(200);
+  expect(ids(await list(scope))).toEqual([]);
+  expect((await update(owner,{country:'MA'})).status).toBe(200);
+  expect(ids(await list(scope))).toEqual([]);
+  expect((await update(owner,{country:'MA',declareCountry:true})).status).toBe(200);
+  await Organization.collection.updateOne({ownerSupplierId:owner._id},{$set:{country:'FR'}});
+  expect(ids(await list(scope))).toEqual([]);
+  await Organization.collection.updateOne({ownerSupplierId:owner._id},{$set:{country:'MA'}});
+  expect((await update(owner,{declareCountry:false})).status).toBe(200);
+  expect(ids(await list(scope))).toEqual([]);
+  expect(ids(await list({}))).toHaveLength(2);
+ }finally{
+  await require('../models/Membership').deleteMany({userId:owner._id});
+  await Organization.deleteMany({ownerSupplierId:{$in:[owner._id,legacy._id]}});
+  await Supplier.updateOne({_id:owner._id},{$unset:{organizationId:1}});
+ }
+});
+
+test('declared country scope fails closed for malformed history and preserves owner/store visibility',async()=>{
+ const Organization=require('../models/Organization');
+ const update=body=>request(app).put('/api/suppliers/me/organization').set(auth(owner)).send(body);
+ const scope={supplierTrust:'declared_ma'};
+ try{
+  const saved=await update({country:'MA',declareCountry:true});
+  expect(saved.status).toBe(200);expect(saved.headers['cache-control']).toBe('private, no-store');
+  expect((await request(app).get('/api/suppliers/me/organization').set(auth(owner))).headers['cache-control']).toBe('private, no-store');
+  const r=await list(scope);expect(r.headers['cache-control']).toBe('no-store');expect(ids(r)).toEqual([String(item._id)]);
+  expect(ids(await list({...scope,supplier:String(legacy._id)}))).toEqual([]);
+  const foreign=await request(app).get('/api/stores/'+legacyStore._id).query(scope);
+  expect(foreign.status).toBe(200);expect(foreign.body.products).toEqual([]);
+  for(const bad of [{country:['MA','FR'],declaredCountry:'MA'},{country:'MA',declaredCountry:['MA']},{country:'MA',declaredCountry:null}]){
+   await Organization.collection.updateOne({ownerSupplierId:owner._id},{$set:bad});
+   expect(ids(await list(scope))).toEqual([]);
+   expect(ids(await request(app).get('/api/stores').query(scope))).toEqual([]);
+  }
+  await Organization.collection.updateOne({ownerSupplierId:owner._id},{$set:{country:'MA',declaredCountry:'MA'}});
+  await Supplier.updateOne({_id:owner._id},{$set:{isActive:false}});
+  expect(ids(await list(scope))).toEqual([]);
+  expect(ids(await request(app).get('/api/stores').query(scope))).toEqual([]);
+  await Supplier.updateOne({_id:owner._id},{$set:{isActive:true}});
+  await Store.updateOne({_id:store._id},{$set:{adminSuspended:true}});
+  expect(ids(await list(scope))).toEqual([]);
+  expect(ids(await request(app).get('/api/stores').query(scope))).toEqual([]);
+  await Store.updateOne({_id:store._id},{$set:{adminSuspended:false}});
+  expect(ids(await list(scope))).toEqual([String(item._id)]);
+  expect((await update({country:'MA',declareCountry:false})).status).toBe(200);
+  expect(ids(await list(scope))).toEqual([]);
+ }finally{
+  await require('../models/Membership').deleteMany({userId:owner._id});
+  await Organization.deleteMany({ownerSupplierId:owner._id});
+  await Supplier.updateOne({_id:owner._id},{$set:{isActive:true},$unset:{organizationId:1}});
+  await Store.updateOne({_id:store._id},{$set:{adminSuspended:false}});
+ }
+});

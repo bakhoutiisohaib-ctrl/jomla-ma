@@ -5,7 +5,7 @@ const Supplier = require('../models/Supplier')
 const { escapeRegex } = require('./constants')
 const { parseBusinessTypeInput, declaredBusinessTypes } = require('./businessTypes')
 const { parseTaxonomyPath, applyTaxonomyFilter } = require('./taxonomy')
-const { parseSupplierTrust, verifiedSupplierPredicate } = require('./supplierTrust')
+const { parseSupplierTrust, verifiedSupplierPredicate, supplierTrustPredicate } = require('./supplierTrust')
 const { regexes } = require('./searchIntent')
 
 const badRequest = message => Object.assign(new Error(message), { status: 400 })
@@ -53,8 +53,9 @@ function searchWords(q) {
 }
 
 async function publicCatalogFilter({ supplierId, businessType, supplierTrust } = {}) {
+  const trust=await supplierTrustPredicate(supplierTrust)
   const suppliers = await Supplier.find({ role: 'supplier', isActive: { $ne: false },
-    ...(supplierId ? { _id: supplierId } : {}), ...(businessType ? { businessTypes: businessType } : {}), ...verifiedSupplierPredicate(supplierTrust) }).select('_id').lean()
+    ...(supplierId ? { _id: supplierId } : {}), ...(businessType ? { businessTypes: businessType } : {}), $and:[trust] }).select('_id').lean()
   const supplierIds = suppliers.map(s => s._id)
   const stores = await Store.find({ supplierId: { $in: supplierIds }, reviewStatus: 'approved', isActive: true, adminSuspended: { $ne: true } }).select('_id supplierId').lean()
   // Membership in two independent ID lists is not proof of store ownership.

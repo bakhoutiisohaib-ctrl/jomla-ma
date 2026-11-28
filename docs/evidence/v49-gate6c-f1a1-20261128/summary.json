@@ -1,0 +1,45 @@
+{
+  "baseline": "89695d6ee2c6f02d7cdac99ee16fa9477ef40608",
+  "passed": 96,
+  "total": 96,
+  "suites": [
+    {
+      "name": "businessTypes.test.js",
+      "passed": 14,
+      "total": 14,
+      "status": "passed"
+    },
+    {
+      "name": "security.test.js",
+      "passed": 16,
+      "total": 16,
+      "status": "passed"
+    },
+    {
+      "name": "pilot_journey.test.js",
+      "passed": 3,
+      "total": 3,
+      "status": "passed"
+    },
+    {
+      "name": "products.test.js",
+      "passed": 39,
+      "total": 39,
+      "status": "passed"
+    },
+    {
+      "name": "journey.test.js",
+      "passed": 1,
+      "total": 1,
+      "status": "passed"
+    },
+    {
+      "name": "publicPages.test.js",
+      "passed": 23,
+      "total": 23,
+      "status": "passed"
+    }
+  ],
+  "skipped": 0,
+  "exitCode": 0
+}

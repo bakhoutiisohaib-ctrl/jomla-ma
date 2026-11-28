@@ -86,6 +86,7 @@ router.get('/mine', authenticate, requirePermission('manage_products'), asyncHan
 
 const publicList = asyncHandler(async (req, res) => {
   const result = await searchCatalog(req.query)
+  if(req.query.supplierTrust)res.set('Cache-Control','no-store')
   res.json({ ...formatPaginationResponse(result.products, result.total, result.page, result.limit), exactCount: result.exactCount, similarCount: result.similarCount })
 })
 router.get('/', publicList)

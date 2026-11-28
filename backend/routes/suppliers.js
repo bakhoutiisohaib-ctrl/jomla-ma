@@ -146,6 +146,7 @@ router.put('/me/password', authenticate, asyncHandler(async (req, res) => {
 }))
 
 router.get('/me/organization', authenticate, asyncHandler(async (req, res) => {
+  res.set('Cache-Control','private, no-store')
   const organization = req.supplier.role === 'staff'
     ? (req.supplier.organizationId && await Organization.findById(req.supplier.organizationId))
     : await organizationFor(req.account)
@@ -157,18 +158,30 @@ router.get('/me/organization', authenticate, asyncHandler(async (req, res) => {
 }))
 
 router.put('/me/organization', authenticate, ownerOnly, asyncHandler(async (req, res) => {
+  res.set('Cache-Control','private, no-store')
   const allowed = ['name', 'description', 'city', 'country']
-  if (Object.keys(req.body).some(key => !allowed.includes(key))) return res.status(400).json({ message: 'حقول الشركة غير مسموحة' })
+  if (Object.keys(req.body).some(key => ![...allowed,'declareCountry'].includes(key))) return res.status(400).json({ message: 'حقول الشركة غير مسموحة' })
   if (req.body.name !== undefined && (typeof req.body.name !== 'string' || !req.body.name.trim())) {
     return res.status(400).json({ message: 'اسم الشركة مطلوب' })
   }
+  const {country,declareCountry}=req.body
+  if ((country!==undefined&&(typeof country!=='string'||(country!==''&&!/^[A-Za-z]{2}$/.test(country))))||
+    (declareCountry!==undefined&&typeof declareCountry!=='boolean')||(declareCountry===true&&!/^[A-Za-z]{2}$/.test(country||''))) return res.status(400).json({message:'Invalid country declaration'})
   const targetId = req.supplier.organizationId || new mongoose.Types.ObjectId()
   const { result } = await auditedChange({
     action: 'ORGANIZATION_UPDATED', targetType: 'Organization', targetId, actor: req.supplier,
     details: { fields: Object.keys(req.body) }
   }, async () => {
     const organization = await organizationFor(req.account, true, targetId)
+    const previous=organization.country
     for (const key of allowed) if (req.body[key] !== undefined) organization[key] = req.body[key]
+    if(declareCountry===true){
+      organization.declaredCountry=country.toUpperCase()
+      // Explicit declaration writes both values together even on a repeated save.
+      organization.markModified('country');organization.markModified('declaredCountry')
+    }else if(declareCountry===false||organization.country!==previous){
+      organization.declaredCountry=undefined;organization.markModified('declaredCountry')
+    }
     await organization.save()
     await Supplier.updateOne({ _id: req.supplier.id }, { $set: { organization: organization.name, organizationId: organization._id } })
     return organization
