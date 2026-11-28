@@ -43,3 +43,15 @@ test('status moved since list read requires refresh, not a new POST',async()=>{
  expect(screen.queryByRole('button',{name:'استكمال العملية نفسها'})).toBeNull();
  expect(apiRequest.mock.calls).toHaveLength(1);
 });
+
+test('a real service unavailable response never invites entering a new dossier and requires a new check',async()=>{
+ const settled=jest.fn();
+ apiRequest.mockResolvedValueOnce(reserved).mockRejectedValueOnce(Object.assign(Error('الخدمة غير متاحة حالياً. يمكنك إدخال المعلومات يدوياً.'),{status:503})).mockResolvedValueOnce(reserved);
+ show({onSettled:settled});check();await screen.findByRole('button',{name:'استكمال العملية نفسها'});resume();
+ expect(await screen.findByRole('alert')).toHaveTextContent(/لم يتأكد استكمال التوثيق/);
+ expect(screen.queryByText(/يمكنك إدخال المعلومات يدوياً/)).toBeNull();
+ expect(screen.queryByRole('button',{name:'استكمال العملية نفسها'})).toBeNull();
+ expect(settled).not.toHaveBeenCalled();
+ check();await screen.findByRole('button',{name:'استكمال العملية نفسها'});
+ expect(apiRequest.mock.calls.filter(([,o])=>o.method==='POST')).toHaveLength(1);
+});

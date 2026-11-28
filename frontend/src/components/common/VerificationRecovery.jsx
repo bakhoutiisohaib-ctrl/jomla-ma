@@ -30,7 +30,7 @@ function RecoverySession({supplierId,role,revision,status,disabled,onSettled,tok
  settled.current=onSettled;
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;current.current?.abort();current.current=null;}},[]);
  const path=role==='admin'?'/admin/suppliers/'+supplierId:'/suppliers/me';
- const unconfirmed=()=>l('لم يتأكد الاسترجاع. تحقق من الحالة قبل أي محاولة أخرى.','Reprise non confirmée. Vérifiez l’état avant toute nouvelle tentative.','Recovery unconfirmed. Check the state before another attempt.');
+ const unconfirmed=()=>l('لم يتأكد استكمال التوثيق. تحقق من العملية المحفوظة قبل أي محاولة أخرى.','Reprise non confirmée. Vérifiez l’état avant toute nouvelle tentative.','Recovery unconfirmed. Check the state before another attempt.');
  async function run(resume=false){
   if(current.current||disabled||!token||getSessionToken()!==token||(resume&&!receipt?.operation?.canResume))return;
   const controller=new AbortController();current.current=controller;
@@ -50,13 +50,13 @@ function RecoverySession({supplierId,role,revision,status,disabled,onSettled,tok
    }
    setReceipt(data);
    if(!data.operation.canResume)setMessage(l('هذه العملية محفوظة لدى الإدارة؛ لا يمكنك استكمالها من حساب المورد.','Cette opération relève de l’administration ; le fournisseur ne peut pas la reprendre.','This operation belongs to administration; the supplier cannot resume it.'));
-  }catch(e){if(valid())setError(e.message==='UNCONFIRMED_RECOVERY'?unconfirmed():e.message);}
+  }catch(e){if(valid())setError(resume||e.status===503||e.message==='UNCONFIRMED_RECOVERY'?unconfirmed():e.message);}
   finally{if(valid()){current.current=null;setBusy(false);}}
  }
  return <div className="supplier-help">
   <div className="actions">
-   <button type="button" disabled={busy||disabled} onClick={()=>run()}>{l('التحقق من العملية المحفوظة','Vérifier l’opération enregistrée','Check saved operation')}</button>
-   {receipt?.operation?.canResume&&<button type="button" disabled={busy||disabled} onClick={()=>run(true)}>{l('استكمال العملية نفسها','Reprendre la même opération','Resume the same operation')}</button>}
+   <button type="button" style={{minHeight:44,minWidth:44}} disabled={busy||disabled} onClick={()=>run()}>{l('التحقق من العملية المحفوظة','Vérifier l’opération enregistrée','Check saved operation')}</button>
+   {receipt?.operation?.canResume&&<button type="button" style={{minHeight:44,minWidth:44}} disabled={busy||disabled} onClick={()=>run(true)}>{l('استكمال العملية نفسها','Reprendre la même opération','Resume the same operation')}</button>}
   </div>
   {receipt?.operation?.canResume&&<p>{l('سيُستكمل الطلب أو القرار المحفوظ فقط، دون إنشاء قرار جديد.','Seule l’opération enregistrée sera reprise, sans nouvelle décision.','Only the saved operation will be resumed, without a new decision.')}</p>}
   <Notice error>{error}</Notice><Notice>{message}</Notice>

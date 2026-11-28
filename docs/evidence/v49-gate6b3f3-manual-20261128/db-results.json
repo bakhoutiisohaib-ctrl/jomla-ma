@@ -1,0 +1,13 @@
+{
+  "revision": 1,
+  "status": "verified",
+  "completedAudits": 2,
+  "submissions": 1,
+  "approvals": 1,
+  "projection": 3,
+  "storeVerified": true,
+  "originalActorPreserved": true,
+  "sameOperationIds": true,
+  "auditFaults": 2,
+  "projectionFaults": 2
+}
