@@ -47,8 +47,8 @@ router.get('/suppliers', asyncHandler(async (req, res) => {
     const regex = new RegExp(escapeRegex(req.query.search.trim().slice(0, 100)), 'i')
     filter.$or = ['name', 'email', 'city', 'iceNumber', 'tradeRegistry'].map(key => ({ [key]: regex }))
   }
-  const suppliers = await Supplier.find(filter).sort({ createdAt: -1 }).limit(limit).skip(skip)
-  res.json(formatPaginationResponse(suppliers, await Supplier.countDocuments(filter), page, limit))
+  const suppliers = await Supplier.find(filter).select('+verificationOperation').sort({ createdAt: -1 }).limit(limit).skip(skip)
+  res.set('Cache-Control','private, no-store').json(formatPaginationResponse(suppliers.map(verification.safeSupplier), await Supplier.countDocuments(filter), page, limit))
 }))
 
 router.put('/suppliers/:id/verify', validateMongoId, asyncHandler(async (req, res) => {

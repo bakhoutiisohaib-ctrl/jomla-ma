@@ -98,6 +98,11 @@ router.post('/login', validateSupplierLogin, asyncHandler(async (req, res) => {
 }))
 
 router.get('/me/profile', authenticate, asyncHandler(async (req, res) => {
+  if(req.account.role==='supplier'){
+    const current=await Supplier.findOne({_id:req.account._id,role:'supplier',isActive:{$ne:false}}).select('+verificationOperation').read('primary').maxTimeMS(5000)
+    if(!current)return res.status(404).json({message:'Supplier profile unavailable'})
+    return res.set('Cache-Control','private, no-store').json({...accountPayload(current,req.supplier),verificationSync:verification.safeSupplier(current).verificationSync})
+  }
   res.json(accountPayload(req.account, req.supplier))
 }))
 
@@ -286,7 +291,7 @@ router.post('/me/verify', authenticate, ownerOnly, asyncHandler(async (req, res)
     if (!valid && input.verificationDoc !== supplier.verificationDoc) return res.status(400).json({ message: 'رابط وثيقة التوثيق غير صالح' })
   }
   const {supplier:saved,replayed}=await verification.submit(supplier,req.supplier,input,expected)
-  res.json({ message: replayed?'هذه حالة ملف التوثيق المحفوظ':'تم إرسال طلب التوثيق للمراجعة', supplier: accountPayload(saved, req.supplier), ...(replayed?{replayed:true}:{}) })
+  res.json({ message: replayed?'هذه حالة ملف التوثيق المحفوظ':'تم إرسال طلب التوثيق للمراجعة', supplier: {...accountPayload(saved, req.supplier),verificationSync:verification.safeSupplier(saved).verificationSync}, ...(replayed?{replayed:true}:{}) })
 }))
 
 // Retired duplicate upload route: all writes use the validated catalog API.

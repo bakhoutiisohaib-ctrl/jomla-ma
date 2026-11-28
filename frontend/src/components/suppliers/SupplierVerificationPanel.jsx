@@ -11,7 +11,7 @@ const valid = (row, owner) => row && String(row._id || row.id) === String(owner)
   Number.isSafeInteger(row.verificationRevision) && row.verificationRevision >= 0 &&
   ['unverified','pending','verified','rejected'].includes(row.verificationStatus) &&
   row.isVerified === (row.verificationStatus === 'verified') &&
-  fields.every(key => typeof row[key] === 'string');
+  fields.every(key => typeof row[key] === 'string') && ['idle','pending','paused','unknown'].includes(row.verificationSync);
 
 export default function SupplierVerificationPanel({ owner, onConfirmed }) {
   const token = useSessionToken();
@@ -34,7 +34,7 @@ function OwnedPanel({token, owner, onConfirmed}) {
       if(!current())return;
       const saved=write?result?.supplier:result;
       if(!valid(saved,owner) || (write && (!fields.every(k=>saved[k]===form[k].trim()) ||
-          !['pending','verified'].includes(saved.verificationStatus) || saved.verificationRevision<row.verificationRevision)))
+          !['pending','verified'].includes(saved.verificationStatus) || saved.verificationRevision<row.verificationRevision || saved.verificationSync!=='idle')))
         throw new Error(labels.current('لم تتأكد حالة ملف التوثيق. حدّث الحالة المحفوظة.','État du dossier non confirmé. Actualisez la version enregistrée.','Verification state unconfirmed. Refresh the saved record.'));
       setRow(saved);setForm(inputs(saved));setUncertain(false);confirmed.current?.(saved);
       if(write)setMessage(saved.verificationStatus==='pending'?labels.current('أرسل ملفك للمراجعة','Dossier envoyé pour examen'):labels.current('ملف التوثيق معتمد بالفعل','Dossier déjà vérifié','Verification already approved'));
@@ -45,11 +45,12 @@ function OwnedPanel({token, owner, onConfirmed}) {
     // The keyed owner/token boundary remounts this panel; labels and callback are refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
-  const blocked=!row || busy || uncertain || row.verificationStatus==='pending';
+  const blocked=!row || busy || uncertain || row.verificationStatus==='pending' || row.verificationSync!=='idle';
   return <form className="panel" onSubmit={e=>{e.preventDefault();if(!blocked)execute(true);}}>
     <h2>{l('طلب مراجعة وتوثيق المورد','Demande de vérification')}</h2>
     <p>{row?statusLabel(row.verificationStatus,lang):l('حالة التوثيق غير مؤكدة','État de vérification non confirmé','Verification state unconfirmed')}</p>
     <p className="supplier-help">{l('هذا التوثيق التجاري اختياري، وهو منفصل عن اعتماد المتجر الإداري. لا يشترط لفتح متجر أو نشر منتج ولا يمثل ضماناً تجارياً.','Cette vérification commerciale est facultative et distincte de l’approbation administrative de la boutique. Elle n’est requise ni pour ouvrir une boutique ni pour publier, et ne constitue pas une garantie commerciale.')}</p>
+    {row&&row.verificationSync!=='idle'&&<Notice error>{row.verificationSync==='paused'?l('توقف الاستكمال التلقائي. تواصل مع الإدارة؛ لا ترسل ملفاً جديداً.','La reprise automatique est suspendue. Contactez l’administration ; ne soumettez pas de nouveau dossier.','Automatic recovery is paused. Contact administration; do not submit a new dossier.'):l('لم يكتمل سجل عملية التوثيق بعد. حدّث الحالة قبل أي تعديل جديد.','La trace de vérification n’est pas encore finalisée. Actualisez l’état avant toute modification.','The verification operation record is not finalized. Refresh before making another change.')}</Notice>}
     {row?.rejectionReason && <Notice error>{row.rejectionReason}</Notice>}
     {row?.verificationStatus==='pending' && <p>{l('الملف قيد المراجعة؛ لا يمكن تعديله قبل القرار.','Dossier en cours d’examen ; modification bloquée jusqu’à la décision.','Dossier under review; editing is locked until the decision.')}</p>}
     {row?.verificationStatus==='verified' && <p>{l('تغيير الملف المعتمد يعيد طلب التوثيق للمراجعة ويزيل الشارة مؤقتاً.','Modifier le dossier approuvé relance la vérification et retire temporairement le badge.','Changing an approved dossier starts a new review and temporarily removes the badge.')}</p>}

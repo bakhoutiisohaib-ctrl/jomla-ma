@@ -111,3 +111,17 @@ test('private and admin store lists read authoritative supplier badge even durin
  const all=await request(app).get('/api/admin/stores?limit=100').set(auth(admin));expect(all.status).toBe(200);expect(all.body.data.find(x=>x._id===String(store._id)).isVerified).toBe(true)
  expect((await recover()).completed).toBe(1);await proof(owner,store,'verified',2)
 })
+
+test('authorized existing profile/list reads distinguish pending and paused without exposing receipt data',async()=>{
+ const {owner,store}=await fixture(),fault=jest.spyOn(Store,'updateMany').mockRejectedValueOnce(Error('synthetic outage'))
+ expect((await submit(owner)).status).toBe(503);fault.mockRestore()
+ const profile=()=>request(app).get('/api/suppliers/me/profile').set(auth(owner))
+ const list=()=>request(app).get('/api/admin/suppliers?limit=100').set(auth(admin))
+ let p=await profile();expect(p.body.verificationSync).toBe('pending');expect(p.body.verificationOperation).toBeUndefined()
+ let rows=await list();expect(rows.body.data.find(x=>x._id===String(owner._id)).verificationSync).toBe('pending');expect(JSON.stringify(rows.body)).not.toContain('verificationOperation')
+ await Supplier.updateOne({_id:owner._id},{$set:{'verificationOperation.attempts':10}})
+ expect((await profile()).body.verificationSync).toBe('paused')
+ expect((await submit(owner)).status).toBe(200);await proof(owner,store,'pending',1)
+ expect((await profile()).body.verificationSync).toBe('idle')
+ expect((await request(app).get('/api/suppliers/'+owner._id)).body.verificationSync).toBeUndefined()
+})

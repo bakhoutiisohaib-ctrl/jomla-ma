@@ -160,7 +160,13 @@ function createVerificationRecovery({pollMs=5000,onError}={}){
  async function tick(){try{await runOnce()}catch{onError?.({code:'VERIFICATION_RECOVERY_UNAVAILABLE'})}if(!stopped){timer=setTimeout(tick,pollMs);timer.unref?.()}}
  return {runOnce,start(){if(!started&&!stopped){started=true;tick()}return this},async stop({graceMs=15000}={}){stopped=true;clearTimeout(timer);let timeout;try{await Promise.race([running||Promise.resolve(),new Promise(resolve=>{timeout=setTimeout(resolve,graceMs)})])}finally{clearTimeout(timeout)}}}
 }
-function safeSupplier(s){const out=s.toObject();delete out.verificationOperation;return out}
+function verificationSync(s){
+ const r=s.verificationOperation
+ if(!r||['completed','failed'].includes(r.phase))return 'idle'
+ if(!pending(r))return 'unknown'
+ return (r.attempts||0)>=10?'paused':'pending'
+}
+function safeSupplier(s){const out=s.toObject();delete out.verificationOperation;return {...out,verificationSync:verificationSync(s)}}
 function storeDto(s,owner){const out=s.toObject?s.toObject():{...s};delete out.verificationProjection;return {...out,isVerified:approved(owner)}}
 async function syncStore(s){
  // The store was already created. Do not turn a projection outage into an ambiguous creation failure.

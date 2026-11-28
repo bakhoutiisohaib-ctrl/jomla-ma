@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6B.3B read-only completion visibility and UI guards scoped PASS: BE 33/33 (3), FE 25/25 (3), CI build PASS. Existing authorized profile/list expose bounded sync status; UI blocks edits and decisions until idle. [Report](v49-gate6b3b-verification-status-20261128.md). Dedicated manual recovery remains unimplemented, browser/full acceptance pending; Gate 6B.3 OPEN.
+
 2026-11-28 - Gate 6B.3A recoverable verification audit/projection scoped backend PASS: initial 29/29, final 78/78 (9 suites), 9 new recovery tests. Durable reservation, deterministic audit identity, monotonic store projection, canonical badge reads, bounded worker. [Report](v49-gate6b3a-verification-recovery-20261128.md). Gate 6B.3 OPEN: dedicated status/manual recovery contract not implemented (execution blocked), UI/browser acceptance pending.
 
 2026-11-28 - Gate 6B.2B product editor revision/recovery scoped PASS: initial FE 59/59, full FE 501/501 (48 suites), final recovery-only UI placement recheck 61/61 (3), strict CI build and final actual Chrome 4/4 + DB PASS. Revision 3, three distinct jobs, draft private, one injected queue fault. [Report](v49-gate6b2b-product-update-20261128.md). R2 local keyed flow accepted; Gate 6 OPEN; next 6B.3 verification consistency.
