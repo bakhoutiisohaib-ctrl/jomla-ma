@@ -1,0 +1,43 @@
+{
+  "results": [
+    {
+      "filter": "verified",
+      "catalog": true,
+      "category": true,
+      "pagination": true,
+      "directory": true,
+      "text": true,
+      "image": true
+    },
+    {
+      "filter": "declared_ma",
+      "catalog": true,
+      "category": true,
+      "pagination": true,
+      "directory": true,
+      "text": true,
+      "image": true
+    },
+    {
+      "filter": "rated",
+      "catalog": true,
+      "category": true,
+      "pagination": true,
+      "directory": true,
+      "text": true,
+      "image": true
+    },
+    {
+      "filter": "fast_response",
+      "catalog": true,
+      "category": true,
+      "pagination": true,
+      "directory": true,
+      "text": true,
+      "image": true
+    }
+  ],
+  "withdrawalIndependent": true,
+  "suspensionExcluded": true,
+  "db": "PASS"
+}

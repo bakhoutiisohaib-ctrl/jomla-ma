@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6C.2D integrated F1 scoped local PASS: fresh BE 219/219 (10 suites), FE 100/100 (12 suites), CI build PASS, real HTTP 24/24, Chrome 10/10, DB PASS. [Report](v49-gate6c-f1d-integrated-20261128.md). F1 A-D scoped closed; Gate 6C remains OPEN for F2-F4 and final acceptance.
+
 2026-11-28 - Gate 6C.2C.3 response browser scoped PASS: Chrome 3/3, DB PASS, 1008 RFQs/22 owners, 85ms single and 147ms two concurrent; first fixture-only header failure corrected. [Report](v49-gate6c-f1c3-response-browser-20261128.md). Next 6C.2D integrated F1.
 
 2026-11-28 - Gate 6C.2C.2 response filter UI scoped PASS: FE 60/60 (6 suites), strict CI build PASS, localized policy/empty/retry. [Report](v49-gate6c-f1c2-response-ui-20261128.md). Next browser/load acceptance.
