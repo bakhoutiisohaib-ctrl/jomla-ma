@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6B.4B.1 RFQ browser scoped PASS: final Chrome 7/7 and DB PASS; test-only encoding failure corrected, no runtime change. Real refusal, foreign/missing target fail closed, read failure warning and exact persisted read states. [Report](v49-gate6b4b1-rfq-browser-20261128.md). Gate 6B.4 OPEN; next sourcing browser/DB acceptance.
+
 2026-11-28 - Gate 6B.4A supplier notification target integrity scoped PASS: initial FE 69/70 (read warning cleared by reload), corrected 70/70 (3 suites), BE 49/49 (6), CI build PASS. Fresh exact target/thread validation, scope fencing, mark read after confirmed target, no-store. [Report](v49-gate6b4a-notification-targets-20261128.md). Gate 6B.4 OPEN; next isolated browser supplier rejection/sourcing/notification read-state acceptance.
 
 2026-11-28 - Gate 6B.3F.3 manual browser acceptance PASS 5/5 + DB, final targeted FE 37/37 (4), strict build PASS. Corrected generic 503 recovery wording and 37.8px admin recovery target; final 44px hit checks passed. Same operation IDs/original actor, 2 completed audits, revision 1/projection 3. [Report and evidence](v49-gate6b3f3-manual-browser-20261128.md). Gate 6B.3 local scoped CLOSED; next 6B.4. Gate 6 remains OPEN.
