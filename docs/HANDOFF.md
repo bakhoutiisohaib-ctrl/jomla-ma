@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6C.3B.1B.2 native video isolation scoped Linux lab PASS: actual seccomp/chroot/credential and hard rlimit probes, MP4/WebM normalization and re-decode. [Report](v49-gate6c-f2b1b2-linux-isolation-20261128.md). Previous [offline Windows normalizer](v49-gate6c-f2b1b-video-normalizer-20261128.md) PASS 15/15 at b40e73a. Next nonprivileged worker contract and enforced job lifecycle/target isolation acceptance; production worker and video gate remain OPEN; no upload enabled.
+
 2026-11-28 - Gate 6C.3B.1A bounded video container preflight scoped PASS: BE 109/109 (4 suites), actual Chrome-generated MP4/WebM samples, 512/512 tail cuts rejected, 2048 deterministic mutations. [Report](v49-gate6c-f2b1a-video-container-20261128.md). No upload route enabled; next 6C.3B.1B isolated decoder/normalizer verification; video remains OPEN.
 
 2026-11-28 - Gate 6C.3A.4 direct conversation integrated local acceptance PASS: actual Chrome 390x844 5/5, HTTP/Mongo 10/10, fresh BE 43/43 (4 suites), FE 107/107 (5 suites), strict CI build PASS, zero runtime exceptions. [Report](v49-gate6c-f2a4-direct-chat-browser-acceptance-20261128.md). 6C.3A locally accepted; next 6C.3B.1 video upload pipeline. Gate 6C overall remains OPEN.

@@ -1,0 +1,45 @@
+{
+  "status": "PASS_SCOPED_LINUX_LAB",
+  "ffmpeg": "ffmpeg version 7.1.5-0+deb13u1 Copyright (c) 2000-2026 the FFmpeg developers",
+  "launcherSha256": "81d52c5a6862869f0b643459e605c1c6d4dc3c7ca6aa55a864cb1cba5f6a27d5",
+  "runtimeLibraries": 211,
+  "probe": {
+    "uid": 61001,
+    "networkDenied": true,
+    "outsideReadDenied": true,
+    "writeDenied": true,
+    "procDenied": true,
+    "forkDenied": true,
+    "memoryDenied": true,
+    "threadAllowed": true,
+    "threadsCreated": 15,
+    "privilegeDenied": true,
+    "inheritedFdClosed": true,
+    "limitRaiseDenied": true,
+    "limitsVerified": true
+  },
+  "cpuLimit": {
+    "exit": -9,
+    "elapsedSeconds": 7.83
+  },
+  "unsafeJailRejected": true,
+  "video": [
+    {
+      "source": "mp4",
+      "output": "h264 MP4",
+      "frames": 48,
+      "durationUs": 2000000,
+      "bytes": 35500,
+      "invalidRejected": true
+    },
+    {
+      "source": "webm",
+      "output": "h264 MP4",
+      "frames": 48,
+      "durationUs": 2000000,
+      "bytes": 36880,
+      "invalidRejected": true
+    }
+  ],
+  "scope": "disposable Linux lab only; no production worker, no upload route, no Windows sandbox"
+}
