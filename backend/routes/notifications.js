@@ -15,6 +15,7 @@ const inboxFilter = req => {
   ] }] }
 }
 router.get('/', asyncHandler(async (req, res) => {
+  res.set('Cache-Control','private, no-store')
   const filter = inboxFilter(req)
   const [data, unreadCount] = await Promise.all([
     Notification.find(filter).sort({ createdAt: -1 }).limit(100),

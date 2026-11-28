@@ -61,6 +61,7 @@ router.post('/:id/offers/retry', requirePermission('manage_rfq'), validateMongoI
 }))
 
 router.get('/:id', validateMongoId, asyncHandler(async (req, res) => {
+  res.set('Cache-Control','private, no-store')
   const rfq = await QuoteRequest.findById(req.params.id).populate('productId', 'name imageUrl currency unit').populate('supplierId', 'name')
   if (!rfq) return res.status(404).json({ message: 'طلب عرض السعر غير موجود' })
   if (!permitted(req, rfq)) return res.status(403).json({ message: 'لا يمكنك الاطلاع على هذا الطلب' })
@@ -78,6 +79,7 @@ router.put('/:id/action', requireRole('buyer'), validateMongoId, asyncHandler(as
 }))
 
 router.get('/:id/thread', validateMongoId, asyncHandler(async (req, res) => {
+  res.set('Cache-Control','private, no-store')
   const rfq = await QuoteRequest.findById(req.params.id).select('+offerSubmission +supplierRejection')
   if (!rfq) return res.status(404).json({ message: 'الطلب غير موجود' })
   if (!permitted(req, rfq)) return res.status(403).json({ message: 'المحادثة خاصة بأطراف الطلب' })

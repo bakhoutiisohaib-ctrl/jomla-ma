@@ -1,4 +1,4 @@
-import { render,screen,fireEvent,act } from '@testing-library/react'
+import { render,screen,fireEvent,act,waitFor } from '@testing-library/react'
 import SupplierDashboard from './SupplierDashboard'
 import { LanguageProvider } from '../../i18n/LanguageContext'
 import { apiRequest } from '../../api/config'
@@ -8,8 +8,9 @@ beforeEach(()=>{localStorage.clear();sessionStorage.clear();require('../../api/s
  if(path==='/suppliers/me/profile')return user
  if(path.startsWith('/products/mine'))return {data:[{_id:'product-1',name:'منتج المورد الخاص',isDraft:true,moq:10,price:25}],pagination:{pages:1,total:1}}
  if(path.startsWith('/stores/mine'))return {data:[]}
+ if(path==='/notifications/notice-1/read')return {notification:{_id:'notice-1',readAt:'2026-11-28T00:00:00Z'}};
  if(path.startsWith('/notifications'))return {data:[{_id:'notice-1',type:'sourcing_decision',resourceType:'sourcing',resourceId:'request-1',readAt:null}]}
- if(path==='/sourcing/request-1')return {productName:'طلب تم قبوله',status:'fulfilled',quotes:[{_id:'q-1',unitPrice:20,currency:'MAD',status:'accepted',paymentTerms:'اختبار'}]}
+ if(path==='/sourcing/request-1')return {_id:'request-1',productName:'طلب تم قبوله',status:'fulfilled',quotes:[{_id:'q-1',supplierId:'supplier-1',unitPrice:20,currency:'MAD',status:'accepted',paymentTerms:'اختبار'}]}
  return {data:[]}
 })})
 function show(){render(<LanguageProvider><SupplierDashboard supplier={user} onBack={()=>{}} onLogout={()=>{}}/></LanguageProvider>)}
@@ -240,4 +241,56 @@ test('supplier message submission is single flight and uncertain response blocks
  fireEvent.click(screen.getByRole('button',{name:'تحديث المحادثة'}));
  await act(async()=>{});
  expect(screen.getByRole('button',{name:'إرسال العرض'})).toBeEnabled();
+});
+
+const noticeRfq={_id:'notice-rfq',type:'message_received',resourceType:'rfq',resourceId:'rfq-target',readAt:null};
+const directRfq={_id:'rfq-target',supplierId:{_id:'supplier-1'},buyerId:'buyer-1',buyerName:'Synthetic buyer',status:'responded',quantity:12,currency:'MAD',productId:{name:'Notification product',unit:'piece'}};
+const directThread={rfq:{...directRfq,supplierId:'supplier-1',status:'rejected'},thread:{rfqId:'rfq-target',supplierId:'supplier-1',buyerId:'buyer-1',status:'closed',messages:[]},offers:[]};
+function targetMock(overrides={}){
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(p,o)=>{
+  if(Object.hasOwn(overrides,p))return typeof overrides[p]==='function'?overrides[p](o):overrides[p];
+  if(p==='/notifications?limit=50')return {data:[noticeRfq],unreadCount:1};
+  if(p==='/rfq/supplier')return {data:[]};
+  if(p==='/rfq/rfq-target')return directRfq;
+  if(p==='/rfq/rfq-target/thread')return directThread;
+  if(p==='/notifications/notice-rfq/read')return {notification:{...noticeRfq,readAt:'2026-11-28T00:00:00Z'}};
+  return base(p,o);
+ });
+}
+async function openInbox(){fireEvent.click(await screen.findByRole('button',{name:/^الإشعارات/}));return screen.findByRole('button',{name:'فتح الطلب'});}
+test('notification fetches absent RFQ and verified matching thread before marking read; latest closed state wins',async()=>{
+ targetMock();show();const open=await openInbox();fireEvent.click(open);fireEvent.click(open);
+ expect(await screen.findByRole('dialog')).toBeInTheDocument();expect(screen.queryByRole('button',{name:'إرسال العرض'})).toBeNull();
+ await waitFor(()=>expect(apiRequest.mock.calls.filter(([p])=>p==='/notifications/notice-rfq/read')).toHaveLength(1));
+ const calls=apiRequest.mock.calls;expect(calls.filter(([p])=>p==='/rfq/rfq-target')).toHaveLength(1);
+ expect(calls.findIndex(([p])=>p==='/rfq/rfq-target/thread')).toBeLessThan(calls.findIndex(([p])=>p==='/notifications/notice-rfq/read'));
+ expect(calls.find(([p])=>p==='/rfq/rfq-target')[1]).toMatchObject({cache:'no-store',token:'s2-dashboard-synthetic-session'});
+});
+test.each([
+ ['foreign record',{'/rfq/rfq-target':{...directRfq,supplierId:'foreign'}}],
+ ['wrong thread',{'/rfq/rfq-target/thread':{...directThread,thread:{...directThread.thread,rfqId:'other'}}}],
+ ['forbidden',{'/rfq/rfq-target':()=>{throw Error('Synthetic access denied')}}],
+ ['missing thread',{'/rfq/rfq-target/thread':{rfq:directRfq,thread:null,offers:[]}}]
+])('failed notification target (%s) never opens or marks read',async(_,overrides)=>{
+ targetMock(overrides);show();fireEvent.click(await openInbox());await screen.findByRole('alert');
+ expect(screen.queryByRole('dialog')).toBeNull();expect(apiRequest.mock.calls.some(([p,o])=>p.endsWith('/read')&&o?.method==='PUT')).toBe(false);
+});
+test('switching tab during pending lookup cancels late target and does not mark read',async()=>{
+ let finish;targetMock({'/rfq/rfq-target':()=>new Promise(r=>{finish=r})});show();fireEvent.click(await openInbox());
+ fireEvent.click(screen.getByRole('button',{name:'نظرة عامة',exact:true}));await act(async()=>finish(directRfq));
+ expect(screen.queryByRole('dialog')).toBeNull();expect(apiRequest.mock.calls.some(([p])=>p==='/rfq/rfq-target/thread'||p.endsWith('/read'))).toBe(false);
+});
+test('session replacement drops pending target and prevents old-session private dialog',async()=>{
+ let finish;targetMock({'/rfq/rfq-target':()=>new Promise(r=>{finish=r})});show();fireEvent.click(await openInbox());
+ await act(async()=>{require('../../api/session').setSession('new-supplier-session');finish(directRfq)});
+ expect(screen.queryByRole('dialog')).toBeNull();expect(apiRequest.mock.calls.some(([p])=>p==='/rfq/rfq-target/thread'||p.endsWith('/read'))).toBe(false);
+});
+test('unsupported notification type cannot trigger a sourcing lookup',async()=>{
+ targetMock({'/notifications?limit=50':{data:[{...noticeRfq,resourceType:'future',type:'future'}],unreadCount:1}});show();expect(await openInbox()).toBeDisabled();
+ expect(apiRequest.mock.calls.some(([p])=>p==='/sourcing/rfq-target')).toBe(false);
+});
+test('read acknowledgement failure keeps confirmed dialog and explicitly reports uncertain read state',async()=>{
+ targetMock({'/notifications/notice-rfq/read':()=>{throw Error('Synthetic read outage')}});show();fireEvent.click(await openInbox());
+ expect(await screen.findByRole('dialog')).toBeInTheDocument();expect(await screen.findByText(/لم يتأكد تعليم الإشعار كمقروء/)).toBeInTheDocument();
 });

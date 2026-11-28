@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6B.4A supplier notification target integrity scoped PASS: initial FE 69/70 (read warning cleared by reload), corrected 70/70 (3 suites), BE 49/49 (6), CI build PASS. Fresh exact target/thread validation, scope fencing, mark read after confirmed target, no-store. [Report](v49-gate6b4a-notification-targets-20261128.md). Gate 6B.4 OPEN; next isolated browser supplier rejection/sourcing/notification read-state acceptance.
+
 2026-11-28 - Gate 6B.3F.3 manual browser acceptance PASS 5/5 + DB, final targeted FE 37/37 (4), strict build PASS. Corrected generic 503 recovery wording and 37.8px admin recovery target; final 44px hit checks passed. Same operation IDs/original actor, 2 completed audits, revision 1/projection 3. [Report and evidence](v49-gate6b3f3-manual-browser-20261128.md). Gate 6B.3 local scoped CLOSED; next 6B.4. Gate 6 remains OPEN.
 
 2026-11-28 - Gate 6B.3F.2 shared manual recovery UI scoped PASS: targeted 36/36 (4), full FE 515/515 (49), strict CI build PASS; 8 new tests. Explicit saved-operation lookup/resume and terminal validation, supplier/admin integration. [Report](v49-gate6b3f2-manual-recovery-ui-20261128.md). Manual browser lab creation blocked, Gate 6B.3 OPEN until actual browser/DB acceptance.

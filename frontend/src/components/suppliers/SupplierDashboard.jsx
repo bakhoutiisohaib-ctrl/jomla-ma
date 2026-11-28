@@ -23,7 +23,11 @@ import SourcingOfferForm from './SourcingOfferForm';
 import SourcingQuoteTerms from '../common/SourcingQuoteTerms';
 import useSupplierRejection from './useSupplierRejection';
 import { getSessionToken, useSessionToken } from '../../api/session';
-export default function SupplierDashboard({
+export default function SupplierDashboard(props){
+ const token=useSessionToken();
+ return <SupplierContent key={token+':'+(props.supplier?._id||props.supplier?.id||'')} {...props}/>;
+}
+function SupplierContent({
   supplier,
   onLogout,
   onBack,
@@ -66,6 +70,25 @@ export default function SupplierDashboard({
   const sourcingContext = useRef({ active: true, generation: 0, controller: null });
   useEffect(() => { const context = sourcingContext.current; context.active = true; return () => { context.active = false; context.generation++; context.controller?.abort(); } }, []);
   const can = useCallback(permission => ['supplier', 'admin'].includes(profile.role) || profile.permissions?.includes(permission), [profile.role, profile.permissions]);
+  const [openingTarget,setOpeningTarget]=useState(false),[noticeReadError,setNoticeReadError]=useState('');
+  const targetScope=useRef({active:true,generation:0,controller:null});
+  const owner=String(profile.ownerId||profile._id||profile.id||'');
+  const targetAllowed=Boolean(can('manage_rfq'));
+  const targetAccess=useRef(null);targetAccess.current={owner,allowed:targetAllowed};
+  function cancelTarget(){
+    const t=targetScope.current;t.generation++;t.controller?.abort();t.controller=null;setOpeningTarget(false);
+  }
+  useEffect(()=>{
+    const t=targetScope.current;t.active=true;
+    return ()=>{t.active=false;t.generation++;t.controller?.abort();t.controller=null;};
+  },[]);
+  useEffect(()=>{
+    const t=targetScope.current;
+    t.generation++;t.controller?.abort();t.controller=null;setOpeningTarget(false);
+    conversation.current.id=null;conversation.current.read?.abort();conversation.current.write?.abort();conversationRevision.current++;
+    sourcingContext.current.generation++;sourcingContext.current.controller?.abort();
+    setSelected(null);setThread(null);setQuoteTarget(null);setThreadError('');setThreadLoading(false);setSendBusy(false);setOfferCloseBlocked(false);setSourcingCloseBlocked(false);
+  },[owner,targetAllowed]);
   const conversationRevision = useRef(0);
   const conversation = useRef({id:null,read:null,write:null,uncertain:false});
   const [threadLoading,setThreadLoading] = useState(false), [threadError,setThreadError] = useState('');
@@ -224,18 +247,62 @@ export default function SupplierDashboard({
   }
   async function openThread(rfq) {
     const c=conversation.current;
-    if(c.write)return;
-    c.read?.abort();c.id=rfq._id;c.uncertain=false;
+    if(c.write||!can('manage_rfq'))return;
+    cancelTarget();setNoticeReadError('');c.read?.abort();c.id=rfq._id;c.uncertain=false;
     setSelected(rfq);setThread(null);setThreadError('');
     await refreshConversation(rfq._id);
   }
   async function openSourcing(id) {
+    if(!can('manage_rfq')||typeof id!=='string'||!id)return;
+    cancelTarget();setNoticeReadError('');
     const context = sourcingContext.current, revision = ++context.generation, token = getSessionToken();
     context.controller?.abort(); context.controller = new AbortController();
     const valid = () => context.active && revision === context.generation && token === getSessionToken();
     try { const data = await apiRequest('/sourcing/'+id, { token, signal: context.controller.signal, cache: 'no-store' });
-      if (valid()) { if(data?._id && data._id!==id)throw new Error(l('بيانات الطلب غير مطابقة.','Demande non conforme.','Request mismatch.')); setSourcingSession(token); setQuoteTarget({ ...data, _id: data._id || id }); setTab('sourcing'); setError(''); setMessage(''); }
+      if (valid()) { if(data?._id!==id)throw new Error(l('بيانات الطلب غير مطابقة.','Demande non conforme.','Request mismatch.')); setSourcingSession(token); setQuoteTarget(data); setTab('sourcing'); setError(''); setMessage(''); }
     } catch(e) { if (valid() && e.name !== 'AbortError') setError(e.message); }
+  }
+  const supportedNotice=n=>n?.resourceType==='rfq'?['rfq_created','offer_decision','message_received'].includes(n.type):n?.resourceType==='sourcing'&&n.type==='sourcing_decision';
+  async function openNotice(n){
+    const t=targetScope.current, token=getSessionToken(), scope=targetAccess.current;
+    if(t.controller||busy||selected||quoteTarget||!scope.allowed||!token)return;
+    const unavailable=()=>labels.current('تعذر تأكيد الطلب المرتبط بهذا الإشعار. حدّث القائمة أو تحقق من الصلاحيات.','Impossible de confirmer la demande liée à cette notification. Actualisez ou vérifiez les droits.','The notification target could not be confirmed. Refresh or check access.');
+    if(!supportedNotice(n)||typeof n.resourceId!=='string'||!n.resourceId||typeof n._id!=='string'||!n._id){setError(unavailable());return;}
+    const generation=++t.generation,controller=new AbortController();t.controller=controller;setOpeningTarget(true);setError('');setMessage('');setNoticeReadError('');
+    const valid=()=>t.active&&t.generation===generation&&t.controller===controller&&!controller.signal.aborted&&token===getSessionToken()&&targetAccess.current?.allowed&&targetAccess.current.owner===scope.owner;
+    const options={token,signal:controller.signal,cache:'no-store'},id=n.resourceId;
+    const ownerId=value=>String(value?._id||value||'');
+    const states=['pending','responded','offering','deciding','accepted','rejected'];
+    try{
+      if(n.resourceType==='rfq'){
+        const record=await apiRequest('/rfq/'+encodeURIComponent(id),options);
+        if(!valid())return;
+        if(record?._id!==id||ownerId(record.supplierId)!==scope.owner||typeof record.buyerId!=='string'||!record.buyerId||!states.includes(record.status))throw Error(unavailable());
+        const result=await apiRequest('/rfq/'+encodeURIComponent(id)+'/thread',options);
+        if(!valid())return;
+        if(result?.rfq?._id!==id||ownerId(result.rfq.supplierId)!==scope.owner||!states.includes(result.rfq.status)||
+          result.rfq.buyerId!==record.buyerId||result.thread?.rfqId!==id||ownerId(result.thread.supplierId)!==scope.owner||result.thread.buyerId!==record.buyerId||
+          !Array.isArray(result.thread.messages)||!Array.isArray(result.offers))throw Error(unavailable());
+        const c=conversation.current;c.read?.abort();c.id=id;c.uncertain=false;conversationRevision.current++;
+        setSelected({...record,status:result.rfq.status,decision:result.rfq.decision,currentOfferId:result.rfq.currentOfferId,offer:result.rfq.offer,revision:result.rfq.revision});
+        setThread(result);setThreadError('');setThreadLoading(false);setTab('rfq');
+      }else{
+        const data=await apiRequest('/sourcing/'+encodeURIComponent(id),options);
+        if(!valid())return;
+        if(data?._id!==id||typeof data.productName!=='string'||!['open','quoted','fulfilled','closed'].includes(data.status)||!Array.isArray(data.quotes)||
+          data.quotes.some(q=>ownerId(q.supplierId)!==scope.owner)||!data.quotes.length)throw Error(unavailable());
+        setSourcingSession(token);setQuoteTarget(data);setTab('sourcing');
+      }
+      if(!n.readAt){
+        try{
+          const ack=await apiRequest('/notifications/'+encodeURIComponent(n._id)+'/read',{...options,method:'PUT'});
+          if(!valid())return;
+          if(ack?.notification?._id!==n._id||!ack.notification.readAt||!Number.isFinite(Date.parse(ack.notification.readAt)))throw Error(unavailable());
+          setNotifications(rows=>rows.map(row=>row._id===n._id?{...row,readAt:ack.notification.readAt}:row));refresh();
+        }catch(e){if(valid()){setNoticeReadError(labels.current('تم فتح الطلب، لكن لم يتأكد تعليم الإشعار كمقروء.','Demande ouverte, mais lecture de la notification non confirmée.','Request opened, but notification read state is unconfirmed.'));setUnreadTotal(null);}}
+      }
+    }catch(e){if(valid()&&e.name!=='AbortError')setError(e.message||unavailable());}
+    finally{if(t.controller===controller){t.controller=null;if(t.active&&token===getSessionToken())setOpeningTarget(false);}}
   }
   const unread = loadedMetrics.notifications && unreadTotal!=null ? unreadTotal : '—';
   const metric = (key,value) => loadedMetrics[key] && value!=null ? value : '—';
@@ -243,6 +310,7 @@ export default function SupplierDashboard({
   const tabs = [['overview', l('نظرة عامة', 'Vue d’ensemble'), true], ['organization', l('الشركة والفريق', 'Entreprise et équipe'), true], ['stores', l('متاجري', 'Mes boutiques'), can('manage_store')], ['products', l('منتجاتي', 'Mes produits'), can('manage_products')], ['drafts', l('المسودات', 'Brouillons'), can('manage_products')], ['add', l('إضافة منتج', 'Ajouter un produit'), can('manage_products')], ['jobs', l('مهام الصور', 'Tâches des images'), can('manage_products')], ['rfq', l('طلبات الأسعار', 'Demandes de devis'), can('manage_rfq')], ['sourcing', l('فرص التوريد', 'Opportunités de sourcing'), can('manage_rfq')], ['verification', l('توثيق المورد', 'Vérification'), profile.role === 'supplier'], ['trades', l('تأكيد التعاملات','Confirmation des transactions','Confirm transactions'), profile.role === 'supplier'], ['reviews', l('التقييمات', 'Avis'), profile.role === 'supplier'], ['notifications', l('الإشعارات', 'Notifications') + ' (' + unread + ')', true]];
   tabs.splice(tabs.findIndex(([key]) => key === 'drafts'), 0, wholesaleTab);
   function moveTab(key) {
+    cancelTarget();setNoticeReadError('');sourcingContext.current.generation++;sourcingContext.current.controller?.abort();
     setPendingTab(null);
     if (key === 'market') { onBack?.(); return; }
     if(advancedSupplierTabs.includes(key)) setAdvanced(true);
@@ -266,7 +334,7 @@ export default function SupplierDashboard({
     <div className="supplier-shell"><SupplierSidebar tabs={tabs} tab={tab} onTab={chooseTab} advanced={advanced} onModeChange={changeMode} /><main id="supplier-main" tabIndex="-1" className="supplier-content">
     <div className="supplier-page-heading"><div><p className="supplier-eyebrow">{l('Jomla.ma · مساحة عملك', 'Jomla.ma · Votre espace')}</p><h1>{tabs.find(([key])=>key===tab)?.[1]}</h1></div><div className="actions">{tab!=='add' && <button disabled={busy} onClick={refresh}>{l('تحديث مساحة العمل','Actualiser l’espace')}</button>}{can('manage_products') && tab !== 'add' && <button className="primary" onClick={()=>chooseTab('add')}>{l('إضافة منتج جديد','Créer un produit')}</button>}</div></div>
     {pendingTab && <section className="supplier-leave-warning" role="alert"><strong>{l('احفظ مسودتك قبل المغادرة','Enregistrez votre brouillon avant de quitter')}</strong><p>{l('ستفقد المدخلات غير المحفوظة إذا غادرت المحرر. يمكنك البقاء وحفظ مسودة، أو المغادرة دون حفظ.', 'Les saisies non enregistrées seront perdues. Restez pour enregistrer un brouillon, ou quittez sans enregistrer.')}</p><div className="actions"><button onClick={()=>setPendingTab(null)}>{l('البقاء في المحرر','Rester dans l’éditeur')}</button><button onClick={()=>moveTab(pendingTab)}>{l('مغادرة دون حفظ','Quitter sans enregistrer')}</button></div></section>}
-    <Notice error>{error}</Notice><Notice>{message}</Notice>
+    <Notice error>{error}</Notice>{!selected&&!quoteTarget&&<Notice error>{noticeReadError}</Notice>}<Notice>{message}</Notice>
     {tab === 'wholesale' && can('manage_products') && <><h2>{wholesaleTab[1]}</h2><WholesaleWorkspace /></>}
     {tab === 'overview' && <section className="supplier-attention panel"><div><p className="supplier-eyebrow">{l('ابدأ بالأهم','Vos priorités')}</p><h2>{l('ما يحتاج متابعتك','À suivre')}</h2><p className="muted">{l('راجع الطلبات والمسودات ومهام الصور قبل النشر. لا يُنشر أي منتج تلقائياً.', 'Suivez les demandes, les brouillons et les images. Aucun produit n’est publié automatiquement.')}</p></div><div className="supplier-priorities">{can('manage_rfq') && <button onClick={()=>chooseTab('rfq')}><strong>{metric('rfq',rfqs.filter(r=>['pending','responded','offering'].includes(r.status)).length)}</strong>{l('طلبات أسعار مفتوحة','Demandes de devis ouvertes')}</button>}{can('manage_products') && <><button onClick={()=>chooseTab('drafts')}><strong>↗</strong>{l('مراجعة المسودات','Vérifier les brouillons')}</button><button onClick={()=>chooseTab('jobs')}><strong>{metric('jobs',failedJobs)}</strong>{l('مهام صور فاشلة','Tâches d’images en échec')}</button><button onClick={()=>chooseTab('products')}><strong>↗</strong>{l('مراجعة حالة المنتجات','Vérifier les produits')}</button></>}</div><p className="supplier-help">{l('اعتماد المتجر الإداري يتيح النشر. توثيق المورد اختياري ولا يضمن جودة المنتج أو الاتفاق.', 'L’approbation administrative de la boutique permet la publication. La vérification du fournisseur reste facultative et ne garantit ni produit ni accord.')}</p></section>}
     {tab === 'overview' && <section className="panel"><h2>{l('مساحة المورد', 'Espace fournisseur')}</h2><p className="muted">{l('الخطوات: ملف الشركة ← متجر ومراجعة الإدارة ← صورة وبيانات المنتج ← اعتماد النشر.', 'Parcours : entreprise → boutique et approbation → image et données produit → publication confirmée.')}</p><div className="stat-grid"><div className="stat">{l('منتجاتي', 'Mes produits')}<strong>{can('manage_products') ? metric('products',total) : '—'}</strong></div><div className="stat">{l('طلبات الأسعار', 'Demandes de devis')}<strong>{can('manage_rfq') ? metric('rfq',rfqs.length) : '—'}</strong></div><div className="stat">{l('المتاجر', 'Boutiques')}<strong>{can('manage_store') || can('manage_products') ? metric('stores',storeTotal) : '—'}</strong></div></div><p>{l('التوثيق التجاري الاختياري', 'Vérification commerciale facultative')}: {statusLabel(profile.verificationStatus, lang)}</p>{profile.role === 'staff' && !profile.organizationId && <Notice>{l('حساب الموظف يحتاج قبول دعوة من مالك الشركة قبل إدارة المنتجات أو العروض.', 'Acceptez une invitation du propriétaire avant de gérer produits et devis.')}</Notice>}{advanced && analytics?.categoryStats?.length > 0 && <details><summary>{l('إحصاءات الكتالوج حسب الفئة', 'Statistiques du catalogue par catégorie')}</summary>{analytics.categoryStats.map(s => <p key={s._id}>{s._id || l('بدون فئة','Sans catégorie')}: {s.count} · {l('متوسط السعر', 'Prix moyen')}: {s.avgPrice == null ? '—' : Number(s.avgPrice).toFixed(2)}</p>)}</details>}</section>}
@@ -293,25 +361,17 @@ export default function SupplierDashboard({
     {tab === 'verification' && profile.role === 'supplier' && <SupplierVerificationPanel owner={profile._id || profile.id} onConfirmed={saved=>setProfile(saved)}/>}
     {tab === 'trades' && profile.role === 'supplier' && <TradeCompletionPanel user={profile}/>}
     {tab === 'reviews' && <section className="panel"><h2>{l('تقييمات العملاء', 'Avis clients')}</h2>{reviews.map(r => <article className="panel" key={r._id}><strong>{r.userName || r.buyerName || r.name}</strong><p>{'★'.repeat(r.stars || 0)} {r.comment}</p><p className="muted">{r.basis==='mutual_confirmation'?l('تعامل أقره الطرفان','Transaction confirmée mutuellement','Mutually confirmed transaction'):l('تقييم تاريخي','Avis historique','Legacy review')}</p>{r.reply?.text && <p className="notice">{r.reply.text}</p>}<SupplierReviewReply key={revision+':'+r._id} review={r} owner={profile._id||profile.id} onSaved={saved=>setReviews(rows=>rows.map(row=>row._id===saved._id?saved:row))} onRefresh={()=>{setReviews([]);refresh();}}/></article>)}{!reviews.length && <p>{l('لا توجد تقييمات', 'Aucun avis')}</p>}</section>}
-    {tab === 'notifications' && <section className="panel"><div className="actions"><h2>{l('الإشعارات', 'Notifications')}</h2><button onClick={() => action(() => apiRequest('/notifications/read-all', {
+    {tab === 'notifications' && <section className="panel"><div className="actions"><h2>{l('الإشعارات', 'Notifications')}</h2><button disabled={busy||openingTarget} onClick={() => action(() => apiRequest('/notifications/read-all', {
             method: 'PUT'
-          }))}>{l('تحديد الكل كمقروء', 'Tout marquer comme lu')}</button><button onClick={refresh}>{l('تحديث', 'Actualiser')}</button></div>{notifications.map(n => <article className="message" key={n._id}><p>{lang === 'en' ? n.titleEn || notificationLabel(n.type, lang) : lang === 'fr' ? n.titleFr || n.title || notificationLabel(n.type, lang) : n.titleAr || n.title || notificationLabel(n.type, lang)}</p><p>{lang === 'en' ? n.bodyEn : lang === 'fr' ? n.bodyFr || n.body || n.message : n.bodyAr || n.body || n.message}</p><button onClick={() => {
-            if (n.resourceType === 'rfq') {
-              const rfq = rfqs.find(r => r._id === n.resourceId);
-              if (rfq) {
-                setTab('rfq');
-                openThread(rfq);
-              }
-            } else openSourcing(n.resourceId);
-          }}>{l('فتح الطلب', 'Ouvrir la demande')}</button>{!n.readAt && <button onClick={() => action(() => apiRequest('/notifications/' + n._id + '/read', {
+          }))}>{l('تحديد الكل كمقروء', 'Tout marquer comme lu')}</button><button onClick={refresh}>{l('تحديث', 'Actualiser')}</button></div>{notifications.map(n => <article className="message" key={n._id}><p>{lang === 'en' ? n.titleEn || notificationLabel(n.type, lang) : lang === 'fr' ? n.titleFr || n.title || notificationLabel(n.type, lang) : n.titleAr || n.title || notificationLabel(n.type, lang)}</p><p>{lang === 'en' ? n.bodyEn : lang === 'fr' ? n.bodyFr || n.body || n.message : n.bodyAr || n.body || n.message}</p><button disabled={busy||openingTarget||!can('manage_rfq')||!supportedNotice(n)||!n.resourceId} onClick={()=>openNotice(n)}>{l('فتح الطلب', 'Ouvrir la demande')}</button>{!n.readAt && <button disabled={busy||openingTarget} onClick={() => action(() => apiRequest('/notifications/' + n._id + '/read', {
             method: 'PUT'
           }))}>{l('قرأت', 'Marquer comme lu')}</button>}</article>)}</section>}
     </main></div>
-    {(selected || quoteTarget) && <AtlasDialog title={selected ? agreedProduct(selected)?.name : quoteTarget.productName} label={l('تفاصيل التفاوض', 'Détails de négociation')} busy={busy || sendBusy || offerCloseBlocked || rejection.loading || sourcingCloseBlocked} onClose={() => {
+    {(selected || quoteTarget) && <AtlasDialog title={selected ? agreedProduct(selected)?.name : quoteTarget.productName} label={l('تفاصيل التفاوض', 'Détails de négociation')} busy={busy || openingTarget || sendBusy || offerCloseBlocked || rejection.loading || sourcingCloseBlocked} onClose={() => {
               conversation.current.id=null;conversation.current.read?.abort();conversation.current.write?.abort();conversationRevision.current += 1;
               setSelected(null);
               setQuoteTarget(null);
-            }}><Notice error>{error}</Notice>
+            }}><Notice error>{error}</Notice><Notice error>{noticeReadError}</Notice>
       {selected && rejection.phase !== 'idle' && <section className="trade-uncertain">
         <p role="status">{rejection.phase === 'completed' ? l('اكتمل رفض الطلب وحفظ آثاره.', 'Refus finalisé et effets enregistrés.')
           : rejection.phase === 'pending' ? l('نية الرفض محفوظة وقيد الاستكمال؛ الرفض ليس نهائياً بعد.', 'Refus enregistré, finalisation en cours ; il n’est pas encore définitif.')
