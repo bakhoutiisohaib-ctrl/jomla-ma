@@ -315,3 +315,60 @@ test('trade dispute receipt remains unconfirmed until its durable submission aud
  expect(await AuditLog.countDocuments({action:'REPORT_SUBMITTED',targetId:saved._id,phase:'completed'})).toBe(1);
  expect((await request(app).get('/api/reviews/eligibility/'+owner.user._id).set(auth(buyer.token))).body.eligible).toBe(false);
 });
+
+test('historical rating validates exact linked agreement, preserves negative reviews and never rewrites records',async()=>{
+ const owner=await account('supplier'),other=await account('supplier');
+ const buyers=await Promise.all(Array.from({length:6},()=>account()));
+ async function publish(b,stars){await completed(b,owner);const res=await request(app).post('/api/reviews').set(auth(b.token)).send({supplierId:String(owner.user._id),stars,comment:'Synthetic historical comment'});expect(res.status).toBe(201);return Review.findById(res.body.review._id).select('+tradeConfirmationId').lean()}
+ const negative=await publish(buyers[0],1),positive=await publish(buyers[1],5),broken=await publish(buyers[2],5);
+ await completed(buyers[2],owner); // another valid agreement must not replace the original link
+ const mismatch=await publish(buyers[3],5),early=await publish(buyers[4],5),productMismatch=await publish(buyers[5],5);
+ await Review.collection.updateOne({_id:mismatch._id},{$set:{tradeConfirmationId:positive.tradeConfirmationId}});
+ await Review.collection.updateOne({_id:early._id},{$set:{date:new Date('2000-01-01')}});
+ await Review.collection.updateOne({_id:productMismatch._id},{$set:{productId:new mongoose.Types.ObjectId()}});
+ const corrupt=await Confirmation.findById(broken.tradeConfirmationId).lean();
+ await Confirmation.collection.updateOne({_id:corrupt._id},{$set:{decisionHash:'0'.repeat(64)}});
+ await Supplier.updateOne({_id:buyers[0].user._id},{$set:{isActive:false}});
+ const legacy=await Review.create({supplierId:owner.user._id,userName:'Legacy',stars:2,comment:'Keep historical opinion'});
+ const orphan=await Review.create({supplierId:owner.user._id,userName:'Orphan',stars:5,basis:'mutual_confirmation',tradeConfirmationId:new mongoose.Types.ObjectId()});
+ await Review.create({supplierId:other.user._id,userName:'Other',stars:5});
+ const before=await Review.collection.find({}).sort({_id:1}).toArray();
+ const url='/api/reviews/'+owner.user._id;
+ const res=await request(app).get(url+'?limit=20');expect(res.status).toBe(200);
+ expect(res.body.stats).toEqual({avg:3,total:2});expect(res.body.legacyTotal).toBe(6);expect(res.body.pagination.total).toBe(8);
+ const byId=new Map(res.body.data.map(r=>[r._id,r]));
+ for(const r of [negative,positive])expect(byId.get(String(r._id)).basis).toBe('mutual_confirmation');
+ for(const r of [broken,mismatch,early,productMismatch,legacy,orphan])expect(byId.get(String(r._id)).basis).toBeUndefined();
+ for(const r of res.body.data){expect(r.buyerId).toBeUndefined();expect(r.tradeConfirmationId).toBeUndefined()}
+ expect((await request(app).get(url+'?limit=1&page=2')).body.stats).toEqual({avg:3,total:2});
+ const dashboard=await request(app).get('/api/suppliers/me/reviews?limit=20').set(auth(owner.token));
+ expect(dashboard.status).toBe(200);expect(dashboard.body.data.find(r=>r._id===String(broken._id)).basis).toBeUndefined();
+ const reply=await request(app).post('/api/suppliers/me/reviews/'+broken._id+'/reply').set(auth(owner.token)).send({text:'Synthetic reply'});
+ expect(reply.status).toBe(200);expect(reply.body.review.basis).toBeUndefined();
+ const after=await Review.collection.find({}).sort({_id:1}).toArray();
+ expect(after.map(({reply,...r})=>r)).toEqual(before.map(({reply,...r})=>r));
+ expect((await Review.collection.findOne({_id:broken._id})).basis).toBe('mutual_confirmation');
+ expect(await Confirmation.countDocuments()).toBe(7);
+});
+
+test('historical evidence outage never publishes a partial rating and missing source keeps the opinion',async()=>{
+ const owner=await account('supplier'),buyer=await account(),legacyBuyer=await account();
+ await completed(buyer,owner);
+ const result=await request(app).post('/api/reviews').set(auth(buyer.token)).send({supplierId:String(owner.user._id),stars:1});
+ expect(result.status).toBe(201);
+ await Review.create({supplierId:owner.user._id,buyerId:legacyBuyer.user._id,userName:'Legacy without evidence',stars:5});
+ const saved=await Confirmation.findOne().lean(),url='/api/reviews/'+owner.user._id;
+ const before=await request(app).get(url);expect(before.status).toBe(200);expect(before.headers['cache-control']).toBe('no-store');
+ expect(before.body.stats).toEqual({avg:1,total:1});
+ const fault=jest.spyOn(Confirmation,'findOne').mockImplementationOnce(()=>{throw Object.assign(Error('Synthetic evidence unavailable'),{status:503})});
+ try{
+  const unavailable=await request(app).get(url);
+  expect(unavailable.status).toBe(503);expect(unavailable.body.stats).toBeUndefined();expect(unavailable.body.data).toBeUndefined();
+ }finally{fault.mockRestore()}
+ await Sourcing.collection.deleteOne({_id:saved.sourceId});
+ const after=await request(app).get(url);expect(after.status).toBe(200);
+ expect(after.body.stats).toEqual({avg:0,total:0});expect(after.body.legacyTotal).toBe(2);
+ expect(after.body.data.find(r=>r._id===result.body.review._id)).not.toHaveProperty('basis');
+ expect(await Review.countDocuments({supplierId:owner.user._id})).toBe(2);
+ expect(await Confirmation.countDocuments()).toBe(1);
+});

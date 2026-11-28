@@ -20,7 +20,7 @@ const matches = (row,identity) => row && identityKeys.every(k=>same(row[k],ident
 function key(kind,sourceId,offerId) {
   return new mongoose.Types.ObjectId(createHash('sha256').update([kind,sourceId,offerId].join(':')).digest('hex').slice(0,24))
 }
-async function resolve(kind,sourceId,offerId,actor) {
+async function resolve(kind,sourceId,offerId,actor,{historical=false}={}) {
   if (!['rfq','sourcing'].includes(kind) || !validId(sourceId) || !validId(offerId)) throw fail(400,'مرجع المعاملة غير صحيح')
   const scope = { _id: sourceId, [ownKey(actor)]: actor.id }
   let identity, title
@@ -47,7 +47,7 @@ async function resolve(kind,sourceId,offerId,actor) {
     title=q.agreement.snapshot.request.productName
   }
   if(same(identity.buyerId,identity.supplierId))throw invalid()
-  const active=await Promise.all(['buyer','supplier'].map(role=>Supplier.exists({_id:identity[role+'Id'],role,isActive:{$ne:false}})))
+  const active=historical?[]:await Promise.all(['buyer','supplier'].map(role=>Supplier.exists({_id:identity[role+'Id'],role,isActive:{$ne:false}})))
   if(active.some(x=>!x))throw fail(409,'أحد طرفي المعاملة غير متاح')
   return { identity, title, _id:key(kind,sourceId,offerId) }
 }
@@ -111,4 +111,15 @@ async function eligible(buyerId,supplierId,productId) {
   }
   return null
 }
-module.exports={confirm,list,eligible,resolve,matches}
+async function historicalEvidence(review){
+  const {buyerId,supplierId,productId,tradeConfirmationId,date}=review
+  if(![buyerId,supplierId,tradeConfirmationId].every(v=>v instanceof mongoose.Types.ObjectId)||
+    (productId!=null&&!(productId instanceof mongoose.Types.ObjectId))||!(date instanceof Date)||!Number.isFinite(date.getTime()))return false
+  const row=await Confirmation.findOne({_id:tradeConfirmationId,buyerId,supplierId,buyerConfirmedAt:{$type:'date',$lte:date},supplierConfirmedAt:{$type:'date',$lte:date},...(productId?{productId}:{})}).read('primary').maxTimeMS(8000).lean()
+  if(!row||!['rfq','sourcing'].includes(row.kind)||!validId(String(row.sourceId))||!validId(String(row.offerId))||!same(row._id,key(row.kind,String(row.sourceId),String(row.offerId))))return false
+  try{
+    const trade=await resolve(row.kind,String(row.sourceId),String(row.offerId),{role:'buyer',id:String(buyerId)},{historical:true})
+    return matches(row,trade.identity)
+  }catch(error){if([404,409].includes(error.status))return false;throw error}
+}
+module.exports={confirm,list,eligible,resolve,matches,historicalEvidence}

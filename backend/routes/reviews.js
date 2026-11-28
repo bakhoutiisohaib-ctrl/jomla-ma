@@ -6,7 +6,8 @@ const Product = require('../models/Product')
 const { authenticate, requireRole, requireAdmin } = require('../middleware/auth')
 const { validateMongoId } = require('../middleware/validators')
 const { asyncHandler } = require('../middleware/errorHandler')
-const { getPaginationParams, formatPaginationResponse } = require('../utils/constants')
+const { getPaginationParams } = require('../utils/constants')
+const { publicList } = require('../services/reviewEvidence')
 const { publicCatalogFilter } = require('../utils/catalog')
 const { auditedChange } = require('../utils/audit')
 const { eligible } = require('../services/tradeConfirmation')
@@ -29,17 +30,8 @@ router.get('/:supplierId', asyncHandler(async (req, res) => {
   const supplierId = new mongoose.Types.ObjectId(req.params.supplierId)
   if (!(await Supplier.exists({ _id: supplierId, role: 'supplier', isActive: { $ne: false } }))) return res.status(404).json({ message: 'المورد غير متاح' })
   const { page, limit, skip } = getPaginationParams(req)
-  const [reviews, statistics, total] = await Promise.all([
-    Review.find({ supplierId }).select('productId supplierId userName stars comment reply date basis').sort({ date: -1, _id: 1 }).skip(skip).limit(limit),
-    Review.aggregate([{ $match: { supplierId, basis: 'mutual_confirmation', tradeConfirmationId: { $type: 'objectId' } } }, { $group: { _id: null, avg: { $avg: '$stars' }, total: { $sum: 1 } } }]),
-    Review.countDocuments({supplierId})
-  ])
-  const stats = statistics[0] || { avg: 0, total: 0 }
-  res.json({
-    ...formatPaginationResponse(reviews, total, page, limit),
-    legacyTotal: Math.max(0,total-stats.total),
-    stats: { avg: Number((stats.avg || 0).toFixed(1)), total: stats.total }
-  })
+  res.set('Cache-Control','no-store')
+  res.json(await publicList(supplierId,page,limit,skip))
 }))
 
 router.post('/', authenticate, requireRole('buyer'), asyncHandler(async (req, res) => {

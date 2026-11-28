@@ -328,26 +328,28 @@ router.patch('/me/orders/:orderId/status', authenticate, requirePermission('mana
 }))
 
 router.get('/me/reviews', authenticate, requirePermission('manage_store'), asyncHandler(async (req, res) => {
-  const Review = require('../models/Review')
+  const { ownerList } = require('../services/reviewEvidence')
   const { page, limit, skip } = getPaginationParams(req)
-  const filter = { supplierId: req.supplier.ownerId }
-  res.json(formatPaginationResponse(await Review.find(filter).limit(limit).skip(skip), await Review.countDocuments(filter), page, limit))
+  res.set('Cache-Control','private, no-store')
+  res.json(await ownerList(req.supplier.ownerId,page,limit,skip))
 }))
 // A supplier may reply but must not erase a buyer's independent review.
 router.delete('/me/reviews/:id', authenticate, (req, res) => res.status(403).json({ message: 'إزالة التقييمات تتم بمراجعة إدارة المنصة' }))
 router.post('/me/reviews/:id/reply', authenticate, requireRole('supplier'), validateMongoId, asyncHandler(async (req, res) => {
   if (Object.keys(req.body || {}).some(key=>key!=='text') || typeof req.body.text !== 'string' || !req.body.text.trim() || req.body.text.length > 2000) return res.status(400).json({ message: 'نص رد صالح مطلوب' })
   const Review = require('../models/Review')
-  const review = await Review.findOne({ _id: req.params.id, supplierId: req.supplier.ownerId })
+  const review = await Review.findOne({ _id: req.params.id, supplierId: req.supplier.ownerId }).select('+tradeConfirmationId')
+  const { classified } = require('../services/reviewEvidence')
+  res.set('Cache-Control','private, no-store')
   if (!review) return res.status(404).json({ message: 'التقييم غير موجود' })
-  if(review.reply?.text===req.body.text.trim())return res.json({message:'الرد محفوظ بالفعل',review})
+  if(review.reply?.text===req.body.text.trim())return res.json({message:'الرد محفوظ بالفعل',review:await classified(review.toObject())})
   await auditedChange({
     action: 'REVIEW_REPLIED', targetType: 'Review', targetId: review._id, actor: req.supplier
   }, async () => {
     review.reply = { text: req.body.text.trim(), date: new Date() }
     await review.save()
   })
-  res.json({ message: 'تم إضافة الرد', review })
+  res.json({ message: 'تم إضافة الرد', review:await classified(review.toObject()) })
 }))
 
 router.get('/me/analytics', authenticate, requirePermission('manage_store', 'manage_products'), asyncHandler(async (req, res) => {
