@@ -1,0 +1,10 @@
+{
+  "rfqs": 1,
+  "threads": 1,
+  "buyerMessages": 1,
+  "supplierMessages": 1,
+  "notices": 2,
+  "completedReceipts": 2,
+  "syntheticNoticeFaults": 1,
+  "correctRecipients": true
+}

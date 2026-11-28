@@ -4,7 +4,7 @@ import { LanguageProvider } from '../../i18n/LanguageContext'
 import { apiRequest } from '../../api/config'
 jest.mock('../../api/config',()=>({apiRequest:jest.fn(),assetUrl:()=>''}))
 const user={_id:'supplier-1',id:'supplier-1',role:'supplier',name:'المورد',permissions:['all']}
-beforeEach(()=>{localStorage.clear();require('../../api/session').setSession('s2-dashboard-synthetic-session');apiRequest.mockReset();apiRequest.mockImplementation(async path=>{
+beforeEach(()=>{localStorage.clear();sessionStorage.clear();require('../../api/session').setSession('s2-dashboard-synthetic-session');apiRequest.mockReset();apiRequest.mockImplementation(async path=>{
  if(path==='/suppliers/me/profile')return user
  if(path.startsWith('/products/mine'))return {data:[{_id:'product-1',name:'منتج المورد الخاص',isDraft:true,moq:10,price:25}],pagination:{pages:1,total:1}}
  if(path.startsWith('/stores/mine'))return {data:[]}

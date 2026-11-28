@@ -6,7 +6,8 @@ import AtlasDialog from '../common/AtlasDialog';
 import { NegotiationMessages, OfferHistory } from '../common/NegotiationUI';
 import { useLabels, formatMoney, statusLabel, notificationLabel } from '../../i18n/useLabels';
 import { useTranslation } from '../../i18n/LanguageContext';
-import { Field, Notice } from '../common/WorkspaceUI';
+import { Notice } from '../common/WorkspaceUI';
+import RfqMessageComposer from '../common/RfqMessageComposer';
 import OrganizationPanel from './OrganizationPanel';
 import StoresPanel from './StoresPanel';
 import ProductEditor from './ProductEditor';
@@ -56,8 +57,7 @@ export default function SupplierDashboard({
   const [offerCloseBlocked, setOfferCloseBlocked] = useState(false);
   const [drafts, setDrafts] = useState([]), [draftLoading, setDraftLoading] = useState(false), [draftReady, setDraftReady] = useState(false), [failedJobs, setFailedJobs] = useState(null);
   const [selected, setSelected] = useState(null),
-    [thread, setThread] = useState(null),
-    [text, setText] = useState('');
+    [thread, setThread] = useState(null);
   const [quoteRecord, setQuoteTarget] = useState(null);
   const [sourcingSession, setSourcingSession] = useState('');
   const liveSession = useSessionToken();
@@ -226,7 +226,7 @@ export default function SupplierDashboard({
     const c=conversation.current;
     if(c.write)return;
     c.read?.abort();c.id=rfq._id;c.uncertain=false;
-    setSelected(rfq);setThread(null);setText('');setThreadError('');
+    setSelected(rfq);setThread(null);setThreadError('');
     await refreshConversation(rfq._id);
   }
   async function openSourcing(id) {
@@ -236,26 +236,6 @@ export default function SupplierDashboard({
     try { const data = await apiRequest('/sourcing/'+id, { token, signal: context.controller.signal, cache: 'no-store' });
       if (valid()) { if(data?._id && data._id!==id)throw new Error(l('بيانات الطلب غير مطابقة.','Demande non conforme.','Request mismatch.')); setSourcingSession(token); setQuoteTarget({ ...data, _id: data._id || id }); setTab('sourcing'); setError(''); setMessage(''); }
     } catch(e) { if (valid() && e.name !== 'AbortError') setError(e.message); }
-  }
-  async function sendMessage(e) {
-    e.preventDefault();
-    const c=conversation.current, id=selected?._id, token=getSessionToken();
-    if(!id || c.id!==id || !token || c.write || c.uncertain || busy || threadLoading || threadError || !thread?.thread ||
-       thread.thread.status==='closed' || rejection.blocked || offerCloseBlocked || thread.offerSubmission ||
-       !['pending','responded'].includes(selected.status) || !text.trim())return;
-    const controller=new AbortController();c.write=controller;
-    const valid=()=>c.id===id && !controller.signal.aborted && token===getSessionToken();
-    setSendBusy(true);setError('');let acknowledged=false;
-    try{
-      const result=await apiRequest('/rfq/'+id+'/messages',{method:'POST',body:{content:text},token,signal:controller.signal});
-      if(!valid())return;
-      if(!result?.thread || String(result.thread.rfqId)!==id)throw new Error(l('لم يتأكد إرسال الرسالة. تحقق من المحادثة قبل إعادة الإرسال.','Envoi non confirmé. Vérifiez la conversation avant de renvoyer.','Message unconfirmed. Check the conversation before resending.'));
-      setText('');acknowledged=true;
-    }catch(error){if(valid()){c.uncertain=true;setThreadError(error.message);}}
-    finally{
-      if(c.write===controller)c.write=null;
-      if(valid()){setSendBusy(false);if(acknowledged)await refreshConversation(id);}
-    }
   }
   const unread = loadedMetrics.notifications && unreadTotal!=null ? unreadTotal : '—';
   const metric = (key,value) => loadedMetrics[key] && value!=null ? value : '—';
@@ -339,7 +319,7 @@ export default function SupplierDashboard({
         {rejection.error && <p role="alert">{rejection.error}</p>}
         {rejection.phase !== 'completed' && <button type="button" disabled={rejection.loading || rejection.waiting || threadLoading || Boolean(threadError)} onClick={rejection.submit}>{l('استكمال رفض الطلب', 'Reprendre le refus')}</button>}
       </section>}
-      {selected && thread && <div className="trade-negotiation-grid"><aside className="trade-pane"><CommercialAgreement rfq={selected} /><OfferHistory rfq={selected} offers={thread.offers || []}/></aside><section className="trade-pane"><NegotiationMessages messages={thread.thread?.messages || []} offers={thread.offers || []} role="supplier"/>{['pending', 'responded'].includes(selected.status) && <form className="trade-compose" onSubmit={sendMessage}><Field label={l('رسالتك', 'Votre message')} value={text} disabled={sendBusy} required maxLength={4000} onChange={e => setText(e.target.value)} /><button disabled={busy || sendBusy || threadLoading || Boolean(threadError) || rejection.blocked || offerCloseBlocked || Boolean(thread.offerSubmission) || thread.thread?.status==='closed' || !text.trim()}>{l('إرسال', 'Envoyer')}</button></form>}</section></div>}
+      {selected && thread && <div className="trade-negotiation-grid"><aside className="trade-pane"><CommercialAgreement rfq={selected} /><OfferHistory rfq={selected} offers={thread.offers || []}/></aside><section className="trade-pane"><NegotiationMessages messages={thread.thread?.messages || []} offers={thread.offers || []} role="supplier"/>{conversation.current.id===selected._id&&<RfqMessageComposer key={liveSession+':'+selected._id+':'+(profile._id||profile.id)} actorId={profile._id||profile.id||''} rfqId={selected._id} role="supplier" token={liveSession} open={['pending','responded'].includes(selected.status)&&thread.thread?.status!=='closed'} blocked={threadLoading||Boolean(threadError)||rejection.blocked||offerCloseBlocked||Boolean(thread.offerSubmission)||!thread.thread} externalBusy={busy||rejection.loading||offerCloseBlocked} label={l('رسالتك','Votre message')} sendLabel={l('إرسال','Envoyer')} maxLength={4000} onBusy={setSendBusy} onUncertain={()=>{conversation.current.uncertain=true;setThreadError(l('حدّث المحادثة للتحقق من حالتها.','Actualisez la conversation.','Refresh the conversation.'));}} onConfirmed={()=>{refresh();refreshConversation(selected._id,true);}}/>}</section></div>}
       {selected && threadError && <section><Notice error>{threadError}</Notice><button type="button" disabled={threadLoading || sendBusy} onClick={()=>refreshConversation(selected._id,true)}>{l('تحديث المحادثة','Actualiser la conversation','Refresh conversation')}</button></section>}{selected && !thread && !threadError && <p role="status">{l('تحميل تفاصيل الطلب…','Chargement de la demande…')}</p>}
       {selected && thread && (['pending', 'responded', 'offering'].includes(selected.status) || thread.offerSubmission) && <SupplierOfferForm rfq={selected} progress={thread.offerSubmission} onBlockClose={setOfferCloseBlocked} disabled={busy || sendBusy || threadLoading || Boolean(threadError) || rejection.blocked} onReject={rejection.submit} onUpdated={() => { refresh(); refreshConversation(selected._id).catch(e => setError(e.message)); }}/>}
       {quoteTarget && <section><p>{statusLabel(quoteTarget.status,lang)}</p>{quoteTarget.quotes?.map(q=><section key={q._id}><p>{statusLabel(q.status,lang)}</p><SourcingQuoteTerms quote={q} sourcing={quoteTarget}/></section>)}</section>}

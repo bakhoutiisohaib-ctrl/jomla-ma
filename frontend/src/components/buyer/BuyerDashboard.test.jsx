@@ -8,9 +8,9 @@ jest.mock('../../api/config', () => ({ apiRequest: jest.fn() }))
 const rfq = { _id: 'rfq-1', status: 'responded', currentOfferId: 'offer-current', quantity: 20, productId: { name: 'أحذية بالجملة', unit: 'زوج' }, supplierId: { name: 'المورد' } }
 const current = { _id: 'offer-current', status: 'active', unitPrice: 90, totalPrice: 1800, currency: 'MAD', deliveryDays: 4 }
 const previous = { ...current, _id: 'offer-old', status: 'superseded', unitPrice: 100 }
-const renderBuyer = () => render(<LanguageProvider><BuyerDashboard user={{ name: 'المشتري' }} onBack={jest.fn()} /></LanguageProvider>)
+const renderBuyer = () => render(<LanguageProvider><BuyerDashboard user={{ _id:'buyer-1', name: 'المشتري' }} onBack={jest.fn()} /></LanguageProvider>)
 beforeEach(() => {
-  localStorage.clear(); localStorage.setItem('supplierToken', 'test-token'); apiRequest.mockReset()
+  localStorage.clear(); sessionStorage.clear(); localStorage.setItem('supplierToken', 'test-token'); apiRequest.mockReset()
   apiRequest.mockImplementation(async path => {
     if (path === '/rfq/buyer') return { data: [rfq] }
     if (path === '/sourcing/buyer') return { data: [] }
