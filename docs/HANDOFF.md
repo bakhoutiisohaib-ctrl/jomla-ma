@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6C.3B.1B.4 isolated native broker scoped Linux lab PASS 9/9: exact Node worker contract, non-root caller, isolated real FFmpeg MP4/WebM, source decode, strict request and receipt, same-jail lock, native cancellation/cleanup. [Report](v49-gate6c-f2b1b4-isolated-broker-20261128.md). Next production-candidate worker lifecycle/aggregate limits and target acceptance; upload disabled.
+
 2026-11-28 - Gate 6C.3B.1B.3 offline worker contract/lifecycle scoped PASS: BE 131/131 (5 suites, 22 worker tests), single-flight admission, exact receipt, process budgets and quarantine on unconfirmed close. [Report](v49-gate6c-f2b1b3-worker-contract-20261128.md). Next real isolated broker integration and target acceptance; upload disabled, video OPEN.
 
 2026-11-28 - Gate 6C.3B.1B.2 native video isolation scoped Linux lab PASS: actual seccomp/chroot/credential and hard rlimit probes, MP4/WebM normalization and re-decode. [Report](v49-gate6c-f2b1b2-linux-isolation-20261128.md). Previous [offline Windows normalizer](v49-gate6c-f2b1b-video-normalizer-20261128.md) PASS 15/15 at b40e73a. Next nonprivileged worker contract and enforced job lifecycle/target isolation acceptance; production worker and video gate remain OPEN; no upload enabled.

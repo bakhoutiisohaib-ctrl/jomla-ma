@@ -1,0 +1,79 @@
+{
+  "status": "PASS_SCOPED_LAB",
+  "cases": [
+    {
+      "case": "sample.mp4",
+      "uid": 61002,
+      "mime": "video/mp4",
+      "frames": 48,
+      "durationUs": 2000000,
+      "bytes": 35500,
+      "codec": "h264",
+      "state": {
+        "active": false,
+        "poisoned": false
+      }
+    },
+    {
+      "case": "sample.webm",
+      "uid": 61002,
+      "mime": "video/webm",
+      "frames": 48,
+      "durationUs": 2000000,
+      "bytes": 36880,
+      "codec": "h264",
+      "state": {
+        "active": false,
+        "poisoned": false
+      }
+    },
+    {
+      "case": "fake.mp4",
+      "rejected": true,
+      "state": {
+        "active": false,
+        "poisoned": false
+      }
+    },
+    {
+      "case": "long.mp4",
+      "rejected": true,
+      "state": {
+        "active": false,
+        "poisoned": false
+      }
+    },
+    {
+      "case": "concurrent supervisor same jail",
+      "rejected": true
+    },
+    {
+      "case": "invalid header",
+      "rejected": true
+    },
+    {
+      "case": "invalid hash",
+      "rejected": true
+    },
+    {
+      "case": "foreign peer credentials",
+      "rejected": true
+    },
+    {
+      "case": "client disconnect during native job",
+      "rejected": true,
+      "nativeChildReaped": true
+    }
+  ],
+  "ffmpeg": "ffmpeg version 7.1.5-0+deb13u1 Copyright (c) 2000-2026 the FFmpeg developers",
+  "sourceHashes": {
+    "video-broker-lab.py": "8e657ceaaa972209d52b432a83342565c5999fd3a6fee6b9594fe285ad0f1cff",
+    "video-broker-client-lab.cjs": "2b1a45e748fe06ecb3f382293f0145270f1a662e8c326b22abbc1fb035bc9025",
+    "verify-video-broker.cjs": "c6aab745f1f287b3a4d24accf08da988e231737726de988780ce5e3cc0619ff3",
+    "verify-video-broker.py": "7afdbfa1f3c1120f69b2e45311c853c17b3db5545b56ded8057a25018abee6fb",
+    "video-isolation-lab.py": "81d52c5a6862869f0b643459e605c1c6d4dc3c7ca6aa55a864cb1cba5f6a27d5",
+    "services/videoWorkerLab.js": "1a68f6f3fe93e7524505ca9401841dcf9833776ee10ae2230a0acb01f9b8683a",
+    "services/videoContainer.js": "e691ec910f83e662e31511f1bb002d1645427aac582d21c76a435085ec9b6975"
+  },
+  "scope": "one-shot root lab supervisor, non-root caller, no production or customer upload"
+}
