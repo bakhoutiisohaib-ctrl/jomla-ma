@@ -116,3 +116,70 @@ test('supplier and buyer RFQ labels use the frozen product unit after a catalog 
   expect(screen.getByLabelText('سعر الوحدة (MAD / زوج)')).toBeInTheDocument();
   expect(screen.queryByText(/كرتون/)).not.toBeInTheDocument();
 });
+
+test('empty creation acknowledgement preserves the original key and draft inputs',async()=>{
+  let calls=0;setupWorkspace(async()=>++calls===1?{}:{opportunity:offer});
+  view(<WholesaleWorkspace/>);await fillWorkspace();fireEvent.click(screen.getByRole('button',{name:'حفظ مسودة'}));
+  await screen.findByRole('button',{name:'استكمال حفظ المحاولة نفسها'});
+  expect(screen.queryByRole('button',{name:'نشر الفرصة'})).not.toBeInTheDocument();
+  expect(screen.getByLabelText('السعر لكل وحدة')).toHaveValue(90);
+  fireEvent.click(screen.getByRole('button',{name:'استكمال حفظ المحاولة نفسها'}));
+  await screen.findByRole('button',{name:'نشر الفرصة'});
+  const sends=apiRequest.mock.calls.filter(([,o])=>o.method==='POST');
+  expect(sends).toHaveLength(2);expect(sends[1][1].headers).toEqual(sends[0][1].headers);expect(sends[1][1].body).toEqual(sends[0][1].body);
+});
+test.each(['identity','revision','status'])('unconfirmed update %s requires a matching private read before another write',async mismatch=>{
+  const saved={...offer,status:'published',revision:1};
+  const foreign={...saved,_id:'6ad7e13f5b9e1437e32f6abd'};
+  const bad=mismatch==='identity'?foreign:mismatch==='revision'?{...saved,revision:0}:{...saved,status:'draft'};
+  setupWorkspace(async(_p,o)=>({opportunity:o.method==='POST'?offer:bad}));
+  const base=apiRequest.getMockImplementation();let reads=0;
+  apiRequest.mockImplementation((p,o)=>p.endsWith('/mine/'+oid)?Promise.resolve({opportunity:++reads===1?foreign:saved}):base(p,o));
+  view(<WholesaleWorkspace/>);await fillWorkspace();fireEvent.click(screen.getByRole('button',{name:'حفظ مسودة'}));
+  fireEvent.click(await screen.findByRole('button',{name:'نشر الفرصة'}));
+  const recover=await screen.findByRole('button',{name:'التحقق من الحالة المحفوظة'});
+  expect(screen.getByRole('button',{name:'نشر الفرصة'})).toBeDisabled();
+  fireEvent.click(recover);
+  await screen.findByText('تعذر تأكيد هوية الفرصة المحفوظة.');
+  expect(screen.getByRole('button',{name:'نشر الفرصة'})).toBeDisabled();
+  fireEvent.click(screen.getByRole('button',{name:'التحقق من الحالة المحفوظة'}));
+  await screen.findByText('هذه النسخة المحفوظة؛ راجعها قبل أي تعديل جديد.');
+  await waitFor(()=>expect(screen.getByRole('button',{name:'نشر الفرصة'})).toBeEnabled());
+  expect(apiRequest.mock.calls.filter(([,o])=>o.method==='PUT')).toHaveLength(1);
+});
+
+test('creation replay can recover the same opportunity after another session advances its revision',async()=>{
+  let calls=0;const advanced={...offer,status:'published',revision:2,price:82};
+  setupWorkspace(async()=>{if(++calls===1)throw Object.assign(new Error('Lost acknowledgement'),{status:0});return {opportunity:advanced};});
+  view(<WholesaleWorkspace/>);await fillWorkspace();fireEvent.click(screen.getByRole('button',{name:'حفظ مسودة'}));
+  fireEvent.click(await screen.findByRole('button',{name:'استكمال حفظ المحاولة نفسها'}));
+  await screen.findByText('هذه النسخة المحفوظة؛ راجعها قبل أي تعديل جديد.');
+  expect(screen.getByLabelText('السعر لكل وحدة')).toHaveValue(82);
+  expect(screen.queryByRole('button',{name:'استكمال حفظ المحاولة نفسها'})).not.toBeInTheDocument();
+  const sends=apiRequest.mock.calls.filter(([,o])=>o.method==='POST');
+  expect(sends).toHaveLength(2);expect(sends[1][1].headers).toEqual(sends[0][1].headers);expect(sends[1][1].body).toEqual(sends[0][1].body);
+});
+test('publication acknowledgement that expires at the server boundary never claims public visibility',async()=>{
+  setupWorkspace(async(_p,o)=>({opportunity:o.method==='POST'?offer:{...offer,status:'expired',revision:1,expiresAt:'2000-01-01T00:00:00.000Z'}}));
+  view(<WholesaleWorkspace/>);await fillWorkspace();fireEvent.click(screen.getByRole('button',{name:'حفظ مسودة'}));
+  fireEvent.click(await screen.findByRole('button',{name:'نشر الفرصة'}));
+  await screen.findByText('حُفظت الفرصة: غير منشورة للعامة');
+  expect(screen.queryByRole('button',{name:'التحقق من الحالة المحفوظة'})).not.toBeInTheDocument();
+});
+test('private recovery rejects a revision older than the original edit',async()=>{
+  let writes=0;
+  setupWorkspace(async()=>({opportunity:++writes===1?offer:writes===2?{...offer,status:'published',revision:1}:{...offer,status:'paused',revision:1}}));
+  const base=apiRequest.getMockImplementation();let reads=0;
+  apiRequest.mockImplementation((p,o)=>p.endsWith('/mine/'+oid)?Promise.resolve({opportunity:++reads===1?offer:{...offer,status:'paused',revision:2}}):base(p,o));
+  view(<WholesaleWorkspace/>);await fillWorkspace();fireEvent.click(screen.getByRole('button',{name:'حفظ مسودة'}));
+  fireEvent.click(await screen.findByRole('button',{name:'نشر الفرصة'}));
+  await screen.findByText('حُفظت الفرصة: منشورة');
+  fireEvent.click(screen.getByRole('button',{name:'إيقاف الفرصة'}));
+  fireEvent.click(await screen.findByRole('button',{name:'التحقق من الحالة المحفوظة'}));
+  await screen.findByText('تعذر تأكيد هوية الفرصة المحفوظة.');
+  expect(screen.getByRole('button',{name:'إيقاف الفرصة'})).toBeDisabled();
+  fireEvent.click(screen.getByRole('button',{name:'التحقق من الحالة المحفوظة'}));
+  await screen.findByText('هذه النسخة المحفوظة؛ راجعها قبل أي تعديل جديد.');
+  expect(screen.queryByText('تعذر تأكيد هوية الفرصة المحفوظة.')).not.toBeInTheDocument();
+  expect(writes).toBe(3);
+});

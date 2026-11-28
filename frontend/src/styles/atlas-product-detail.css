@@ -83,3 +83,99 @@
   .atlas-detail-specs { font-size: 13px; }
   .atlas-zoom-toolbar button { flex: 1 1 auto; font-size: 12px; }
 }
+
+/* V4.9 section navigation: one continuous document, not hidden tab panels. */
+.atlas-public .atlas-detail-section-nav-top {
+  position: sticky; top: 0; z-index: 20; display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr)); gap: 5px;
+  margin: 0 0 18px; padding: 6px 0; background: #f7f7f2;
+}
+.atlas-public .atlas-detail-section-nav-top a {
+  justify-content: center; text-align: center; min-width: 0;
+  min-height: 44px; padding: 6px 4px; font-size: 14px;
+  background: transparent; border: 1px solid transparent;
+}
+.atlas-public .atlas-detail-section-nav-top a[aria-current=location] {
+  background: #edf1e5; border-color: #c8d4bd; color: #244e37; font-weight: 700;
+}
+.atlas-detail-page :is(#product-overview,#product-details,#product-description,#product-reviews,#product-discover) {
+  scroll-margin-block-start: 76px;
+}
+@media(max-width: 800px) {
+  .atlas-public .atlas-detail-section-nav-top a { font-size: 12px; }
+}
+
+/* Managed gallery: keep real image navigation independent from commercial actions. */
+.atlas-gallery-frame { position: relative; min-width: 0; }
+.atlas-public .atlas-gallery-frame .atlas-gallery-main { touch-action: pan-y pinch-zoom; }
+.atlas-public .atlas-gallery-frame .atlas-favorite-heart {
+  position: absolute; inset-block-start: 12px; inset-inline-end: 12px; z-index: 2;
+  display: grid; place-items: center; width: 44px; height: 44px; min-width: 44px;
+  padding: 0; border: 1px solid #dce3d3; border-radius: 50%;
+  background: white; color: #355640;
+}
+.atlas-gallery-counter { unicode-bidi: isolate; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.atlas-zoom-toolbar output { direction: ltr; unicode-bidi: isolate; }
+
+/* Detail pricing uses declared tiers, not a binding checkout price. */
+.atlas-detail-page .atlas-detail-price small { white-space: normal; overflow-wrap: anywhere; }
+.atlas-detail-page .atlas-detail-moq, .atlas-detail-page .atlas-detail-tiers td { overflow-wrap: anywhere; }
+.atlas-public .atlas-tier-choice { min-height: 44px; width: 100%; text-align: start; border: 0; background: transparent; white-space: normal; overflow-wrap: anywhere; }
+.atlas-detail-tiers tr[data-selected-tier=true] { background: #dce8d4; }
+.atlas-quantity-panel { margin-block-start: 16px; min-width: 0; }
+.atlas-quantity-panel label { font-weight: 650; display: block; margin-block-end: 8px; }
+.atlas-quantity-stepper { display: grid; grid-template-columns: 44px minmax(0,1fr) 44px; gap: 6px; }
+.atlas-public .atlas-quantity-stepper button, .atlas-public .atlas-quantity-stepper input { min-height: 44px; min-width: 0; width: 100%; box-sizing: border-box; text-align: center; padding: 6px; margin: 0; }
+.atlas-quantity-stepper input[aria-invalid=true] { border-color: #a44731; }
+.atlas-quantity-total { overflow-wrap: anywhere; font-size: 16px; }
+.atlas-quantity-error { color: #a44731; font-size: 13px; }
+
+/* Product actions share the same handlers in flow and in the fixed dock.
+   Replace the market bottom navigation only when a real product dock exists. */
+.atlas-public .atlas-detail-request .atlas-detail-store-action {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  min-height: 44px; min-width: 0; padding: 6px; border: 1px solid #ccd9c4;
+  border-radius: 9px; background: white; color: #355640; text-decoration: none;
+  font-weight: 600; overflow-wrap: anywhere;
+}
+@media (min-height: 421px) {
+  .atlas-public .atlas-detail-request {
+    position: fixed; z-index: 41; bottom: 0; inset-inline: 0;
+    width: min(100%, 840px); margin-inline: auto; box-sizing: border-box;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, .65fr);
+    align-items: stretch; gap: 6px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: #fffffff9; border: 1px solid #dce3d3; border-bottom: 0;
+    border-radius: 14px 14px 0 0; box-shadow: 0 -4px 20px #263f2b1a;
+    max-height: calc(110px + env(safe-area-inset-bottom, 0px)); overflow-y: auto;
+  }
+  .atlas-public .atlas-detail-request:not(:has(.atlas-add-cart)),
+  .atlas-public .atlas-detail-request:not(:has(.atlas-detail-store-action)) {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+  .atlas-public .atlas-detail-request:not(:has(.atlas-add-cart,.atlas-detail-store-action)) { grid-template-columns: 1fr; }
+  .atlas-public .atlas-detail-request > :is(button,a) {
+    grid-row: 1; min-height: 44px; min-width: 0; width: 100%; margin: 0;
+    box-sizing: border-box; font-size: 13px; line-height: 1.35; padding: 6px;
+    white-space: normal; overflow-wrap: anywhere;
+  }
+  .atlas-public .atlas-detail-request .atlas-cart-add-status {
+    grid-column: 1 / -1; margin: 0; font-size: 12px; overflow-wrap: anywhere;
+  }
+  .atlas-public[data-page=product]:has(.atlas-detail-request) { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
+  .atlas-public[data-page=product]:has(.atlas-detail-request) .atlas-mobile-nav { display: none; }
+  html:has(.atlas-public[data-page=product] .atlas-detail-request) { scroll-padding-block-end: calc(125px + env(safe-area-inset-bottom, 0px)); }
+  .atlas-detail-page :is(button,a,input,textarea,select,[tabindex]) { scroll-margin-block-end: 12px; }
+}
+@media (max-width: 600px) and (min-height: 421px) {
+  .atlas-public .atlas-detail-request { border-radius: 0; padding-inline: 8px; gap: 5px; }
+  .atlas-public .atlas-detail-request > :is(button,a) { font-size: 12px; }
+  .atlas-public .atlas-detail-request .atlas-add-cart .atlas-icon { flex-shrink: 0; }
+  .atlas-public:has(input:focus,textarea:focus) .atlas-detail-request { position: static; width: auto; max-height: none; border-radius: 10px; box-shadow: none; }
+}
+
+.atlas-discover-more { display: flex; justify-content: center; margin: 20px 0; }
+.atlas-public .atlas-discover-more > :is(a,button) {
+  display: inline-flex; justify-content: center; align-items: center;
+  min-height: 44px; padding: 8px 18px; border: 1px solid #c8d4bd;
+  border-radius: 10px; background: #edf1e5; color: #355640; text-align: center;
+}

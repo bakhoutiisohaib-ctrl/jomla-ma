@@ -1,19 +1,21 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import BuyerDashboard from './BuyerDashboard'
+import { QuoteCartProvider } from '../cart/QuoteCartContext'
+import { setSession } from '../../api/session'
 import { LanguageProvider } from '../../i18n/LanguageContext'
 import { apiRequest } from '../../api/config'
 jest.mock('../../api/config', () => ({ apiRequest: jest.fn() }))
 const rfq = { _id: 'rfq-1', status: 'responded', currentOfferId: 'offer-current', quantity: 20, productId: { name: 'أحذية بالجملة', unit: 'زوج' }, supplierId: { name: 'المورد' } }
 const current = { _id: 'offer-current', status: 'active', unitPrice: 90, totalPrice: 1800, currency: 'MAD', deliveryDays: 4 }
 const previous = { ...current, _id: 'offer-old', status: 'superseded', unitPrice: 100 }
-const renderBuyer = () => render(<LanguageProvider><BuyerDashboard user={{ name: 'المشتري' }} onBack={jest.fn()} /></LanguageProvider>)
+const renderBuyer = () => render(<LanguageProvider><BuyerDashboard user={{ _id:'buyer-1', name: 'المشتري' }} onBack={jest.fn()} /></LanguageProvider>)
 beforeEach(() => {
-  localStorage.clear(); localStorage.setItem('supplierToken', 'test-token'); apiRequest.mockReset()
+  localStorage.clear(); sessionStorage.clear(); localStorage.setItem('supplierToken', 'test-token'); apiRequest.mockReset()
   apiRequest.mockImplementation(async path => {
     if (path === '/rfq/buyer') return { data: [rfq] }
     if (path === '/sourcing/buyer') return { data: [] }
     if (path === '/notifications') return { data: [{ _id: 'notice-1', type: 'offer_received', resourceType: 'rfq', resourceId: rfq._id, readAt: null, createdAt: new Date().toISOString() }], unreadCount: 1 }
-    if (path.endsWith('/thread')) return { thread: { messages: [] }, offers: [current, previous] }
+    if (path.endsWith('/thread')) return { rfq, thread: { messages: [], status:'open' }, offers: [current, previous] }
     return {}
   })
 })
@@ -202,3 +204,151 @@ test('status filtering shows only the chosen existing state',async()=>{
   expect(screen.queryByRole('button',{name:'العروض والمحادثة'})).not.toBeInTheDocument();expect(screen.getByText('لا توجد طلبات بهذه الحالة')).toBeInTheDocument();
 });
 
+
+test('workspace summary filters actual requests and toggles back to all', async () => {
+  const base=apiRequest.getMockImplementation()
+  const pending={...rfq,_id:'rfq-pending',status:'pending',productId:{name:'Pending fixture',unit:'piece'}}
+  const accepted={...rfq,_id:'rfq-accepted',status:'accepted',productId:{name:'Accepted fixture',unit:'piece'}}
+  apiRequest.mockImplementation((path,options)=>path==='/rfq/buyer'?Promise.resolve({data:[rfq,pending,accepted]}):base(path,options))
+  renderBuyer()
+  await screen.findByText('Pending fixture')
+  const review=screen.getByRole('button',{name:/تحتاج مراجعتك/})
+  expect(review).toHaveTextContent('1')
+  fireEvent.click(review)
+  expect(review).toHaveAttribute('aria-pressed','true')
+  expect(screen.getByLabelText('تصفية الحالة')).toHaveValue('review')
+  expect(screen.queryByText('Pending fixture')).not.toBeInTheDocument()
+  fireEvent.click(review)
+  expect(screen.getByLabelText('تصفية الحالة')).toHaveValue('all')
+  expect(screen.getByText('Pending fixture')).toBeInTheDocument()
+  expect(screen.getByText('Accepted fixture')).toBeInTheDocument()
+})
+
+test('workspace links to real selection and favorites with account scoped cart count',async()=>{
+  sessionStorage.clear()
+  const id='buyer-test'
+  setSession('test.'+btoa(JSON.stringify({id,exp:9999999999}))+'.signature')
+  sessionStorage.setItem('jomla:quote-selection:v1:'+id,JSON.stringify(['111111111111111111111111','222222222222222222222222']))
+  render(<LanguageProvider><QuoteCartProvider><BuyerDashboard user={{name:'Buyer',id}} onBack={jest.fn()}/></QuoteCartProvider></LanguageProvider>)
+  expect(screen.getByRole('link',{name:'سلة العروض (2)'})).toHaveAttribute('href','/cart')
+  expect(screen.getByRole('link',{name:'المفضلة'})).toHaveAttribute('href','/favorites')
+  expect(screen.getByRole('link',{name:'السوق'})).toHaveAttribute('href','/')
+  await screen.findByText('أحذية بالجملة')
+  sessionStorage.clear()
+})
+
+test('failed requests load never claims zero or a confirmed empty list',async()=>{
+  const base=apiRequest.getMockImplementation()
+  apiRequest.mockImplementation((path,options)=>path==='/rfq/buyer'?Promise.reject(new Error('Synthetic request failure')):base(path,options))
+  renderBuyer()
+  await screen.findByText(/الأرقام غير مؤكدة/)
+  expect(screen.getByRole('button',{name:/تحتاج مراجعتك/})).toBeDisabled()
+  expect(screen.getByRole('button',{name:/تحتاج مراجعتك/})).toHaveTextContent('—')
+  expect(screen.queryByText('لا توجد طلبات بهذه الحالة')).not.toBeInTheDocument()
+  apiRequest.mockImplementation(base)
+  fireEvent.click(screen.getByRole('button',{name:'تحديث'}))
+  await screen.findByText('أحذية بالجملة')
+  expect(screen.getByRole('button',{name:/تحتاج مراجعتك/})).toBeEnabled()
+})
+
+test('confirmation rechecks expiration at the actual click even if the UI has not rerendered', async()=>{
+  const base=apiRequest.getMockImplementation(), now=Date.now(), clock=jest.spyOn(Date,'now').mockReturnValue(now);
+  try {
+    apiRequest.mockImplementation((p,o)=>p.endsWith('/thread')?Promise.resolve({rfq,thread:{messages:[],status:'open'},offers:[{...current,validUntil:new Date(now+1000).toISOString()}]}):base(p,o));
+    renderBuyer();fireEvent.click(await screen.findByRole('button',{name:'العروض والمحادثة'}));
+    fireEvent.click(await screen.findByRole('button',{name:'قبول العرض'}));
+    const confirm=screen.getByRole('button',{name:'تأكيد قبول العرض'});
+    expect(confirm).toBeEnabled();
+    clock.mockReturnValue(now+2000);fireEvent.click(confirm);
+    expect(screen.getByRole('alert')).toHaveTextContent('لم يعد العرض صالحاً');
+    expect(apiRequest.mock.calls.filter(([p])=>p.endsWith('/action'))).toHaveLength(0);
+  } finally {clock.mockRestore()}
+});
+
+test('a successful list refresh without a confirmed thread cannot unlock an ambiguous decision or send', async()=>{
+  let failed=false, release=false;
+  const base=apiRequest.getMockImplementation();
+  apiRequest.mockImplementation((p,o)=>{
+    if(p.endsWith('/action')){failed=true;return Promise.reject(new Error('Synthetic interruption'))}
+    if(p.endsWith('/thread')&&failed&&!release)return Promise.resolve({thread:{messages:[],status:'open'},offers:[current]});
+    return base(p,o);
+  });
+  renderBuyer();fireEvent.click(await screen.findByRole('button',{name:'العروض والمحادثة'}));
+  fireEvent.click(await screen.findByRole('button',{name:'قبول العرض'}));fireEvent.click(screen.getByRole('button',{name:'تأكيد قبول العرض'}));
+  const refresh=await screen.findByRole('button',{name:'تحديث حالة الطلب'});
+  fireEvent.click(refresh);
+  await waitFor(()=>expect(apiRequest.mock.calls.filter(([p])=>p.endsWith('/thread')).length).toBeGreaterThan(1));
+  expect(screen.getByRole('button',{name:'رفض العرض'})).toBeDisabled();
+  const input=screen.getByLabelText('رسالتك للمورد');fireEvent.change(input,{target:{value:'Synthetic draft'}});
+  fireEvent.submit(input.closest('form'));
+  expect(apiRequest.mock.calls.filter(([p])=>p.endsWith('/messages'))).toHaveLength(0);
+  release=true;fireEvent.click(refresh);
+  await waitFor(()=>expect(screen.getByRole('button',{name:'رفض العرض'})).toBeEnabled());
+});
+
+test('a notification response for a different request is not opened or marked read',async()=>{
+  const base=apiRequest.getMockImplementation();
+  apiRequest.mockImplementation((p,o)=>p==='/rfq/rfq-1'?Promise.resolve({...rfq,_id:'unexpected'}):base(p,o));
+  renderBuyer();fireEvent.click(await screen.findByRole('button',{name:'الإشعارات (1)'}));fireEvent.click(screen.getByRole('button',{name:'فتح الطلب'}));
+  expect(await screen.findByRole('alert')).toHaveTextContent('الطلب غير متاح لهذا الحساب.');
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(apiRequest.mock.calls.filter(([p])=>p.endsWith('/read'))).toHaveLength(0);
+});
+
+test('a mismatched thread cannot replace the selected request or enable a decision', async()=>{
+  const base=apiRequest.getMockImplementation();
+  apiRequest.mockImplementation((p,o)=>p.endsWith('/thread')?Promise.resolve({rfq:{...rfq,_id:'other'},thread:{messages:[{_id:'foreign',content:'Foreign synthetic message'}]},offers:[current]}):base(p,o));
+  renderBuyer();fireEvent.click(await screen.findByRole('button',{name:'العروض والمحادثة'}));
+  expect(await screen.findByRole('alert')).toHaveTextContent('الطلب غير متاح لهذا الحساب.');
+  expect(screen.queryByText('Foreign synthetic message')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'قبول العرض'})).not.toBeInTheDocument();
+});
+
+test('uncertain decisions are retained separately for different requests', async()=>{
+  const second={...rfq,_id:'rfq-2',productId:{name:'Second synthetic request',unit:'piece'}};
+  const base=apiRequest.getMockImplementation();let failRead=false;
+  apiRequest.mockImplementation((p,o)=>{
+    if(p==='/rfq/buyer')return Promise.resolve({data:[rfq,second]});
+    if(p.endsWith('/action')){failRead=true;return Promise.reject(new Error('Synthetic decision interruption'))}
+    if(p.endsWith('/thread')){
+      const record=p.includes('rfq-2')?second:rfq;
+      return Promise.resolve({...(failRead?{}:{rfq:record}),thread:{messages:[],status:'open'},offers:[current]});
+    }
+    return base(p,o);
+  });
+  renderBuyer();
+  const buttons=await screen.findAllByRole('button',{name:'العروض والمحادثة'});
+  for(const button of buttons){
+    fireEvent.click(button);
+    fireEvent.click(await screen.findByRole('button',{name:'قبول العرض'}));
+    fireEvent.click(screen.getByRole('button',{name:'تأكيد قبول العرض'}));
+    await screen.findByRole('button',{name:'تحديث حالة الطلب'});
+    fireEvent.click(screen.getByRole('button',{name:'إغلاق'}));
+  }
+  fireEvent.click(buttons[0]);
+  await screen.findByRole('button',{name:'تحديث حالة الطلب'});
+  await waitFor(()=>expect(screen.getByRole('button',{name:'رفض العرض'})).toBeDisabled());
+});
+
+test('buyer opens independent direct conversation inbox',async()=>{
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation((p,o)=>p==='/direct-conversations?page=1'?Promise.resolve({actorId:'buyer-1',role:'buyer',page:1,hasNext:false,data:[]}):base(p,o));
+ render(<LanguageProvider><BuyerDashboard user={{_id:'buyer-1',name:'Synthetic buyer',role:'buyer'}} onBack={()=>{}}/></LanguageProvider>);
+ fireEvent.click(await screen.findByRole('button',{name:'المحادثات المباشرة'}));await screen.findByText('لا توجد محادثات مباشرة بعد.');
+ expect(apiRequest.mock.calls.some(([p])=>p==='/direct-conversations?page=1')).toBe(true);
+});
+
+test('buyer notification opens scoped direct chat and marks the exact notice only after validation',async()=>{
+ const actor='buyer-1',id='3'.repeat(24),pid='2'.repeat(24),nid='4'.repeat(24),now='2026-11-28T09:00:00Z',base=apiRequest.getMockImplementation();
+ const n={_id:nid,type:'direct_message',resourceType:'direct_conversation',resourceId:id,readAt:null,createdAt:now};
+ let read=false;
+ apiRequest.mockImplementation(async(p,o)=>{
+ if(p==='/notifications')return {data:[{...n,readAt:read?now:null}],unreadCount:read?0:1};
+ if(p==='/direct-conversations/'+id)return {actorId:actor,role:'buyer',conversation:{_id:id,productId:pid,productName:'Synthetic notice product',counterpartName:'Synthetic supplier',lastMessageAt:now},messages:[{clientId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',role:'supplier',content:'Synthetic notice reply',sentAt:now}],canSend:true};
+ if(p==='/notifications/'+nid+'/read'){read=true;return {notification:{...n,readAt:now}}}return base(p,o)
+ });
+ render(<LanguageProvider><BuyerDashboard user={{_id:actor,role:'buyer',name:'Synthetic buyer'}} onBack={()=>{}}/></LanguageProvider>);
+ fireEvent.click(await screen.findByRole('button',{name:'الإشعارات (1)'}));fireEvent.click(await screen.findByRole('button',{name:'فتح المحادثة'}));
+ await screen.findByText('Synthetic notice reply');await screen.findByRole('button',{name:'الإشعارات (0)'});
+ expect(apiRequest.mock.calls.filter(([p])=>p==='/notifications/'+nid+'/read')).toHaveLength(1);
+});

@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from 'react';
+import { parseQuantity } from './components/products/detailPricing';
 
 const EVENT = 'jomla:navigate';
 const pages = { '/': 'home', '/stores': 'stores', '/login': 'login', '/register': 'register',
   '/forgot-password': 'forgotPassword', '/reset-password': 'resetPassword',
-  '/opportunities': 'opportunities', '/cart': 'cart',
+  '/opportunities': 'opportunities', '/cart': 'cart', '/favorites': 'favorites',
   '/buyer': 'buyer', '/supplier': 'supplier', '/admin': 'admin' };
 export const productPath = id => '/products/' + encodeURIComponent(id);
 export const storePath = id => '/stores/' + encodeURIComponent(id);
@@ -40,17 +41,37 @@ export function useRoute() {
 }
 export const dashboardPath = role => role === 'buyer' ? '/buyer' : role === 'admin' ? '/admin' : '/supplier';
 export function safeReturnTo(search, role) {
-  const raw = new URLSearchParams(search).get('returnTo');
+  const values = new URLSearchParams(search).getAll('returnTo');
+  const raw = values.length === 1 ? values[0] : '';
   if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '';
   let url;
   try { url = new URL(raw, window.location.origin); } catch { return ''; }
   if (url.origin !== window.location.origin) return '';
   const route = parseRoute(url.href);
-  if (route.page === 'product') return productPath(route.id) + (url.searchParams.get('rfq') === '1' ? '?rfq=1' : '');
+  if (route.page === 'product') {
+    const path = productPath(route.id);
+    if (url.searchParams.getAll('rfq').length !== 1 || url.searchParams.get('rfq') !== '1') return path;
+    const quantities = url.searchParams.getAll('qty');
+    if (!quantities.length) return path + '?rfq=1';
+    const quantity = quantities.length === 1 ? parseQuantity(quantities[0]) : null;
+    return quantity === null ? path : path + '?rfq=1&qty=' + quantity;
+  }
   if (route.page === 'opportunity') return opportunityPath(route.id) + (url.searchParams.get('rfq') === '1' ? '?rfq=1' : '');
   if (['home', 'stores', 'store', 'supplierPublic', 'opportunities', 'cart'].includes(route.page)) return route.path + url.search;
+  if (route.page === 'favorites' && role === 'buyer') return '/favorites';
   if (route.path === dashboardPath(role)) return route.path;
   return '';
+}
+// Carry only validated navigation intent between authentication screens.
+// The authenticated role is still checked by safeReturnTo at completion.
+export function authContinuationPath(page, search, role) {
+  if (!['/login', '/register', '/forgot-password'].includes(page)) throw new Error('Invalid authentication destination');
+  const params = new URLSearchParams();
+  const target = ['buyer', 'supplier', 'admin'].map(candidate => safeReturnTo(search, candidate)).find(Boolean);
+  if (target) params.set('returnTo', target);
+  if (page === '/register' && ['buyer', 'supplier', 'staff'].includes(role)) params.set('role', role);
+  const query = params.toString();
+  return page + (query ? '?' + query : '');
 }
 export function loginPath(returnTo) {
   return '/login' + (typeof returnTo === 'string' ? '?returnTo=' + encodeURIComponent(returnTo) : '');

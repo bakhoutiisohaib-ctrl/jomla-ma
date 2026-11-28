@@ -8,20 +8,28 @@ const { authenticate, requirePermission } = require('../middleware/auth')
 const { validateProduct, validateProductUpdate, validateMongoId } = require('../middleware/validators')
 const { asyncHandler } = require('../middleware/errorHandler')
 const { formatPaginationResponse } = require('../utils/constants')
-const { badRequest, parseOptions, searchCatalog, PUBLIC_FIELDS, PUBLIC_VISIBILITY } = require('../utils/catalog')
+const { badRequest, parseOptions, searchCatalog, catalogCategories, PUBLIC_FIELDS, PUBLIC_VISIBILITY } = require('../utils/catalog')
 const { auditedChange } = require('../utils/audit')
 const { assertProductImagesOwned } = require('../services/mediaPrivacy')
 const { enqueueJob, publicJob } = require('../services/jobQueue')
 const { createProductOnce, publicProduct } = require('../services/productCreation')
+const { updateProductOnce, readEditState, readUpdateAttempt } = require('../services/productUpdate')
+const { parseTaxonomyPath, taxonomyDirectory } = require('../utils/taxonomy')
 
-const editFields = ['name', 'category', 'pricingMode', 'price', 'currency', 'country', 'moq', 'unit', 'priceTiers', 'availability', 'availabilityConfirmed', 'inStock', 'city', 'description', 'images', 'imageUrl', 'isDraft', 'storeId']
+const editFields = ['name', 'category', 'taxonomyPath', 'pricingMode', 'price', 'currency', 'country', 'moq', 'unit', 'priceTiers', 'availability', 'availabilityConfirmed', 'inStock', 'city', 'description', 'images', 'imageUrl', 'isDraft', 'storeId']
 
-async function queueIndex(product, req, receipt = null) {
+async function queueIndex(product, req, receipt = null, editRevision = null) {
   try {
+    if (editRevision !== null) {
+      const Job = require('../models/BackgroundJob')
+      await Job.init()
+      const indexes = await Job.collection.indexes()
+      if (!indexes.some(i => i.unique && !i.sparse && !i.partialFilterExpression && (!i.collation || i.collation.locale === 'simple') && JSON.stringify(i.key) === JSON.stringify({ownerId:1,type:1,idempotencyKey:1}))) throw new Error('Missing edit job identity index')
+    }
     const { job } = await enqueueJob({ type: 'visual_index_product', ownerId: String(product.supplierId),
       requestedBy: String(receipt?.actorId || req.supplier.id), organizationId: receipt ? (receipt.organizationId ? String(receipt.organizationId) : null) : (req.supplier.organizationId ? String(req.supplier.organizationId) : null),
       requiredPermission: 'manage_products', payload: { productId: String(product._id) },
-      idempotencyKey: receipt ? `creation:${product._id}` : `${product._id}:${product.updatedAt.toISOString()}`, timeoutMs: 60000 })
+      idempotencyKey: receipt ? `creation:${product._id}` : `edit:${product._id}:${editRevision}`, timeoutMs: 60000 })
     return { status: 'queued', job: publicJob(job) }
   } catch {
     // The product is already saved. Explicitly report a retryable indexing gap.
@@ -31,6 +39,7 @@ async function queueIndex(product, req, receipt = null) {
 
 async function prepareProduct(product, req) {
   const body = req.body
+  parseTaxonomyPath(body)
   const ownerId = req.supplier.ownerId || req.supplier.id
   const imageChanged = body.imageUrl !== undefined && body.imageUrl !== product.imageUrl
   if (imageChanged) { product.hasImageRights = false; product.imageRights = undefined }
@@ -77,10 +86,25 @@ router.get('/mine', authenticate, requirePermission('manage_products'), asyncHan
 
 const publicList = asyncHandler(async (req, res) => {
   const result = await searchCatalog(req.query)
+  if(req.query.supplierTrust)res.set('Cache-Control','no-store')
   res.json({ ...formatPaginationResponse(result.products, result.total, result.page, result.limit), exactCount: result.exactCount, similarCount: result.similarCount })
 })
 router.get('/', publicList)
 router.get('/search', publicList)
+router.get('/taxonomy', (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  res.json(taxonomyDirectory())
+})
+router.get('/categories', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  res.json(await catalogCategories(req.query))
+}))
+
+// Comparison is a fresh, public read of the same catalog, not a saved shortlist.
+router.get('/:id/comparable', validateMongoId, asyncHandler(async (req,res)=>{
+  res.set('Cache-Control','no-store')
+  res.json(await require('../services/comparableOffers').comparableOffers(req.params.id,req.query))
+}))
 
 // Editor reads remain on /mine; public details never expose a draft to an
 // owner/admin simply because a session or a known id was supplied.
@@ -105,13 +129,20 @@ router.post('/', authenticate, requirePermission('manage_products'), validatePro
     ...(receipt ? { creation: { replayed } } : {}) })
 }))
 
+router.get('/:id/edit-state', authenticate, requirePermission('manage_products'), validateMongoId, asyncHandler(async (req,res)=>{
+  res.set('Cache-Control','private, no-store')
+  res.json(await readEditState(req))
+}))
+router.get('/:id/update-attempt', authenticate, requirePermission('manage_products'), validateMongoId, asyncHandler(async (req,res)=>{
+  res.set('Cache-Control','private, no-store')
+  res.json(await readUpdateAttempt(req))
+}))
 router.put('/:id', authenticate, requirePermission('manage_products'), validateMongoId, validateProductUpdate, asyncHandler(async (req, res) => {
-  const product = await Product.findOne({ _id: req.params.id, supplierId: req.supplier.ownerId || req.supplier.id })
-  if (!product) return res.status(404).json({ message: 'المنتج غير موجود' })
-  await prepareProduct(product, req)
-  await product.save()
-  const visualIndex = await queueIndex(product, req)
-  res.json({ message: product.isDraft ? 'تم تحديث المسودة الخاصة' : 'تم اعتماد تحديث المنتج', product, visualIndex })
+  res.set('Cache-Control','private, no-store')
+  const {product,receipt,replayed}=await updateProductOnce(req,prepareProduct)
+  const visualIndex=await queueIndex(product,req,null,product.editRevision)
+  res.json({message:product.isDraft?'تم تحديث المسودة الخاصة':'تم اعتماد تحديث المنتج',product:publicProduct(product),visualIndex,
+    ...(receipt?{update:{version:1,baseRevision:receipt.baseRevision,revision:product.editRevision,replayed}}:{})})
 }))
 
 router.delete('/:id', authenticate, requirePermission('manage_products'), validateMongoId, asyncHandler(async (req, res) => {

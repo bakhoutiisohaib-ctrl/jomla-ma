@@ -1,0 +1,76 @@
+{
+  "runtime": "69a79e4b1f4fa0f07116492faf69fbfc8307f84e",
+  "browser": {
+    "passed": 3,
+    "total": 3,
+    "journeys": [
+      {
+        "journey": "rated catalog includes only supplier with three eligible reviews"
+      },
+      {
+        "journey": "real evidence outage fails closed and retry restores only matching products"
+      },
+      {
+        "journey": "directory filters by same metric and clear restores all"
+      }
+    ]
+  },
+  "performance": {
+    "candidateOwners": 22,
+    "nominalConfirmedRows": 1005,
+    "expectedMatchingStores": 11,
+    "measurements": [
+      {
+        "concurrency": 1,
+        "elapsedMs": 244,
+        "confirmationQueries": 16,
+        "calls": [
+          {
+            "status": 200,
+            "ms": 244
+          }
+        ]
+      },
+      {
+        "concurrency": 2,
+        "elapsedMs": 359,
+        "confirmationQueries": 32,
+        "calls": [
+          {
+            "status": 200,
+            "ms": 358
+          },
+          {
+            "status": 200,
+            "ms": 358
+          }
+        ]
+      },
+      {
+        "concurrency": 4,
+        "elapsedMs": 371,
+        "confirmationQueries": 32,
+        "calls": [
+          {
+            "status": 200,
+            "ms": 370
+          },
+          {
+            "status": 200,
+            "ms": 371
+          },
+          {
+            "status": 503,
+            "ms": 10
+          },
+          {
+            "status": 503,
+            "ms": 10
+          }
+        ]
+      }
+    ]
+  },
+  "db": "PASS",
+  "exitCode": 0
+}

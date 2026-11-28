@@ -2,7 +2,7 @@ const crypto = require('crypto')
 const Product = require('../models/Product')
 
 const INDEX_NAME = 'product_creation_owner_key'
-const INPUT_FIELDS = ['name', 'category', 'pricingMode', 'price', 'currency', 'country', 'moq', 'unit', 'priceTiers', 'availability', 'availabilityConfirmed', 'inStock', 'city', 'description', 'images', 'imageUrl', 'isDraft', 'storeId', 'hasImageRights', 'publishApproved']
+const INPUT_FIELDS = ['name', 'category', 'taxonomyPath', 'pricingMode', 'price', 'currency', 'country', 'moq', 'unit', 'priceTiers', 'availability', 'availabilityConfirmed', 'inStock', 'city', 'description', 'images', 'imageUrl', 'isDraft', 'storeId', 'hasImageRights', 'publishApproved']
 
 function failure(status, message) { return Object.assign(new Error(message), { status }) }
 function canonical(value, depth = 0) {
@@ -12,14 +12,19 @@ function canonical(value, depth = 0) {
   return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key], depth + 1)]))
 }
 
+function productInput(body) {
+  const input = Object.fromEntries(INPUT_FIELDS.filter(field => body[field] !== undefined).map(field => [field, body[field]]))
+  if (body.imageRights !== undefined) input.imageRights = Object.fromEntries(['source', 'licenseReference'].filter(field => body.imageRights?.[field] !== undefined).map(field => [field, body.imageRights[field]]))
+  return input
+}
+
 function requestIdentity(req) {
   const key = req.get('Idempotency-Key')
   // Old API clients retain their existing contract. The current editor always
   // supplies a key; an invalid supplied key must never silently become unkeyed.
   if (key === undefined) return null
   if (!/^[A-Za-z0-9_-]{16,128}$/.test(key)) throw failure(400, 'معرف محاولة الحفظ غير صالح')
-  const input = Object.fromEntries(INPUT_FIELDS.filter(field => req.body[field] !== undefined).map(field => [field, req.body[field]]))
-  if (req.body.imageRights !== undefined) input.imageRights = Object.fromEntries(['source', 'licenseReference'].filter(field => req.body.imageRights?.[field] !== undefined).map(field => [field, req.body.imageRights[field]]))
+  const input = productInput(req.body)
   const hash = crypto.createHash('sha256').update(JSON.stringify(canonical({ actorId: req.supplier.id, input }))).digest('hex')
   return { key, hash, actorId: req.supplier.id, organizationId: req.supplier.organizationId || null }
 }
@@ -40,6 +45,7 @@ async function requireCreationIndex() {
 function publicProduct(product) {
   const result = typeof product.toObject === 'function' ? product.toObject({ transform: false }) : { ...product }
   delete result.creationReceipt
+  delete result.updateReceipt
   return result
 }
 
@@ -71,4 +77,4 @@ async function createProductOnce(req, prepareProduct) {
   return { product, receipt: identity ? product.creationReceipt : null, replayed }
 }
 
-module.exports = { createProductOnce, publicProduct }
+module.exports = { createProductOnce, publicProduct, canonical, productInput }

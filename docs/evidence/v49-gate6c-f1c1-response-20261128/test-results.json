@@ -1,0 +1,21 @@
+{
+  "passed": 112,
+  "failed": 0,
+  "suites": [
+    {
+      "name": "rfq_supplier_rejection.test.js"
+    },
+    {
+      "name": "rfq_offer_submission.test.js"
+    },
+    {
+      "name": "supplier_response_filter.test.js"
+    },
+    {
+      "name": "rfq_creation.test.js"
+    },
+    {
+      "name": "businessTypes.test.js"
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+[
+  {
+    "journey": "verified_taxonomy_activity",
+    "count": 1
+  },
+  {
+    "journey": "verified_text",
+    "count": 1
+  },
+  {
+    "journey": "optional_clear",
+    "count": 2
+  },
+  {
+    "lang": "ar",
+    "width": 320,
+    "geometry": {
+      "vw": 320,
+      "scroll": 320,
+      "disabled": 3,
+      "heights": [
+        44,
+        44,
+        44,
+        44,
+        44
+      ]
+    }
+  },
+  {
+    "lang": "fr",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "disabled": 3,
+      "heights": [
+        44,
+        44,
+        44,
+        44,
+        44
+      ]
+    }
+  },
+  {
+    "lang": "en",
+    "width": 1280,
+    "geometry": {
+      "vw": 1265,
+      "scroll": 1265,
+      "disabled": 3,
+      "heights": [
+        44,
+        44,
+        44,
+        44,
+        44
+      ]
+    }
+  },
+  {
+    "journey": "empty_verified_scope",
+    "count": 0
+  },
+  {
+    "journey": "store_optional_verification",
+    "count": 2
+  }
+]

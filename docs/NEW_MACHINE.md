@@ -86,3 +86,8 @@ npm run build
 قبل العمل: `git status` ثم `git pull --ff-only` إذا كان مجلد العمل نظيفاً. عند وجود
 تعديلات أو اختلاف تاريخ توقف وراجعها؛ لا تستخدم reset أو force-push. بعد المرحلة
 راجع الفرق والاختبارات والتقرير ثم اتبع [دليل المزامنة](GITHUB_SYNC.md).
+
+
+## Full backend regression prerequisites (2026-11-27)
+
+The full Windows regression uses a clean isolated development worktree, disposable MongoDB and media/log directories, and synthetic credentials. Before running the full suite, prepare a fresh private R41_OUTPUT/results directory, the ignored reports/phase-r2-evidence directory, and a reviewed local copy of the historical reports/phase3-cost-model.json input. Do not retrieve production data or invent a cost model to satisfy the offline blueprint check. See the [tested regression setup, results and limits](v49-full-backend-2026-11-27.md). These local inputs and raw test evidence are not part of public Git; the full initial run required four suite rechecks. Do not claim deployment readiness from structural checks.

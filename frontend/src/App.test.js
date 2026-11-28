@@ -1,3 +1,4 @@
+import {comparisonFixture} from './comparisonFixture';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import App from './App';
 jest.mock('./components/suppliers/SupplierDashboard', () => function IsolatedSupplierDashboard({ onBack }) {
@@ -95,7 +96,7 @@ test('restored buyer session stays in the marketplace and logout clears both sto
 });
 
 const pilotProduct = {
-  _id: 'pilot-product-1', name: 'Carton pilote — produit test', category: 'Emballage',
+  _id: '111111111111111111111111', name: 'Carton pilote — produit test', category: 'Emballage',
   description: 'Produit synthétique pour vérifier les paliers de gros.', city: 'Casablanca',
   price: 25, currency: 'MAD', unit: 'carton', moq: 20, pricingMode: 'fixed',
   availability: 'in_stock', inStock: true, supplierId: { _id: 'pilot-supplier', name: 'Fournisseur test' },
@@ -110,7 +111,7 @@ test.each([
   localStorage.setItem('jomla_lang', lang);
   URL.createObjectURL = jest.fn(() => 'blob:anonymous-catalog');
   URL.revokeObjectURL = jest.fn();
-  global.fetch = jest.fn(url => String(url).includes('/media/') ? Promise.resolve({ ok: true, status: 200,
+  global.fetch = jest.fn(url => String(url).includes('/comparable?') ? json(comparisonFixture(pilotProduct,Number(new URL(url,'http://localhost').searchParams.get('quantity')))) : String(url).includes('/media/') ? Promise.resolve({ ok: true, status: 200,
     blob: async () => new Blob(['synthetic public image'], { type: 'image/png' }) }) :
     String(url).endsWith('/products/' + pilotProduct._id) ? json({ product: { ...pilotProduct, imageUrl: '/uploads/public-app-c1.png' } }) :
     catalogResponse([{ ...pilotProduct, imageUrl: '/uploads/public-app-c1.png' }]));
@@ -122,8 +123,8 @@ test.each([
   expect(mediaRequest[1].credentials).toBe('omit');
   fireEvent.click(screen.getByRole('button', { name: (lang === 'fr' ? 'Aperçu rapide : ' : 'معاينة سريعة: ') + pilotProduct.name }));
   fireEvent.click(await within(screen.getByRole('dialog')).findByRole('button', { name: compareLabel, exact: true }));
+  await waitFor(()=>expect(screen.getByRole('dialog').querySelector('.atlas-comparison-row')).toHaveTextContent(pilotProduct.name));
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: lang === 'fr' ? 'Fermer' : 'إغلاق' }));
-  expect(within(screen.getByRole('table')).getByText(pilotProduct.name)).toBeInTheDocument();
   expect(screen.getByRole('img', { name: pilotProduct.name })).toBeInTheDocument();
   expect(localStorage.getItem('supplierToken')).toBeNull();
 });
@@ -133,6 +134,7 @@ test('comparison follows the requested quantity when the catalog price changes f
   global.fetch = jest.fn(url => {
     const request = new URL(url, 'http://localhost');
     const quantity = Number(request.searchParams.get('quantity'));
+    if(request.pathname.endsWith('/comparable'))return json(comparisonFixture(pilotProduct,quantity));
     if (request.pathname === '/api/products/' + pilotProduct._id) return json({ product: pilotProduct });
     return catalogResponse([{ ...pilotProduct, effectiveUnitPrice: quantity >= 50 ? 20 : quantity >= 20 ? 22 : 25 }]);
   });
@@ -143,14 +145,12 @@ test('comparison follows the requested quantity when the catalog price changes f
   await waitFor(() => expect(card.querySelector('.price')).toHaveTextContent(/22[,.]00/));
   fireEvent.click(within(card).getByRole('button', { name: 'Aperçu rapide : ' + pilotProduct.name }));
   fireEvent.click(await within(screen.getByRole('dialog')).findByRole('button', { name: 'Comparer' }));
-  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Fermer' }));
-  const priceCell = within(screen.getByRole('table')).getAllByRole('cell')[1];
-  expect(priceCell).toHaveTextContent(/22[,.]00/);
-
-  fireEvent.change(screen.getByLabelText('Quantité souhaitée'), { target: { value: '50' } });
-  await waitFor(() => expect(fetch.mock.calls.some(([url]) => new URL(url, 'http://localhost').searchParams.get('quantity') === '50')).toBe(true));
-  await waitFor(() => expect(screen.getByRole('heading', { name: pilotProduct.name }).closest('article').querySelector('.price')).toHaveTextContent(/20[,.]00/));
-  await waitFor(() => expect(within(screen.getByRole('table')).getAllByRole('cell')[1]).toHaveTextContent(/20[,.]00/));
+  const comparison=screen.getByRole('dialog',{name:'Comparer le même type'});
+  await waitFor(()=>expect(comparison.querySelector('.atlas-comparison-row b')).toHaveTextContent(/22[,.]00/));
+  fireEvent.change(within(comparison).getByLabelText('Quantité souhaitée'),{target:{value:'50'}});
+  fireEvent.click(within(comparison).getByRole('button',{name:'Calculer'}));
+  await waitFor(()=>expect(comparison.querySelector('.atlas-comparison-row b')).toHaveTextContent(/20[,.]00/));
+  expect(fetch.mock.calls.some(([url])=>String(url).includes('/comparable?')&&new URL(url,'http://localhost').searchParams.get('quantity')==='50')).toBe(true);
 });
 
 test('returning from the supplier workspace refreshes the public catalog after a newly published product', async () => {

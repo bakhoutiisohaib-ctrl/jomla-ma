@@ -1,0 +1,50 @@
+{
+  "baseline": "ca5e62df273e8530048f3926c6887e221e1756c3",
+  "passed": 96,
+  "total": 96,
+  "suites": [
+    {
+      "name": "SupplierDashboard.test.jsx",
+      "passed": 28,
+      "total": 28,
+      "status": "passed"
+    },
+    {
+      "name": "BuyerDashboard.test.jsx",
+      "passed": 24,
+      "total": 24,
+      "status": "passed"
+    },
+    {
+      "name": "LocalReviewJourneys.test.jsx",
+      "passed": 17,
+      "total": 17,
+      "status": "passed"
+    },
+    {
+      "name": "TradeConfirmationDispute.test.jsx",
+      "passed": 16,
+      "total": 16,
+      "status": "passed"
+    },
+    {
+      "name": "AdminDashboard.test.jsx",
+      "passed": 5,
+      "total": 5,
+      "status": "passed"
+    },
+    {
+      "name": "Language.test.jsx",
+      "passed": 6,
+      "total": 6,
+      "status": "passed"
+    }
+  ],
+  "skipped": 0,
+  "exitCode": 0,
+  "build": {
+    "status": "PASS",
+    "ci": true,
+    "artifact": "main.ed5d8a30.js"
+  }
+}

@@ -1,0 +1,21 @@
+[
+  {
+    "journey": "buyer_real_server_write_lost_ack",
+    "keyPersisted": true,
+    "noTextStored": true
+  },
+  {
+    "journey": "buyer_reload_confirm_without_resend",
+    "keyCleared": true
+  },
+  {
+    "journey": "supplier_reload_recovers_saved_text_after_notice_fault"
+  },
+  {
+    "journey": "supplier_same_key_completes_notice",
+    "keyCleared": true
+  },
+  {
+    "journey": "both_parties_see_one_message_each"
+  }
+]

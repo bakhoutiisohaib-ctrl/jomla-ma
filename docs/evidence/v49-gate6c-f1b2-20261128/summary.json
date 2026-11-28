@@ -1,0 +1,50 @@
+{
+  "baseline": "2f4a2bf94176f74abb87fb005fa4fa37337cbb58",
+  "passed": 56,
+  "total": 56,
+  "suites": [
+    {
+      "name": "RoutingPages.test.jsx",
+      "passed": 16,
+      "total": 16,
+      "status": "passed"
+    },
+    {
+      "name": "SupplierTrustJourneys.test.jsx",
+      "passed": 9,
+      "total": 9,
+      "status": "passed"
+    },
+    {
+      "name": "VisualSearchJourneys.test.jsx",
+      "passed": 5,
+      "total": 5,
+      "status": "passed"
+    },
+    {
+      "name": "StructuredSearchJourneys.test.jsx",
+      "passed": 6,
+      "total": 6,
+      "status": "passed"
+    },
+    {
+      "name": "MarketHome.test.jsx",
+      "passed": 2,
+      "total": 2,
+      "status": "passed"
+    },
+    {
+      "name": "SupplierRating.test.jsx",
+      "passed": 18,
+      "total": 18,
+      "status": "passed"
+    }
+  ],
+  "skipped": 0,
+  "exitCode": 0,
+  "build": {
+    "status": "PASS",
+    "ci": true,
+    "artifact": "main.b400a910.js"
+  }
+}

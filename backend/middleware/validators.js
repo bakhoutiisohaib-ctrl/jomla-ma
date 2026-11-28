@@ -1,5 +1,6 @@
 const { body, validationResult, param } = require('express-validator')
 const { imageUrlAllowed } = require('../utils/catalog')
+const { parseTaxonomyPath } = require('../utils/taxonomy')
 
 // Middleware للتحقق من نتائج التحقق
 const handleValidationErrors = (req, res, next) => {
@@ -17,6 +18,7 @@ const handleValidationErrors = (req, res, next) => {
 const productFields = [
   body('name').optional().isString().isLength({ max: 160 }),
   body('category').optional().isString().isLength({ max: 100 }),
+  body().custom(value => { parseTaxonomyPath(value); return true }),
   body('description').optional().isString().isLength({ max: 5000 }),
   body('city').optional().isString().isLength({ max: 100 }),
   body('unit').optional().isString().isLength({ min: 1, max: 50 }),

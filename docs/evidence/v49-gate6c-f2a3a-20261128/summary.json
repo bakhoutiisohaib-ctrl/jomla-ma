@@ -1,0 +1,33 @@
+{
+  "baseline": "88eb56b821a68ca4893fd4280517868d9ed94f80",
+  "passed": 43,
+  "total": 43,
+  "suites": [
+    {
+      "name": "security.test.js",
+      "passed": 16,
+      "total": 16,
+      "status": "passed"
+    },
+    {
+      "name": "rfq_message_delivery.test.js",
+      "passed": 12,
+      "total": 12,
+      "status": "passed"
+    },
+    {
+      "name": "directConversation.test.js",
+      "passed": 12,
+      "total": 12,
+      "status": "passed"
+    },
+    {
+      "name": "reports_and_roles.test.js",
+      "passed": 3,
+      "total": 3,
+      "status": "passed"
+    }
+  ],
+  "skipped": 0,
+  "exitCode": 0
+}

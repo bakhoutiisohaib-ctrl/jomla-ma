@@ -1,0 +1,472 @@
+[
+  {
+    "lang": "ar",
+    "width": 320,
+    "geometry": {
+      "vw": 320,
+      "scroll": 320,
+      "bottom": 844,
+      "height": 63.375,
+      "viewport": 844,
+      "position": "fixed",
+      "mobileNav": "none",
+      "actions": [
+        {
+          "width": 122.9375,
+          "height": 46.375,
+          "hit": true
+        },
+        {
+          "width": 102.453125,
+          "height": 46.375,
+          "hit": true
+        },
+        {
+          "width": 66.609375,
+          "height": 46.375,
+          "hit": true
+        }
+      ]
+    },
+    "footerReachable": true
+  },
+  {
+    "lang": "ar",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "bottom": 844,
+      "height": 63.375,
+      "viewport": 844,
+      "position": "fixed",
+      "mobileNav": "none",
+      "actions": [
+        {
+          "width": 152.40625,
+          "height": 46.375,
+          "hit": true
+        },
+        {
+          "width": 127.03125,
+          "height": 46.375,
+          "hit": true
+        },
+        {
+          "width": 82.5625,
+          "height": 46.375,
+          "hit": true
+        }
+      ]
+    },
+    "footerReachable": true
+  },
+  {
+    "lang": "fr",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "bottom": 844,
+      "height": 63.375,
+      "viewport": 844,
+      "position": "fixed",
+      "mobileNav": "none",
+      "actions": [
+        {
+          "width": 152.40625,
+          "height": 46.375,
+          "hit": true
+        },
+        {
+          "width": 127.03125,
+          "height": 46.375,
+          "hit": true
+        },
+        {
+          "width": 82.5625,
+          "height": 46.375,
+          "hit": true
+        }
+      ]
+    },
+    "footerReachable": true
+  },
+  {
+    "lang": "en",
+    "width": 1280,
+    "geometry": {
+      "vw": 1265,
+      "scroll": 1265,
+      "bottom": 844,
+      "height": 61,
+      "viewport": 844,
+      "position": "fixed",
+      "mobileNav": "none",
+      "actions": [
+        {
+          "width": 337.671875,
+          "height": 44,
+          "hit": true
+        },
+        {
+          "width": 281.40625,
+          "height": 44,
+          "hit": true
+        },
+        {
+          "width": 182.90625,
+          "height": 44,
+          "hit": true
+        }
+      ]
+    },
+    "footerReachable": true
+  },
+  {
+    "journey": "short_viewport_in_flow",
+    "width": 390,
+    "height": 400
+  },
+  {
+    "journey": "input_focus_dock_in_flow"
+  },
+  {
+    "journey": "cart_store_back"
+  },
+  {
+    "journey": "dock_real_rfq",
+    "quantity": 50,
+    "modalAboveDock": true
+  },
+  {
+    "journey": "buyer_geometry",
+    "lang": "ar",
+    "width": 320,
+    "geometry": {
+      "vw": 320,
+      "scroll": 320,
+      "actions": [
+        {
+          "w": 87.328125,
+          "h": 68.78125,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 87.328125,
+          "h": 68.78125,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 87.34375,
+          "h": 68.78125,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 87.328125,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 87.328125,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 87.34375,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 88.65625,
+          "h": 102.4375,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 88.671875,
+          "h": 102.4375,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 88.65625,
+          "h": 102.4375,
+          "iconWidth": 20,
+          "iconHeight": 20
+        }
+      ],
+      "counts": [
+        "0",
+        "1",
+        "0"
+      ],
+      "refresh": {
+        "width": 64,
+        "height": 44,
+        "nowrap": "nowrap",
+        "scroll": 62,
+        "client": 62
+      }
+    }
+  },
+  {
+    "journey": "buyer_geometry",
+    "lang": "ar",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "actions": [
+        {
+          "w": 110.65625,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 110.671875,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 110.65625,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 110.65625,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 110.671875,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 110.65625,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 112,
+          "h": 102.4375,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 112,
+          "h": 102.4375,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 112,
+          "h": 102.4375,
+          "iconWidth": 20,
+          "iconHeight": 20
+        }
+      ],
+      "counts": [
+        "0",
+        "1",
+        "0"
+      ],
+      "refresh": {
+        "width": 64,
+        "height": 44,
+        "nowrap": "nowrap",
+        "scroll": 62,
+        "client": 62
+      }
+    }
+  },
+  {
+    "journey": "buyer_geometry",
+    "lang": "fr",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "actions": [
+        {
+          "w": 110.65625,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 110.671875,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 110.65625,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 110.65625,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 110.671875,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 110.65625,
+          "h": 53.390625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 112,
+          "h": 102.4375,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 112,
+          "h": 121.6875,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 112,
+          "h": 102.4375,
+          "iconWidth": 20,
+          "iconHeight": 20
+        }
+      ],
+      "counts": [
+        "0",
+        "1",
+        "0"
+      ],
+      "refresh": {
+        "width": 83.5625,
+        "height": 44,
+        "nowrap": "nowrap",
+        "scroll": 82,
+        "client": 82
+      }
+    }
+  },
+  {
+    "journey": "buyer_geometry",
+    "lang": "en",
+    "width": 1280,
+    "geometry": {
+      "vw": 1280,
+      "scroll": 1280,
+      "actions": [
+        {
+          "w": 202,
+          "h": 48.5,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 202,
+          "h": 48.5,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 202,
+          "h": 48.5,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 202,
+          "h": 44,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 202,
+          "h": 44,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 202,
+          "h": 44,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 306,
+          "h": 102.140625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 306,
+          "h": 102.140625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        },
+        {
+          "w": 306,
+          "h": 102.140625,
+          "iconWidth": 20,
+          "iconHeight": 20
+        }
+      ],
+      "counts": [
+        "0",
+        "1",
+        "0"
+      ],
+      "refresh": {
+        "width": 84.046875,
+        "height": 46,
+        "nowrap": "nowrap",
+        "scroll": 82,
+        "client": 82
+      }
+    }
+  },
+  {
+    "journey": "buyer_summary_filters"
+  },
+  {
+    "journey": "buyer_real_links"
+  },
+  {
+    "journey": "buyer_workspace_navigation"
+  },
+  {
+    "journey": "real_offer_notice_open",
+    "twoOffers": true,
+    "oneUnreadAfterOpen": true
+  },
+  {
+    "journey": "real_buyer_message"
+  },
+  {
+    "journey": "real_current_offer_acceptance",
+    "agreement": true,
+    "closed": true
+  }
+]

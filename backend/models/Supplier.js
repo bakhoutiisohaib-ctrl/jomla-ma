@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const { BUSINESS_TYPES, validBusinessTypes } = require('../utils/businessTypes')
 
 const SupplierSchema = new mongoose.Schema({
   name:               { type: String, required: true },
@@ -12,6 +13,7 @@ const SupplierSchema = new mongoose.Schema({
   email:              { type: String, unique: true, required: true, trim: true, lowercase: true },
   password:           { type: String, required: true, select: false },
   role:               { type: String, enum: ['supplier', 'admin', 'buyer', 'staff'], default: 'supplier' },
+  businessTypes:      { type: [String], enum: BUSINESS_TYPES, default: [], validate: validBusinessTypes },
   organization:       { type: String, default: '' }, // اسم الشركة أو المنظمة
   permissions:        [{ type: String }],            // صلاحيات الموظف (manage_products, manage_rfq, etc.)
   parentSupplierId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' }, // للموظف التابع لمنظمة مورد
@@ -24,6 +26,8 @@ const SupplierSchema = new mongoose.Schema({
   isActive:           { type: Boolean, default: true },
   isVerified:         { type: Boolean, default: false },
   verificationStatus: { type: String, enum: ['unverified', 'pending', 'verified', 'rejected'], default: 'unverified' },
+  verificationRevision: { type: Number, default: 0, min: 0, validate: Number.isSafeInteger },
+  verificationOperation: { type: mongoose.Schema.Types.Mixed, select: false, default: undefined },
   iceNumber:          { type: String, default: '' }, // المعرف الموحد للمقاولة ICE
   tradeRegistry:      { type: String, default: '' }, // رقم السجل التجاري RC
   verificationDoc:    { type: String, default: '' }, // رابط وثيقة الترخيص أو السجل
@@ -31,5 +35,7 @@ const SupplierSchema = new mongoose.Schema({
   rejectionReason:    { type: String, default: '' },
   createdAt:          { type: Date, default: Date.now }
 })
+
+SupplierSchema.index({ 'verificationOperation.nextAttemptAt':1 }, { sparse:true })
 
 module.exports = mongoose.model('Supplier', SupplierSchema)

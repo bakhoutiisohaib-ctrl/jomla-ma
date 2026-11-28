@@ -1,0 +1,93 @@
+[
+  {
+    "journey": "unverified_public_store_and_product",
+    "status": "unverified",
+    "revision": 0,
+    "publicProduct": 200,
+    "publicStore": 200,
+    "badge": false,
+    "audits": {
+      "submitted": 0,
+      "rejected": 0,
+      "verified": 0
+    }
+  },
+  {
+    "journey": "explicit_optional_submission",
+    "status": "pending",
+    "revision": 1,
+    "publicProduct": 200,
+    "publicStore": 200,
+    "badge": false,
+    "audits": {
+      "submitted": 1,
+      "rejected": 0,
+      "verified": 0
+    }
+  },
+  {
+    "journey": "audited_admin_rejection",
+    "status": "rejected",
+    "revision": 1,
+    "publicProduct": 200,
+    "publicStore": 200,
+    "badge": false,
+    "audits": {
+      "submitted": 1,
+      "rejected": 1,
+      "verified": 0
+    }
+  },
+  {
+    "journey": "corrected_dossier_new_revision",
+    "status": "pending",
+    "revision": 2,
+    "publicProduct": 200,
+    "publicStore": 200,
+    "badge": false,
+    "audits": {
+      "submitted": 2,
+      "rejected": 1,
+      "verified": 0
+    }
+  },
+  {
+    "journey": "audited_admin_approval",
+    "status": "verified",
+    "revision": 2,
+    "publicProduct": 200,
+    "publicStore": 200,
+    "badge": true,
+    "audits": {
+      "submitted": 2,
+      "rejected": 1,
+      "verified": 1
+    }
+  },
+  {
+    "journey": "public_badge_only_after_approval",
+    "status": "verified",
+    "revision": 2,
+    "publicProduct": 200,
+    "publicStore": 200,
+    "badge": true,
+    "audits": {
+      "submitted": 2,
+      "rejected": 1,
+      "verified": 1
+    }
+  },
+  {
+    "journey": "unchanged_approved_resubmission_preserves_badge",
+    "status": "verified",
+    "revision": 2,
+    "publicProduct": 200,
+    "publicStore": 200,
+    "badge": true,
+    "audits": {
+      "submitted": 2,
+      "rejected": 1,
+      "verified": 1
+    }
+  }
+]

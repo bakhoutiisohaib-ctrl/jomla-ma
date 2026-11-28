@@ -12,7 +12,8 @@ const same = (a, b) => a != null && b != null && String(a) === String(b)
 const fail = (status, message, code = 'RFQ_OFFER_RETRY') => Object.assign(new Error(message), { status, code })
 const conflict = () => fail(409, 'سجل العرض يحتاج مراجعة؛ لم يُستبدل العرض السابق', 'RFQ_OFFER_CONFLICT')
 const clean = (v, max = 5000) => typeof v === 'string' ? v.trim().slice(0, max) : ''
-const load = id => RFQ.findById(id).select('+offerSubmission')
+const {firstResponse}=require('./supplierResponseFilter')
+const load = id => RFQ.findById(id).select('+offerSubmission +responseMetricVersion +firstCommercialResponse')
 const receipt = (rfq, key) => Offer.findOne({ rfqId: rfq._id, supplierId: rfq.supplierId, 'submission.key': key }).select('+submission')
 const terminal = o => ['completed', 'expired'].includes(o?.submission?.phase)
 function authorize(req, rfq) {
@@ -98,10 +99,11 @@ async function finish(id, j) {
     }
     await Offer.updateOne({ _id: j.offerId, 'submission.hash': j.hash, 'submission.phase': 'pending' }, { $set: { 'submission.phase': 'completed' } }, { ...WRITE })
     if (!terminal(await receipt(rfq, j.key))) throw conflict()
+    const completedAt=new Date()
     await RFQ.updateOne({ ...fence(id, j, ['committing']), status: 'offering', decision: { $exists: false } }, {
       $set: { status: 'responded', currentOfferId: j.offerId, offer: { unitPrice: j.data.unitPrice, totalPrice: j.data.totalPrice,
         deliveryDays: j.data.deliveryDays, notes: j.data.notes, productSnapshot: j.data.productSnapshot, respondedAt: j.startedAt },
-        'offerSubmission.phase': 'completed', 'offerSubmission.completedAt': new Date() },
+        'offerSubmission.phase': 'completed', 'offerSubmission.completedAt': completedAt, ...firstResponse(rfq,j,'offer',j.offerId,completedAt) },
       $unset: { 'offerSubmission.nextAttemptAt': 1, 'offerSubmission.lastErrorCode': 1 }, $inc: { revision: 1 }
     }, { ...WRITE, runValidators: true })
   } else if (phase === 'aborting') {

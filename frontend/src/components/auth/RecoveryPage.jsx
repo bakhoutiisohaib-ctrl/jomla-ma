@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiRequest, clearSession } from '../../api/config';
+import useAccountAttempt from './useAccountAttempt';
 import { useLabels } from '../../i18n/useLabels';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { Field, Notice } from '../common/WorkspaceUI';
@@ -14,6 +15,7 @@ export default function RecoveryPage({ reset = false, onBack, onLogin, onRequest
     // Fragments are not sent to servers; remove the bearer secret from browser history too.
     if (reset && window.location.hash) window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
   }, [reset]);
+  const attempt = useAccountAttempt();
   const badLink = reset && !/^[a-f0-9]{64}$/.test(token);
   const messages = {
     RECOVERY_LINK_INVALID: l('رابط الاسترجاع غير صالح أو انتهت صلاحيته. اطلب رابطاً جديداً.', 'Lien invalide ou expiré. Demandez un nouveau lien.', 'This link is invalid or expired. Request a new link.'),
@@ -22,16 +24,17 @@ export default function RecoveryPage({ reset = false, onBack, onLogin, onRequest
     RECOVERY_PASSWORD_INVALID: l('استعمل 8 أحرف على الأقل، وبحد أقصى 72 بايت.', 'Utilisez au moins 8 caractères et au maximum 72 octets.', 'Use at least 8 characters and at most 72 bytes.')
   };
   async function submit(event) {
-    event.preventDefault(); setError('');
+    event.preventDefault(); if (done || badLink) return; setError('');
     if (reset && password !== confirmation) { setError(l('كلمتا المرور غير متطابقتين.', 'Les mots de passe ne correspondent pas.', 'The passwords do not match.')); return; }
-    setBusy(true);
+    const active = attempt.begin(); if (!active) return; setBusy(true);
     try {
-      await apiRequest('/account-recovery/' + (reset ? 'reset' : 'request'), { method: 'POST', token: '',
+      await apiRequest('/account-recovery/' + (reset ? 'reset' : 'request'), { method: 'POST', token: '', signal: active.signal,
         body: reset ? { token, password, language: lang } : { email, language: lang } });
-      if (reset) clearSession();
+      if (!active.current()) return;
+      if (reset) clearSession(active.token);
       setPassword(''); setConfirmation(''); setDone(true);
-    } catch (e) { setError(messages[e.data?.code] || (e.status === 429 ? messages.RECOVERY_RATE_LIMITED : e.message)); }
-    finally { setBusy(false); }
+    } catch (e) { if (active.current() && e.name !== 'AbortError') setError(messages[e.data?.code] || (e.status === 429 ? messages.RECOVERY_RATE_LIMITED : e.message)); }
+    finally { if (active.finish()) setBusy(false); }
   }
   return <AuthScene onBack={onBack}>
     <h1>{reset ? l('كلمة مرور جديدة', 'Nouveau mot de passe', 'New password') : l('استرجاع حسابك', 'Récupérer votre compte', 'Recover your account')}</h1>

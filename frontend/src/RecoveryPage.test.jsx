@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor, cleanup } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, cleanup } from '@testing-library/react';
 import RecoveryPage from './components/auth/RecoveryPage';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { apiRequest, clearSession } from './api/config';
+import { setSession } from './api/session';
 jest.mock('./api/config', () => ({ apiRequest: jest.fn(), clearSession: jest.fn() }));
 beforeEach(() => { localStorage.clear(); window.history.replaceState({}, '', '/forgot-password'); jest.clearAllMocks(); });
 afterEach(cleanup);
@@ -36,4 +37,34 @@ test('expired link and unavailable delivery are actionable without exposing serv
   fireEvent.change(screen.getByRole('textbox'),{target:{value:'trial@example.test'}});
   fireEvent.submit(screen.getByRole('textbox').closest('form'));
   expect(await screen.findByRole('alert')).toHaveTextContent('currently unavailable');
+});
+
+test('a reset is single-flight and a late reply cannot clear a replacement session', async () => {
+  localStorage.setItem('jomla_lang','en');setSession('original-session');
+  window.history.replaceState({},'', '/reset-password#token='+'a'.repeat(64));
+  let finish;
+  apiRequest.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+  show({reset:true});
+  for(const name of ['New password','Confirm password']) fireEvent.change(screen.getByLabelText(name),{target:{value:'New-Test-Password!'}});
+  const form=screen.getByRole('button',{name:'Save password'}).closest('form');
+  fireEvent.submit(form);fireEvent.submit(form);
+  expect(apiRequest).toHaveBeenCalledTimes(1);
+  act(()=>setSession('replacement-session'));
+  await act(async()=>finish({}));
+  expect(clearSession).not.toHaveBeenCalled();
+  expect(localStorage.getItem('supplierToken')).toBe('replacement-session');
+  expect(screen.queryByText(/previous sessions were revoked/)).not.toBeInTheDocument();
+});
+
+test('leaving recovery aborts pending request and ignores its response', async () => {
+  let finish;
+  apiRequest.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+  const view=show();
+  fireEvent.change(screen.getByRole('textbox'),{target:{value:'trial@example.test'}});
+  fireEvent.submit(screen.getByRole('textbox').closest('form'));
+  const signal=apiRequest.mock.calls[0][1].signal;
+  view.unmount();
+  await act(async()=>finish({}));
+  expect(signal.aborted).toBe(true);
+  expect(clearSession).not.toHaveBeenCalled();
 });

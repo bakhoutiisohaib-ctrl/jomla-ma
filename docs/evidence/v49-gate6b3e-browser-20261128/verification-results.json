@@ -1,0 +1,20 @@
+[
+  {
+    "journey": "reserved_submission_reload_blocks_new_dossier"
+  },
+  {
+    "journey": "automatic_submission_recovery_without_resend"
+  },
+  {
+    "journey": "admin_approval_not_reported_complete_during_projection_failure"
+  },
+  {
+    "journey": "admin_reload_keeps_decisions_locked"
+  },
+  {
+    "journey": "automatic_approval_recovery_without_new_decision"
+  },
+  {
+    "journey": "canonical_public_badge_after_recovery"
+  }
+]

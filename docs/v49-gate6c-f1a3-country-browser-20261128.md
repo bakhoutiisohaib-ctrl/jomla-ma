@@ -1,0 +1,7 @@
+# Gate 6C.2A.3 (F1) - declared country browser acceptance - 2026-11-28
+
+**PASS: scoped local country capability accepted. 6C.2A closed; F1 OPEN.** Baseline 2ddba6d2e4313e552cf1b2ced2a5d32e1d5ab2db.
+
+- Actual Chrome/Express/disposable wiredTiger MongoDB, 390x844. Initial browser run failed after successful declaration PUT and readback because parent profile refresh changed the load callback and cleared its success notice. Corrected fallback profile handling with a ref; session/owner/role remain load dependencies. Added regression preserving confirmed notice on same-account profile refresh.
+- Final fresh FE 74/74, seven suites, 24.796s, strict CI build PASS (combined exit 0, 43.61s), main.5411fbe6.js. Fresh browser 6/6 + DB PASS, 10.18s exit 0: default country excluded, explicit owner declaration, market and directory scope, withdrawal and clear restores all. Verified no other-owner mutation, no administrative verification gained, exactly two completed organization audits; no uncaught browser errors, no horizontal overflow in captured states. Reviewed synthetic screenshots.
+- [Evidence](evidence/v49-gate6c-f1a3-20261128/summary.json). Prior backend 96/96 scoped evidence not rerun; text/image scope covered by earlier BE/FE tests, not live Chrome here. No real historical data, physical device, verified address, full regression or deployment. Original reference and checkout unchanged. Next: F1B bounded rating metrics, then F1C response metrics and integrated F1 acceptance.

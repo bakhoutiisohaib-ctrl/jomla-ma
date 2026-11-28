@@ -13,6 +13,25 @@ const key = () => {
   if (!window.crypto?.getRandomValues) throw Error('Secure random unavailable');
   return Array.from(window.crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2,'0')).join('');
 };
+function confirmedOpportunity(result, attempt, mode = 'write') {
+  const row = result?.opportunity;
+  if (!row || !/^[a-f0-9]{24}$/i.test(row._id || '') ||
+      row.productId !== attempt.productId || (attempt.id && row._id !== attempt.id) ||
+      !Number.isSafeInteger(row.revision) || row.revision < 0 ||
+      !['draft','published','paused','expired'].includes(row.status) ||
+      !Array.isArray(row.priceTiers) || typeof row.expiresAt !== 'string' ||
+      !Number.isFinite(Date.parse(row.expiresAt))) return null;
+  if (mode === 'inspect') return row.revision >= attempt.body.revision ? row : null;
+  // An idempotent POST replay returns the current saved row, which may have
+  // been changed by another session since the original draft was created.
+  if (!attempt.id) {
+    if (row.revision === 0 && row.status === 'draft') return row;
+    return mode === 'replay' && row.revision > 0 ? row : null;
+  }
+  const requested = attempt.body.status;
+  const statusMatches = row.status === requested || (requested === 'published' && row.status === 'expired');
+  return statusMatches && row.revision === attempt.body.revision + 1 ? row : null;
+}
 export default function WholesaleWorkspace() {
   const token = useSessionToken();
   return <OwnedWorkspace key={token} token={token} />;
@@ -48,16 +67,20 @@ function OwnedWorkspace({ token }) {
       try {
         const body = status === 'paused' && editing ? { revision:editing.revision, status:'paused' }
           : { ...Object.fromEntries(['productId','title','description','terms','unit','currency'].map(f => [f,form[f]])), price:Number(form.price), moq:Number(form.moq), expiresAt:new Date(form.expiresAt).toISOString(), priceTiers:form.priceTiers.map(t => ({ minQty:Number(t.minQty), ...(t.maxQty === '' || t.maxQty == null ? {} : { maxQty:Number(t.maxQty) }), price:Number(t.price) })), ...(editing ? { revision:editing.revision,status } : {}) };
-        attempt.current = { body, key:editing ? null : key(), id:editing?._id };
+        attempt.current = { body, key:editing ? null : key(), id:editing?._id, productId:editing?.productId || body.productId };
       } catch { setError(l('تحقق من التاريخ واستخدم متصفحاً يدعم التوليد الآمن.', 'Vérifiez la date et utilisez un navigateur avec génération sécurisée.')); return; }
     }
     if (!attempt.current) return;
     writing.current = true; setBusy(true); setError(''); setMessage('');
     try {
       const a = attempt.current, result = await call(a.id ? '/'+a.id : '', { method:a.id ? 'PUT':'POST', headers:a.key ? {'Idempotency-Key':a.key} : {}, body:a.body });
-      if (!result || !valid()) return;
-      setUncertain(false); attempt.current = null; setEditing(result.opportunity); setForm({ ...result.opportunity, expiresAt:localDate(result.opportunity.expiresAt) });
-      setMessage(l('حُفظت الفرصة: ', 'Opportunité enregistrée : ')+(result.opportunity.status === 'published' ? l('منشورة', 'publiée') : l('غير منشورة للعامة', 'non publiée'))); await load();
+      if (!valid()) return;
+      const row = confirmedOpportunity(result, a, resume ? 'replay' : 'write');
+      if (!row) throw new Error(l('لم يتأكد حفظ الفرصة. راجع الحالة المحفوظة قبل إنشاء محاولة جديدة.', 'Sauvegarde non confirmée. Vérifiez la version enregistrée avant toute nouvelle tentative.', 'Opportunity save unconfirmed. Check the saved version before a new attempt.'));
+      setUncertain(false); attempt.current = null; setEditing(row); setForm({ ...row, expiresAt:localDate(row.expiresAt) });
+      setMessage(!a.id && row.revision > 0
+        ? l('هذه النسخة المحفوظة؛ راجعها قبل أي تعديل جديد.', 'Voici la version enregistrée ; vérifiez-la avant toute modification.')
+        : l('حُفظت الفرصة: ', 'Opportunité enregistrée : ')+(row.status === 'published' ? l('منشورة', 'publiée') : l('غير منشورة للعامة', 'non publiée'))); await load();
     } catch (failure) {
       if (!valid()) return;
       setError(failure.message);
@@ -67,9 +90,11 @@ function OwnedWorkspace({ token }) {
   }
   async function inspectSaved() {
     if (writing.current || !attempt.current?.id) return;
-    writing.current = true; setBusy(true);
-    try { const result = await call('/mine/'+attempt.current.id); if (result && valid()) {
-      setUncertain(false); attempt.current=null; setEditing(result.opportunity); setForm({ ...result.opportunity, expiresAt:localDate(result.opportunity.expiresAt) });
+    writing.current = true; setBusy(true); setError(''); setMessage('');
+    try { const a = attempt.current, result = await call('/mine/'+a.id); if (valid()) {
+      const row = confirmedOpportunity(result, a, 'inspect');
+      if (!row) throw new Error(l('تعذر تأكيد هوية الفرصة المحفوظة.', 'Impossible de confirmer l’identité de l’opportunité enregistrée.', 'Could not confirm the saved opportunity identity.'));
+      setUncertain(false); attempt.current=null; setEditing(row); setForm({ ...row, expiresAt:localDate(row.expiresAt) });
       setMessage(l('هذه النسخة المحفوظة؛ راجعها قبل أي تعديل جديد.', 'Voici la version enregistrée ; vérifiez-la avant toute modification.')); await load();
     } } catch (failure) { if (valid()) setError(failure.message); }
     finally { writing.current=false; if(valid())setBusy(false); }

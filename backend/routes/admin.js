@@ -12,6 +12,7 @@ const { validateMongoId } = require('../middleware/validators')
 const { asyncHandler } = require('../middleware/errorHandler')
 const { getPaginationParams, formatPaginationResponse, escapeRegex } = require('../utils/constants')
 const { auditedChange } = require('../utils/audit')
+const verification = require('../services/supplierVerification')
 
 router.post('/login', asyncHandler(async (req, res) => {
   const { email, password } = req.body
@@ -46,30 +47,26 @@ router.get('/suppliers', asyncHandler(async (req, res) => {
     const regex = new RegExp(escapeRegex(req.query.search.trim().slice(0, 100)), 'i')
     filter.$or = ['name', 'email', 'city', 'iceNumber', 'tradeRegistry'].map(key => ({ [key]: regex }))
   }
-  const suppliers = await Supplier.find(filter).sort({ createdAt: -1 }).limit(limit).skip(skip)
-  res.json(formatPaginationResponse(suppliers, await Supplier.countDocuments(filter), page, limit))
+  const suppliers = await Supplier.find(filter).select('+verificationOperation').sort({ createdAt: -1 }).limit(limit).skip(skip)
+  res.set('Cache-Control','private, no-store').json(formatPaginationResponse(suppliers.map(verification.safeSupplier), await Supplier.countDocuments(filter), page, limit))
 }))
 
+
+router.get('/suppliers/:id/verification-state',validateMongoId,asyncHandler(async(req,res)=>{
+ res.set('Cache-Control','private, no-store')
+ res.json(await verification.readState(req.params.id,req.supplier))
+}))
+router.post('/suppliers/:id/verification-recover',validateMongoId,asyncHandler(async(req,res)=>{
+ res.set('Cache-Control','private, no-store')
+ res.json(await verification.resume(req.params.id,req.supplier,req.body))
+}))
 router.put('/suppliers/:id/verify', validateMongoId, asyncHandler(async (req, res) => {
-  const { action, rejectionReason } = req.body
-  if (!['approve', 'reject'].includes(action) || (rejectionReason !== undefined && typeof rejectionReason !== 'string')) return res.status(400).json({ message: 'إجراء مراجعة غير صالح' })
+  const { action, rejectionReason, verificationRevision } = req.body
+  if (!['approve', 'reject'].includes(action) || !Number.isSafeInteger(verificationRevision) || verificationRevision < 0 || (rejectionReason !== undefined && (typeof rejectionReason !== 'string' || rejectionReason.length > 2000))) return res.status(400).json({ message: 'إجراء مراجعة أو إصدار ملف غير صالح' })
   const supplier = await Supplier.findOne({ _id: req.params.id, role: 'supplier', isActive: { $ne: false } })
   if (!supplier) return res.status(404).json({ message: 'المورد غير موجود أو معطل' })
-  if (supplier.verificationStatus !== 'pending') return res.status(409).json({ message: 'يجب أن يكون طلب التوثيق قيد المراجعة' })
-  const previousStatus = supplier.verificationStatus
-  const { auditId } = await auditedChange({
-    action: action === 'approve' ? 'SUPPLIER_VERIFIED' : 'SUPPLIER_REJECTED',
-    targetType: 'Supplier', targetId: supplier._id, actor: req.supplier,
-    details: { previousStatus, newStatus: action === 'approve' ? 'verified' : 'rejected', rejectionReason: rejectionReason || null, iceNumber: supplier.iceNumber, tradeRegistry: supplier.tradeRegistry }
-  }, async () => {
-    supplier.isVerified = action === 'approve'
-    supplier.verificationStatus = action === 'approve' ? 'verified' : 'rejected'
-    supplier.verifiedAt = action === 'approve' ? new Date() : undefined
-    supplier.rejectionReason = action === 'approve' ? '' : (rejectionReason || 'الوثائق لا تستوفي شروط التوثيق')
-    await supplier.save()
-    await Store.updateMany({ supplierId: supplier._id }, { $set: { isVerified: supplier.isVerified } })
-  })
-  res.json({ message: action === 'approve' ? 'تم توثيق المورد' : 'تم رفض طلب التوثيق', supplier, auditId })
+  const {supplier:saved,auditId}=await verification.decide(supplier,req.supplier,action,verificationRevision,rejectionReason)
+  res.json({ message: action === 'approve' ? 'تم توثيق المورد' : 'تم رفض طلب التوثيق', supplier: verification.safeSupplier(saved), auditId })
 }))
 
 router.put('/suppliers/:id/status', validateMongoId, asyncHandler(async (req, res) => {
@@ -93,7 +90,7 @@ router.get('/stores', asyncHandler(async (req, res) => {
   if (typeof req.query.status === 'string' && req.query.status !== 'all') filter.reviewStatus = req.query.status
   const stores = await Store.find(filter).populate('supplierId', 'name city phone isVerified verificationStatus')
     .sort({ createdAt: -1 }).limit(limit).skip(skip)
-  res.json(formatPaginationResponse(stores, await Store.countDocuments(filter), page, limit))
+  res.json(formatPaginationResponse(stores.map(s=>verification.storeDto(s,s.supplierId)), await Store.countDocuments(filter), page, limit))
 }))
 
 router.put('/stores/:id/review', validateMongoId, asyncHandler(async (req, res) => {
@@ -113,10 +110,10 @@ router.put('/stores/:id/review', validateMongoId, asyncHandler(async (req, res) 
     store.reviewReason = String(reason || '').slice(0, 2000)
     store.reviewedBy = req.supplier.id
     store.reviewedAt = new Date()
-    store.isVerified = owner.isVerified
     await store.save()
   })
-  res.json({ message: 'تمت مراجعة المتجر', store })
+  const currentOwner=await Supplier.findById(store.supplierId).select('isVerified verificationStatus')
+  res.json({ message: 'تمت مراجعة المتجر', store:verification.storeDto(store,currentOwner) })
 }))
 
 router.put('/stores/:id/status', validateMongoId, asyncHandler(async (req, res) => {

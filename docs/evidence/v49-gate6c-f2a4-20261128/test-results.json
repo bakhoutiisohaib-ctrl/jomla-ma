@@ -1,0 +1,47 @@
+{
+  "backend": {
+    "passed": 43,
+    "failed": 0,
+    "suites": [
+      {
+        "name": "security.test.js"
+      },
+      {
+        "name": "rfq_message_delivery.test.js"
+      },
+      {
+        "name": "directConversation.test.js"
+      },
+      {
+        "name": "reports_and_roles.test.js"
+      }
+    ]
+  },
+  "frontend": {
+    "passed": 107,
+    "failed": 0,
+    "suites": [
+      {
+        "name": "SupplierDashboard.test.jsx"
+      },
+      {
+        "name": "DirectConversation.test.jsx"
+      },
+      {
+        "name": "BuyerDashboard.test.jsx"
+      },
+      {
+        "name": "ProductDetailAfter.test.jsx"
+      },
+      {
+        "name": "Language.test.jsx"
+      }
+    ]
+  },
+  "build": {
+    "status": "PASS",
+    "javascript": "main.dfe10100.js",
+    "css": "main.ecb125ac.css",
+    "sourceCommit": "128b17a307d844d9e1d2c71848b28b54a9bd7ba3"
+  }
+}

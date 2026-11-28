@@ -1,3 +1,4 @@
+const { effectivePrice } = require('../utils/productPricing')
 const { createHash } = require('crypto')
 const mongoose = require('mongoose')
 const sharp = require('sharp')
@@ -6,7 +7,8 @@ const Supplier = require('../models/Supplier')
 const VisualEmbedding = require('../models/VisualEmbedding')
 const { uploadsDirectory, localImagePath } = require('./mediaStorage')
 const { ownedAsset, readAssetBytes } = require('./mediaPrivacy')
-const { PUBLIC_FIELDS, publicCatalogFilter, parseOptions, searchWords, badRequest } = require('../utils/catalog')
+const { PUBLIC_FIELDS, publicCatalogFilter, parseOptions, searchWords, badRequest, categoryPredicate } = require('../utils/catalog')
+const { declaredBusinessTypes } = require('../utils/businessTypes')
 const { escapeRegex } = require('../utils/constants')
 
 const VERSION = 'local-color-spatial-edge-v1'
@@ -38,7 +40,7 @@ function normalize(values) {
   return magnitude ? values.map(value => value / magnitude) : values.map(() => 0)
 }
 
-async function describeImage(buffer) {
+async function describeImage(buffer, { requireDetail = false } = {}) {
   if (!Buffer.isBuffer(buffer) || buffer.length < 20 || buffer.length > MAX_BYTES) throw imageError('صورة البحث غير صالحة أو تجاوزت 10 ميغابايت')
   let metadata, data
   try {
@@ -50,6 +52,25 @@ async function describeImage(buffer) {
       .resize(SIZE, SIZE, { fit: 'fill', kernel: 'lanczos3' }).toColourspace('srgb').removeAlpha().raw().toBuffer()
     if (data.length !== SIZE * SIZE * 3) throw new Error('Unexpected pixel layout')
   } catch { throw imageError('تعذر فك صورة JPEG/PNG/WebP/GIF آمنة وصالحة') }
+
+  // V4.9 input quality gate: use the already decoded pixels, not a second
+  // descriptor or filename heuristic. Scale to the reference 0..255 units.
+  // This is only a conservative detail check, not object recognition.
+  if (requireDetail) {
+    let sum=0, sq=0, edge=0
+    const n=SIZE*SIZE, grayAt=i=>(data[i*3]+data[i*3+1]+data[i*3+2])/3
+    for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){
+      const i=y*SIZE+x,v=grayAt(i)
+      sum+=v;sq+=v*v
+      if(x>0)edge+=Math.abs(v-grayAt(i-1))
+      if(y>0)edge+=Math.abs(v-grayAt(i-SIZE))
+    }
+    const spread=Math.sqrt(Math.max(0,sq/n-(sum/n)**2))
+    if(spread<7||edge/(2*n)<1.5)throw Object.assign(
+      new Error('الصورة فارغة أو تفاصيلها غير كافية. جرّب صورة واضحة للمنتج.'),
+      {status:422,code:'VISUAL_INSUFFICIENT_DETAIL'}
+    )
+  }
 
   const histogram = new Array(64).fill(0)
   const spatial = new Array(4 * 4 * 3).fill(0)
@@ -147,14 +168,16 @@ function minScore() {
   return Number.isFinite(score) && score >= 0.5 && score <= 1 ? score : 0.82
 }
 
+const { applyTaxonomyFilter } = require('../utils/taxonomy')
+
 async function candidateFilter(options) {
-  const filter = await publicCatalogFilter()
+  const filter = await publicCatalogFilter({ businessType: options.businessType, supplierTrust: options.supplierTrust })
   if (options.q) {
     const words = searchWords(options.q).map(word => new RegExp(escapeRegex(word), 'i'))
     filter.$or = [{ name: { $in: words } }, { category: { $in: words } }, { description: { $in: words } }]
   }
   if (options.city) filter.city = new RegExp(escapeRegex(options.city), 'i')
-  if (options.category) filter.category = new RegExp(escapeRegex(options.category), 'i')
+  if (options.category) filter.category = categoryPredicate(options)
   if (options.currency) filter.currency = options.currency
   if (options.quantity) filter.moq = { $lte: options.quantity }
   if (options.supplier) {
@@ -164,17 +187,13 @@ async function candidateFilter(options) {
       filter.$and = [{ supplierId: { $in: ids.map(s => s._id) } }]
     }
   }
+  applyTaxonomyFilter(filter, options.taxonomyPath)
   return filter
 }
 
-function effectivePrice(product, quantity) {
-  if (!quantity) return product.price
-  const tier = (product.priceTiers || []).find(t => t.minQty <= quantity && (t.maxQty == null || t.maxQty >= quantity))
-  return tier?.price ?? product.price
-}
 
-async function searchImage(buffer, { filters = {}, pagination = {} } = {}) {
-  const query = await describeImage(buffer)
+async function searchImage(buffer, { filters = {}, pagination = {}, requireDetail = false } = {}) {
+  const query = await describeImage(buffer, { requireDetail })
   const options = parseOptions({ ...filters, ...pagination })
   const filter = await candidateFilter(options)
   const maxCandidates = integerSetting('VISUAL_SEARCH_MAX_CANDIDATES', 5000, 20000)
@@ -219,7 +238,8 @@ async function searchImage(buffer, { filters = {}, pagination = {} } = {}) {
   const exactCount = matches.filter(p => p.matchType === 'exact').length
   let products = matches.slice(options.skip, options.skip + options.limit)
   // Populate only the same explicitly public supplier fields as text search.
-  products = await Product.populate(products, { path: 'supplierId', select: 'name city phone isVerified verificationStatus', options: { lean: true } })
+  products = await Product.populate(products, { path: 'supplierId', select: 'name city phone isVerified verificationStatus businessTypes', options: { lean: true } })
+  products = products.map(product => ({ ...product, supplierId: product.supplierId ? { ...product.supplierId, businessTypes: declaredBusinessTypes(product.supplierId.businessTypes) } : null }))
   return {
     products, total, exactCount, similarCount: total - exactCount, page: options.page, limit: options.limit,
     pagination: { page: options.page, limit: options.limit, total, pages: Math.ceil(total / options.limit), hasNextPage: options.page * options.limit < total, hasPrevPage: options.page > 1 },

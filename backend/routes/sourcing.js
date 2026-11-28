@@ -40,6 +40,7 @@ router.get('/', requirePermission('manage_rfq'), asyncHandler(async (req, res) =
   res.json(formatPaginationResponse(requests.map(r => sourcingDto(r, req.supplier)), total, page, limit))
 }))
 router.get('/:id', validateMongoId, asyncHandler(async (req, res) => {
+  res.set('Cache-Control','private, no-store')
   const sourcing = await SourcingRequest.findById(req.params.id)
   if (!sourcing) return res.status(404).json({ message: 'طلب التوريد غير موجود' })
   if (String(sourcing.buyerId) === String(req.supplier.id)) return res.json(sourcingDto(sourcing, req.supplier))

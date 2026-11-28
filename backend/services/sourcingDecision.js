@@ -197,4 +197,4 @@ function response(r, actor) {
   return { message: r.processing ? 'حُفظ القرار وهو قيد الاستكمال؛ لم يثبت نهائياً بعد' : 'تم تثبيت قرار عرض التوريد', processing: r.processing,
     replayed: Boolean(r.replayed), ...(r.code ? { code: r.code } : {}), sourcing: sourcingDto(r.sourcing, actor), ...(r.quote ? { quote: quoteDto(r.quote) } : {}) }
 }
-module.exports = { decide, retry, resume, response }
+module.exports = { decide, retry, resume, response, checkedReceipt }

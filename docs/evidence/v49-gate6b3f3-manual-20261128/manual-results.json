@@ -1,0 +1,17 @@
+[
+  {
+    "journey": "paused_owner_failure_keeps_operation_locked"
+  },
+  {
+    "journey": "owner_resumes_same_operation_after_reload"
+  },
+  {
+    "journey": "owner_cannot_resume_admin_decision"
+  },
+  {
+    "journey": "admin_resumes_saved_decision_without_new_put"
+  },
+  {
+    "journey": "canonical_public_badge_after_manual_recovery"
+  }
+]

@@ -1,0 +1,166 @@
+import {visualFixture} from './visualSearchFixture';
+import {structuredFixture} from './structuredSearchFixture';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import App from './App';
+const supplier={_id:'2'.repeat(24),name:'Synthetic verified owner',isVerified:true,verificationStatus:'verified',businessTypes:['manufacturer']};
+const pending={...supplier,_id:'3'.repeat(24),name:'Synthetic pending owner',verificationStatus:'pending'};
+const product={_id:'4'.repeat(24),name:'Synthetic verified item',category:'Textile',price:20,currency:'MAD',moq:1,unit:'piece',availability:'in_stock',supplierId:supplier,storeId:'5'.repeat(24)};
+const other={...product,_id:'6'.repeat(24),name:'Synthetic pending item',supplierId:pending,storeId:'7'.repeat(24)};
+const stores=[{_id:product.storeId,name:'Synthetic verified store',supplierId:supplier},{_id:other.storeId,name:'Synthetic pending store',supplierId:pending}];
+const response=(data,status=200)=>Promise.resolve({ok:status<400,status,json:async()=>data});
+let seen, pendingReply, delayUnfiltered, noVerifiedStores, ratedOutage, responseOutage;
+const requestBody=opt=>typeof opt.body==='string'?JSON.parse(opt.body):opt.body;
+beforeEach(()=>{
+ localStorage.clear();sessionStorage.clear();window.history.replaceState({},'','/');
+ seen=[];pendingReply=null;delayUnfiltered=false;noVerifiedStores=false;ratedOutage=false;responseOutage=false;
+ global.fetch=jest.fn((url,opt={})=>{
+  const u=new URL(url,'http://localhost'),p=u.pathname,b=requestBody(opt);
+  const trust=u.searchParams.get('supplierTrust')||b?.supplierTrust||b?.get?.('supplierTrust')||'';
+  const page=Number(u.searchParams.get('page')||b?.page||1);
+  const type=u.searchParams.get('businessType')||b?.businessType||b?.get?.('businessType')||'';
+  seen.push({p,trust,page,type,signal:opt.signal});
+  if(ratedOutage&&trust==='rated'&&(p.endsWith('/stores')||p.endsWith('/products/search')))return response({message:'Supplier rating filter temporarily unavailable'},503);
+  if(responseOutage&&trust==='fast_response'&&(p.endsWith('/stores')||p.endsWith('/products/search')))return response({message:'Supplier response filter temporarily unavailable'},503);
+  const filter=items=>trust==='verified'?items.slice(0,1):['declared_ma','rated','fast_response'].includes(trust)?items.slice(1):items;
+  const result=data=>({data,pagination:{page,limit:12,total:data.length,pages:data.length?1:0,hasNextPage:false,hasPrevPage:false}});
+  if(p.endsWith('/stores')){
+   const data=result(trust && noVerifiedStores ? [] : filter(stores));
+   if(delayUnfiltered&&!trust){delayUnfiltered=false;return new Promise(resolve=>{pendingReply=()=>resolve(response(data))})}
+   return response(data);
+  }
+  if(p.endsWith('/products/categories'))return response(result([{category:'Textile',count:trust?1:2}]));
+  if(p.endsWith('/products/search')||p.endsWith('/ai-search')||p.endsWith('/image-search')){
+   if(p.endsWith('/ai-search'))return response(structuredFixture(b,filter([product,other])));
+   if(p.endsWith('/image-search'))return response(visualFixture(filter([product,other]),page));
+   return response({...result(filter([product,other])),externalDiscovery:{enabled:true,results:[{url:'https://example.invalid',title:'Unverified external item'}]}});
+  }
+  return response({data:[],unreadCount:0});
+ });
+});
+const choose=name=>fireEvent.click(screen.getByRole('button',{name,exact:true}));
+const trust=()=>screen.getByRole('group',{name:'فلاتر الثقة'});
+test('verified is optional and distinct; verified filter reaches all search paths',async()=>{
+ render(<App/>);await screen.findByText(other.name);
+ const toggle=within(trust()).getByRole('button',{name:'موردون موثقون'});
+ expect(toggle).toHaveAttribute('aria-pressed','false');
+ expect(within(trust()).getByRole('button',{name:'سرعة الاستجابة'})).toBeEnabled();
+ choose('المصنعون');choose('موردون موثقون');
+ await waitFor(()=>expect(screen.queryByText(other.name)).toBeNull());
+ await screen.findByText(product.name);
+ expect(screen.queryByText('Unverified external item')).toBeNull();
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/products/categories')&&r.trust==='verified'&&r.type==='manufacturer')).toBe(true));
+ fireEvent.change(screen.getByLabelText('البحث في الكتالوج'),{target:{value:'shoe'}});
+ fireEvent.submit(screen.getByRole('search'));
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/ai-search')&&r.trust==='verified'&&r.type==='manufacturer')).toBe(true));
+ fireEvent.click(screen.getByRole('button',{name:'بحث بالصورة'}));
+ fireEvent.change(screen.getByLabelText('صورة البحث'),{target:{files:[new File(['synthetic'],'sample.png',{type:'image/png'})]}});
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/image-search')&&r.trust==='verified'&&r.type==='manufacturer')).toBe(true));
+ choose('إلغاء فلترة الثقة');await screen.findByText(other.name);
+ expect(toggle).toHaveAttribute('aria-pressed','false');
+ expect(seen.filter(r=>r.p.endsWith('/image-search')).at(-1)).toMatchObject({trust:'',type:'manufacturer',page:1});
+});
+test('directory scopes verified supplier status, clears stale responses and resets page',async()=>{
+ window.history.replaceState({},'','/stores');delayUnfiltered=true;
+ render(<App/>);await waitFor(()=>expect(pendingReply).not.toBeNull());
+ const stale=seen.find(r=>r.p.endsWith('/stores'));
+ choose('موردون موثقون');await screen.findByText(stores[0].name);
+ expect(screen.getByText('مورد موثق')).toBeInTheDocument();
+ expect(stale.signal.aborted).toBe(true);
+ await act(async()=>pendingReply());
+ expect(screen.queryByText(stores[1].name)).toBeNull();
+ expect(seen.filter(r=>r.p.endsWith('/stores')).at(-1)).toMatchObject({page:1,trust:'verified'});
+ choose('إلغاء فلترة الثقة');await screen.findByText(stores[1].name);
+ expect(screen.getAllByText('مورد موثق')).toHaveLength(1);
+});
+
+
+test('empty verified directory does not claim that all approved stores are absent',async()=>{
+ window.history.replaceState({},'','/stores');noVerifiedStores=true;
+ render(<App/>);await screen.findByText(stores[1].name);
+ choose('موردون موثقون');
+ await screen.findByText('لا توجد متاجر لموردين موثقين تطابق هذا الاختيار حالياً.');
+ expect(screen.queryByText('لا توجد متاجر معتمدة بعد')).toBeNull();
+ choose('إلغاء فلترة الثقة');await screen.findByText(stores[1].name);
+});
+
+test('declared Morocco is distinct from verification and is propagated to every search path',async()=>{
+ render(<App/>);await screen.findByText(product.name);
+ const toggle=within(trust()).getByRole('button',{name:'المغرب (بتصريح المورد)'});
+ expect(toggle).toBeEnabled();choose('المغرب (بتصريح المورد)');
+ await screen.findByText(other.name);await waitFor(()=>expect(screen.queryByText(product.name)).toBeNull());
+ expect(toggle).toHaveAttribute('aria-pressed','true');
+ expect(screen.queryByText('Unverified external item')).toBeNull();
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/products/categories')&&r.trust==='declared_ma')).toBe(true));
+ fireEvent.change(screen.getByLabelText('البحث في الكتالوج'),{target:{value:'shoe'}});
+ fireEvent.submit(screen.getByRole('search'));
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/ai-search')&&r.trust==='declared_ma')).toBe(true));
+ fireEvent.click(screen.getByRole('button',{name:'بحث بالصورة'}));
+ fireEvent.change(screen.getByLabelText('صورة البحث'),{target:{files:[new File(['synthetic'],'sample.png',{type:'image/png'})]}});
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/image-search')&&r.trust==='declared_ma')).toBe(true));
+ choose('موردون موثقون');await screen.findByText(product.name);
+ expect(toggle).toHaveAttribute('aria-pressed','false');
+ expect(seen.filter(r=>r.p.endsWith('/image-search')).at(-1)).toMatchObject({trust:'verified',page:1});
+});
+test('declared Morocco directory empty state is scoped and clear restores all stores',async()=>{
+ window.history.replaceState({},'','/stores');noVerifiedStores=true;
+ render(<App/>);await screen.findByText(stores[1].name);choose('المغرب (بتصريح المورد)');
+ await screen.findByText('لا توجد متاجر تطابق تصريح المغرب حالياً.');
+ expect(screen.queryByText('لا توجد متاجر معتمدة بعد')).toBeNull();
+ choose('إلغاء فلترة الثقة');await screen.findByText(stores[0].name);await screen.findByText(stores[1].name);
+});
+
+test('rated threshold is a separate filter, not a verification badge or sort order',async()=>{
+ render(<App/>);await screen.findByText(product.name);choose('الأعلى تقييماً');
+ await screen.findByText(other.name);await waitFor(()=>expect(screen.queryByText(product.name)).toBeNull());
+ expect(within(trust()).getByRole('button',{name:'الأعلى تقييماً'})).toHaveAttribute('aria-pressed','true');
+ expect(screen.getByText(/معدل 4\.5\/5 فأكثر/)).toBeInTheDocument();
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/products/categories')&&r.trust==='rated')).toBe(true));
+ fireEvent.change(screen.getByLabelText('البحث في الكتالوج'),{target:{value:'shoe'}});fireEvent.submit(screen.getByRole('search'));
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/ai-search')&&r.trust==='rated')).toBe(true));
+ fireEvent.click(screen.getByRole('button',{name:'بحث بالصورة'}));fireEvent.change(screen.getByLabelText('صورة البحث'),{target:{files:[new File(['synthetic'],'sample.png',{type:'image/png'})]}});
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/image-search')&&r.trust==='rated')).toBe(true));
+ choose('المغرب (بتصريح المورد)');await waitFor(()=>expect(seen.filter(r=>r.p.endsWith('/image-search')).at(-1)).toMatchObject({trust:'declared_ma',page:1}));
+ expect(within(trust()).getByRole('button',{name:'الأعلى تقييماً'})).toHaveAttribute('aria-pressed','false');
+});
+test('rated directory empty result uses threshold-specific copy',async()=>{
+ window.history.replaceState({},'','/stores');noVerifiedStores=true;render(<App/>);await screen.findByText(stores[1].name);choose('الأعلى تقييماً');
+ await screen.findByText('لا توجد متاجر تطابق معيار التقييم حالياً.');expect(screen.queryByText('لا توجد متاجر معتمدة بعد')).toBeNull();
+ choose('إلغاء فلترة الثقة');await screen.findByText(stores[0].name);
+});
+
+test.each(['/','/stores'])('rating verification outage never shows stale unfiltered results on %s',async route=>{
+ window.history.replaceState({},'',route);ratedOutage=true;render(<App/>);
+ const stale=route==='/'?product.name:stores[0].name,match=route==='/'?other.name:stores[1].name;
+ await screen.findByText(stale);choose('الأعلى تقييماً');
+ await screen.findByText('تعذر حساب فلتر التقييمات حالياً. أعد المحاولة.');
+ expect(screen.queryByText(stale)).toBeNull();expect(screen.queryByText(match)).toBeNull();
+ ratedOutage=false;choose('إعادة المحاولة');await screen.findByText(match);
+ expect(screen.queryByText(stale)).toBeNull();
+});
+
+test('fast response threshold is independent; catalog, category, text and visual scope remain consistent',async()=>{
+ render(<App/>);await screen.findByText(product.name);choose('سرعة الاستجابة');
+ await screen.findByText(other.name);await waitFor(()=>expect(screen.queryByText(product.name)).toBeNull());
+ expect(within(trust()).getByRole('button',{name:'سرعة الاستجابة'})).toHaveAttribute('aria-pressed','true');
+ expect(screen.getByText(/80% على الأقل/)).toBeInTheDocument();
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/products/categories')&&r.trust==='fast_response')).toBe(true));
+ fireEvent.change(screen.getByLabelText('البحث في الكتالوج'),{target:{value:'shoe'}});fireEvent.submit(screen.getByRole('search'));
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/ai-search')&&r.trust==='fast_response')).toBe(true));
+ fireEvent.click(screen.getByRole('button',{name:'بحث بالصورة'}));fireEvent.change(screen.getByLabelText('صورة البحث'),{target:{files:[new File(['synthetic'],'sample.png',{type:'image/png'})]}});
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/image-search')&&r.trust==='fast_response')).toBe(true));
+ choose('الأعلى تقييماً');await waitFor(()=>expect(seen.filter(r=>r.p.endsWith('/image-search')).at(-1)).toMatchObject({trust:'rated',page:1}));
+ expect(within(trust()).getByRole('button',{name:'سرعة الاستجابة'})).toHaveAttribute('aria-pressed','false');
+});
+test('response directory empty result uses threshold-specific copy',async()=>{
+ window.history.replaceState({},'','/stores');noVerifiedStores=true;render(<App/>);await screen.findByText(stores[1].name);choose('سرعة الاستجابة');
+ await screen.findByText('لا توجد متاجر تطابق معيار الاستجابة حالياً.');expect(screen.queryByText('لا توجد متاجر معتمدة بعد')).toBeNull();
+ choose('إلغاء فلترة الثقة');await screen.findByText(stores[0].name);
+});
+test.each(['/','/stores'])('response evidence outage never shows stale unfiltered results on %s',async route=>{
+ window.history.replaceState({},'',route);responseOutage=true;render(<App/>);
+ const stale=route==='/'?product.name:stores[0].name,match=route==='/'?other.name:stores[1].name;
+ await screen.findByText(stale);choose('سرعة الاستجابة');
+ await screen.findByText('تعذر حساب فلتر الاستجابة حالياً. أعد المحاولة.');
+ expect(screen.queryByText(stale)).toBeNull();expect(screen.queryByText(match)).toBeNull();
+ responseOutage=false;choose('إعادة المحاولة');await screen.findByText(match);expect(screen.queryByText(stale)).toBeNull();
+});

@@ -36,3 +36,91 @@
 @media(max-width:359px) {
   .atlas-public .atlas-compact-card .product-footer .primary { font-size: 12px; white-space: nowrap; padding-inline: 3px; }
 }
+
+/* V4.9 integration, slice 1: compact catalog cards. Scoped to the real card
+   component; all existing commercial controls stay visible and functional. */
+.atlas-public .product-card.atlas-compact-card { border: 1px solid transparent; border-radius: 10px; background: transparent; box-shadow: none; overflow: visible; }
+.atlas-public .atlas-compact-card .atlas-card-media { position: relative; min-height: 0; border-radius: 10px; overflow: hidden; background: #eef0e9; }
+.atlas-public .atlas-compact-card .atlas-card-media > a { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; min-height: 0; }
+.atlas-public .atlas-compact-card .atlas-card-media > a img { width: 100%; height: 100%; object-fit: contain; }
+.atlas-public .atlas-compact-card .atlas-quick-view { top: 5px; bottom: auto; left: 5px; right: auto; inset-inline-start: auto; inset-inline-end: auto; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; background: white; border-radius: 50%; z-index: 2; }
+.atlas-public .atlas-compact-card .atlas-quick-view > span { display: none; }
+.atlas-card-image-badges { position: absolute; left: 5px; right: 5px; bottom: 6px; display: flex; align-items: center; justify-content: space-between; gap: 3px; direction: ltr; pointer-events: none; }
+.atlas-compact-card .atlas-card-image-badges .atlas-card-rating,
+.atlas-compact-card .atlas-card-image-badges .atlas-card-trust { display: inline-flex; align-items: center; gap: 3px; margin: 0; border-radius: 999px; padding: 3px 5px; background: #fff; color: #27372c; font-size: 10px; font-weight: 650; line-height: 1.3; white-space: nowrap; min-width: 0; }
+.atlas-compact-card .atlas-card-image-badges .atlas-card-rating { overflow: hidden; }
+.atlas-compact-card .atlas-card-rating bdi { overflow: hidden; text-overflow: ellipsis; }
+.atlas-compact-card .atlas-card-image-badges .atlas-card-trust { margin-left: auto; color: #28513b; background: #fffdf3; }
+.atlas-public .atlas-compact-card .product-body { padding: 5px 2px 3px; }
+.atlas-public .atlas-compact-card .product-body h3 { font-size: 13px; font-weight: 500; line-height: 1.45; min-height: 0; margin: 0 !important; }
+.atlas-public .atlas-compact-card h3 a { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atlas-public .atlas-compact-card .product-body .price { font-size: 18px; font-weight: 800; line-height: 1.4; margin: 3px 0 0; color: #41634b; }
+.atlas-public .atlas-compact-card .price small { display: inline; font-size: 11px; }
+.atlas-public .atlas-compact-card .atlas-card-moq { margin: 2px 0; font-size: 11px; color: #505a52; }
+.atlas-public .atlas-compact-card .atlas-card-supplier { margin: 3px 0 0; font-size: 11px; min-width: 0; }
+.atlas-public .atlas-compact-card .atlas-card-city { margin: 1px 0 0; font-size: 11px; }
+.atlas-public .atlas-compact-card .product-footer { padding: 4px 2px 6px; background: transparent; }
+.atlas-public .atlas-compact-card .product-footer .actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.atlas-public .atlas-compact-card .product-footer .primary { font-size: 12px; min-height: 44px; padding-inline: 3px; }
+.atlas-public .atlas-compact-card .product-footer .atlas-add-cart-compact { flex: 0 0 44px; }
+@media (max-width: 360px) {
+  .atlas-card-image-badges { left: 3px; right: 3px; gap: 2px; }
+  .atlas-compact-card .atlas-card-image-badges .atlas-card-rating,
+  .atlas-compact-card .atlas-card-image-badges .atlas-card-trust { font-size: 9px; padding: 3px; }
+}
+
+/* Gate 1B: real quantity prices and explicit price context. */
+.atlas-public .atlas-compact-card .atlas-card-price { overflow-wrap: anywhere; }
+.atlas-compact-card .atlas-card-price bdi { display: inline; white-space: normal; overflow-wrap: anywhere; }
+.atlas-public .atlas-compact-card .atlas-card-price[data-price-kind="range"] { font-size: 16px; line-height: 1.35; }
+.atlas-public .atlas-compact-card .atlas-card-price-context { color: #505a52; font-size: 11px; line-height: 1.4; margin: 2px 0; overflow-wrap: anywhere; }
+@media (max-width: 360px) {
+  .atlas-public .atlas-compact-card .atlas-card-price[data-price-kind="range"] { font-size: 14px; }
+}
+
+/* Gate 1 integrated visual audit: increase density without removing actions.
+   Explicit grid class excludes the store directory and other generic grids. */
+.atlas-public .product-grid.atlas-dense-product-grid { gap: 12px; grid-template-columns: repeat(4,minmax(0,1fr)); }
+@media (min-width:1200px) { .atlas-public .product-grid.atlas-dense-product-grid { grid-template-columns: repeat(5,minmax(0,1fr)); } }
+@media (max-width:899px) { .atlas-public .product-grid.atlas-dense-product-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media (max-width:700px) { .atlas-public .product-grid.atlas-dense-product-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; } }
+.atlas-public .atlas-density-card .product-body { padding: 4px 1px 0; }
+.atlas-public .atlas-density-card .product-body h3 { line-height: 1.35; }
+.atlas-public .atlas-density-card .product-body .atlas-card-price { margin: 2px 0 0; line-height: 1.25; }
+.atlas-public .atlas-density-card .product-body .atlas-card-price-context { margin: 0; line-height: 1.25; }
+.atlas-public .atlas-density-card .atlas-card-origin { display:flex; align-items:center; gap:4px; min-width:0; margin-top:3px; }
+.atlas-public .atlas-density-card .atlas-card-origin .atlas-card-supplier { flex:1; min-width:0; margin:0; line-height:1.35; gap:3px; }
+.atlas-public .atlas-density-card .atlas-card-origin .atlas-card-supplier .atlas-icon { width:12px; height:12px; flex:0 0 12px; }
+.atlas-public .atlas-density-card .atlas-card-origin .atlas-card-city { flex:0 1 auto; max-width:35%; min-width:0; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.35; }
+.atlas-public .atlas-density-card .product-body .atlas-card-unavailable { font-size:11px; color:#75591e; margin:2px 0; }
+.atlas-public .atlas-density-card .product-footer { padding:2px 1px 3px; }
+.atlas-public .atlas-density-card .product-footer .actions { display:grid; grid-template-columns:minmax(0,1fr) 44px 44px; align-items:center; gap:3px; }
+.atlas-public .atlas-density-card .product-footer .actions:not(:has(.atlas-add-cart)) { grid-template-columns:minmax(0,1fr) 44px; }
+.atlas-public .atlas-density-card .product-footer .atlas-card-moq { margin:0; line-height:1.3; overflow-wrap:anywhere; min-width:0; }
+.atlas-public .atlas-density-card .product-footer .atlas-card-moq strong { font-weight:600; }
+.atlas-public .atlas-density-card .product-footer .actions .primary,
+.atlas-public .atlas-density-card .product-footer .actions .atlas-add-cart-compact { grid-column:auto; width:44px; min-width:44px; min-height:44px; padding:3px; font-size:11px; line-height:1.2; white-space:normal; overflow-wrap:normal; }
+.atlas-public .atlas-density-card .product-footer .actions .atlas-cart-add-status { grid-column:1/-1; }
+.atlas-public .atlas-density-card .atlas-card-media .atlas-favorite-heart,
+.atlas-public .atlas-density-card .atlas-card-media .atlas-quick-view { background:transparent; border-color:transparent; box-shadow:none; isolation:isolate; }
+.atlas-public .atlas-density-card .atlas-card-media .atlas-favorite-heart::before,
+.atlas-public .atlas-density-card .atlas-card-media .atlas-quick-view::before { content:""; position:absolute; inset:7px; border-radius:50%; background:#fff; border:1px solid #dce3d3; z-index:-1; }
+.atlas-public .atlas-density-card .atlas-card-media .atlas-favorite-heart .atlas-icon,
+.atlas-public .atlas-density-card .atlas-card-media .atlas-quick-view .atlas-icon { width:15px; height:15px; }
+.atlas-public .atlas-density-card .atlas-card-media button:focus-visible { outline-offset:-2px; }
+
+/* Long legal catalog units must not expand a grid track or force a tall
+   character-by-character MOQ column. Full text remains in the DOM/title. */
+.atlas-public .atlas-density-card .atlas-card-price .atlas-card-unit,
+.atlas-public .atlas-density-card .atlas-card-moq .atlas-card-unit {
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+.atlas-public .atlas-density-card .product-footer,
+.atlas-public .atlas-density-card .product-footer .actions { min-width: 0; }
+.atlas-public .atlas-density-card .atlas-card-price-context { overflow-wrap: anywhere; }

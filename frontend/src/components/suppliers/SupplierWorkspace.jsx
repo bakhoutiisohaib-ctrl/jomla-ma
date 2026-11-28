@@ -14,7 +14,9 @@ export function SupplierHeader({ profile, unread, onNotifications, onBack, onLog
     </header></>;
 }
 
-export function SupplierSidebar({ tabs, tab, onTab }) {
+export const advancedSupplierTabs = ['wholesale','jobs','verification','reviews','trades'];
+const navIcons = {overview:'grid',organization:'user',stores:'store',products:'package',drafts:'eye',add:'package',rfq:'message',direct:'message',sourcing:'search',notifications:'bell',wholesale:'truck',jobs:'camera',verification:'user',reviews:'heart',trades:'package'};
+export function SupplierSidebar({ tabs, tab, onTab, advanced, onModeChange }) {
   const l = useLabels();
   const [expanded, setExpanded] = useState(() => window.innerWidth > 700);
   useEffect(() => {
@@ -25,7 +27,11 @@ export function SupplierSidebar({ tabs, tab, onTab }) {
     return () => media.removeEventListener('change', change);
   }, []);
   return <aside className="supplier-sidebar"><p className="supplier-eyebrow">{l('أدِر تجارتك','Gérez votre activité')}</p>
-    <details open={expanded} onToggle={e=>setExpanded(e.currentTarget.open)}><summary>{l('أقسام المورد','Espace fournisseur')}: {tabs.find(([key])=>key===tab)?.[1]}</summary><nav aria-label={l('أقسام المورد','Espace fournisseur')}>{tabs.filter(([,,allowed])=>allowed).map(([key,label])=><button key={key} aria-pressed={tab===key} onClick={()=>{onTab(key);if(window.innerWidth<=700)setExpanded(false);}}><span className={'supplier-nav-dot '+(key==='add'?'supplier-nav-add':'')} aria-hidden="true">{key==='add'?'+':'›'}</span>{label}</button>)}</nav></details>
+    <div className="supplier-mode" role="group" aria-label={l('طريقة عرض المكتب','Mode du bureau','Office mode')}>
+      <button type="button" aria-pressed={!advanced} onClick={()=>onModeChange(false)}>{l('مبسط','Simple','Simple')}</button>
+      <button type="button" aria-pressed={advanced} onClick={()=>onModeChange(true)}>{l('متقدم','Avancé','Advanced')}</button>
+    </div>
+    <details open={expanded} onToggle={e=>setExpanded(e.currentTarget.open)}><summary>{l('أقسام المورد','Espace fournisseur')}: {tabs.find(([key])=>key===tab)?.[1]}</summary><nav aria-label={l('أقسام المورد','Espace fournisseur')}>{tabs.filter(([key,,allowed])=>allowed && (advanced || !advancedSupplierTabs.includes(key))).map(([key,label])=><button key={key} aria-pressed={tab===key} onClick={()=>{onTab(key);if(window.innerWidth<=700)setExpanded(false);}}>{key==='add'?<span className="supplier-add-symbol" aria-hidden="true">+</span>:<MarketIcon name={navIcons[key]}/>}<span>{label}</span></button>)}</nav></details>
     <p className="supplier-sidebar-note">{l('متجر معتمد للنشر. توثيق تجاري اختياري.', 'Boutique approuvée pour publier. Vérification commerciale facultative.')}</p>
   </aside>;
 }

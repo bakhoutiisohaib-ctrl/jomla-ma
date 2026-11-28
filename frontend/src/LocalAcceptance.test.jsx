@@ -28,6 +28,7 @@ beforeEach(() => {
     const product = products.find(p => path.endsWith('/products/' + p._id));
     if (product) return reply(withdrawn && product._id === p1 ? { message: 'Unavailable' } : { product }, withdrawn && product._id === p1 ? 404 : 200);
     if (path.endsWith('/rfq') && options.method === 'POST') return pending ? pending.promise : reply({ rfq: { _id: '777777777777777777777777', status: 'pending' } }, 201);
+    if (path.endsWith('/favorites')) return reply({ productIds: [], limit: 100 });
     if (path.endsWith('/suppliers/logout')) return reply({ success: true });
     return reply({ data: products, pagination: { total: 2, pages: 1 }, unreadCount: 0 });
   });

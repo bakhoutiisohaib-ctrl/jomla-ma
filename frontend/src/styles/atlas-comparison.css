@@ -1,0 +1,13 @@
+/* V4.9 j47 comparison rows and quantity control. */
+.atlas-comparison{display:grid;gap:8px;min-width:0}
+.atlas-trade-dialog form.atlas-comparison-qty{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0}
+.atlas-trade-dialog .atlas-comparison-qty label{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:auto;margin:0;flex:0 1 auto}
+.atlas-trade-dialog .atlas-comparison-qty input{box-sizing:border-box;width:90px;max-width:90px;min-width:0;flex:0 0 90px;border:1px solid #cddbd0;border-radius:8px;padding:7px;margin:0}
+.atlas-comparison-context,.atlas-comparison-rows{display:grid;gap:8px;min-width:0}
+.atlas-comparison-context small{color:#637164}
+.atlas-comparison-row{display:grid;grid-template-columns:64px minmax(0,1fr) auto;align-items:center;gap:8px;border:1px solid #e1e8df;padding:8px;border-radius:9px;min-width:0}
+.atlas-comparison-row img,.atlas-comparison-row>div:first-child{width:64px;height:64px;object-fit:cover;border-radius:7px}
+.atlas-comparison-row small,.atlas-comparison-row b{display:block;font-size:12px;overflow-wrap:anywhere}
+.atlas-comparison-row strong{display:block;font-size:13px;overflow-wrap:anywhere}
+.atlas-comparison-row b{color:#41634b}
+.atlas-trade-dialog .atlas-comparison-row .button-link{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-width:44px;min-height:44px;padding:5px 8px;font-size:12px}

@@ -1,0 +1,19 @@
+{
+  "requests": 1,
+  "quantity": 50,
+  "targetPriceUnset": true,
+  "correctProductBuyerSupplier": true,
+  "status": "accepted",
+  "phase": "completed",
+  "unitPrice": 18,
+  "total": 900,
+  "offers": 2,
+  "superseded": 1,
+  "accepted": 1,
+  "threadClosed": true,
+  "buyerMessages": 1,
+  "supplierMessages": 1,
+  "offerNotifications": 2,
+  "decisionNotifications": 1,
+  "offerNotificationRead": true
+}

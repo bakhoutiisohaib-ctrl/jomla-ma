@@ -1,15 +1,16 @@
-import { render,screen,fireEvent,act } from '@testing-library/react'
+import { render,screen,fireEvent,act,waitFor } from '@testing-library/react'
 import SupplierDashboard from './SupplierDashboard'
 import { LanguageProvider } from '../../i18n/LanguageContext'
 import { apiRequest } from '../../api/config'
 jest.mock('../../api/config',()=>({apiRequest:jest.fn(),assetUrl:()=>''}))
 const user={_id:'supplier-1',id:'supplier-1',role:'supplier',name:'المورد',permissions:['all']}
-beforeEach(()=>{localStorage.clear();require('../../api/session').setSession('s2-dashboard-synthetic-session');apiRequest.mockReset();apiRequest.mockImplementation(async path=>{
+beforeEach(()=>{localStorage.clear();sessionStorage.clear();require('../../api/session').setSession('s2-dashboard-synthetic-session');apiRequest.mockReset();apiRequest.mockImplementation(async path=>{
  if(path==='/suppliers/me/profile')return user
  if(path.startsWith('/products/mine'))return {data:[{_id:'product-1',name:'منتج المورد الخاص',isDraft:true,moq:10,price:25}],pagination:{pages:1,total:1}}
  if(path.startsWith('/stores/mine'))return {data:[]}
+ if(path==='/notifications/notice-1/read')return {notification:{_id:'notice-1',readAt:'2026-11-28T00:00:00Z'}};
  if(path.startsWith('/notifications'))return {data:[{_id:'notice-1',type:'sourcing_decision',resourceType:'sourcing',resourceId:'request-1',readAt:null}]}
- if(path==='/sourcing/request-1')return {productName:'طلب تم قبوله',status:'fulfilled',quotes:[{_id:'q-1',unitPrice:20,currency:'MAD',status:'accepted',paymentTerms:'اختبار'}]}
+ if(path==='/sourcing/request-1')return {_id:'request-1',productName:'طلب تم قبوله',status:'fulfilled',quotes:[{_id:'q-1',supplierId:'supplier-1',unitPrice:20,currency:'MAD',status:'accepted',paymentTerms:'اختبار'}]}
  return {data:[]}
 })})
 function show(){render(<LanguageProvider><SupplierDashboard supplier={user} onBack={()=>{}} onLogout={()=>{}}/></LanguageProvider>)}
@@ -143,3 +144,201 @@ test('leaving the editor offers stay or explicit discard without auto-saving or 
  expect(apiRequest.mock.calls.some(([,o])=>['POST','PUT'].includes(o?.method))).toBe(false);
 })
 
+
+test('office starts simple, advanced tools remain accessible and returning to simple keeps the current editor',async()=>{
+ show();
+ expect(screen.getByRole('button',{name:'مبسط'})).toHaveAttribute('aria-pressed','true');
+ expect(screen.queryByRole('button',{name:'توثيق المورد',exact:true})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'متقدم'}));
+ fireEvent.click(screen.getByRole('button',{name:'توثيق المورد',exact:true}));
+ expect(screen.getByRole('heading',{name:'طلب مراجعة وتوثيق المورد'})).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'مبسط'}));
+ expect(screen.getByRole('heading',{name:'نظرة عامة'})).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'إضافة منتج',exact:true}));
+ fireEvent.change(screen.getByLabelText('عنوان المنتج'),{target:{value:'Synthetic unsaved'}});
+ fireEvent.click(screen.getByRole('button',{name:'متقدم'}));
+ fireEvent.click(screen.getByRole('button',{name:'مبسط'}));
+ expect(screen.getByLabelText('عنوان المنتج')).toHaveValue('Synthetic unsaved');
+ await act(async()=>{});
+});
+
+test('advanced mode cannot expose staff capabilities',async()=>{
+ const staff={...user,role:'staff',permissions:[]};
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(p,o)=>p==='/suppliers/me/profile'?staff:base(p,o));
+ render(<LanguageProvider><SupplierDashboard supplier={staff} onBack={()=>{}} onLogout={()=>{}}/></LanguageProvider>);
+ fireEvent.click(screen.getByRole('button',{name:'متقدم'}));
+ expect(screen.queryByRole('button',{name:'توثيق المورد',exact:true})).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'مهام الصور',exact:true})).not.toBeInTheDocument();
+ await act(async()=>{});
+});
+
+test('office counts use pagination totals and failed RFQ reads do not show zero',async()=>{
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(p,o)=>{
+  if(p.startsWith('/stores/mine'))return {data:[],pagination:{total:103}};
+  if(p==='/rfq/supplier')throw Error('Synthetic RFQ load failure');
+  return base(p,o);
+ });
+ show();
+ await screen.findByText('Synthetic RFQ load failure');
+ expect(document.querySelector('.supplier-content .stat-grid').textContent).toContain('103');
+ expect(document.querySelector('.supplier-priorities button strong')).toHaveTextContent('—');
+ expect(document.querySelectorAll('.supplier-content .stat-grid strong')[1]).toHaveTextContent('—');
+});
+
+test('notification summary uses the server total, not the bounded inbox length',async()=>{
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(p,o)=>p.startsWith('/notifications')?{data:[],unreadCount:125}:base(p,o));
+ show();
+ expect(await screen.findByRole('button',{name:'الإشعارات (125)'})).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'تنبيهات الحساب: 125'})).toHaveTextContent('99+');
+});
+
+test('a failed second private draft page is not an empty catalog and retry confirms both pages',async()=>{
+ let failed=true;const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(p,o)=>{
+  if(p==='/products/mine?page=1&limit=100')return {data:[{_id:'draft-first',name:'First private draft',isDraft:true}],pagination:{pages:2,total:101}};
+  if(p==='/products/mine?page=2&limit=100'){
+   if(failed)throw Error('Synthetic draft page failure');
+   return {data:[{_id:'draft-second',name:'Second private draft',isDraft:true}],pagination:{pages:2,total:101}};
+  }
+  return base(p,o);
+ });
+ show();fireEvent.click(await screen.findByRole('button',{name:'المسودات',exact:true}));
+ await screen.findByText('Synthetic draft page failure');
+ expect(screen.queryByText('لا توجد مسودات محفوظة.')).not.toBeInTheDocument();
+ expect(screen.queryByRole('heading',{name:'First private draft'})).not.toBeInTheDocument();
+ failed=false;fireEvent.click(screen.getByRole('button',{name:'تحديث مساحة العمل'}));
+ expect(await screen.findByRole('heading',{name:'Second private draft'})).toBeInTheDocument();
+ expect(screen.getByRole('heading',{name:'First private draft'})).toBeInTheDocument();
+ expect(apiRequest.mock.calls.filter(([p])=>p.includes('limit=100')&&p.includes('/products/mine')).every(([,o])=>o.token==='s2-dashboard-synthetic-session')).toBe(true);
+});
+
+test('mismatched supplier thread cannot expose foreign messages or submit an offer',async()=>{
+ const rfq={_id:'rfq-local',status:'pending',quantity:20,currency:'MAD',productId:{name:'Local product',unit:'piece'}};
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(p,o)=>p==='/rfq/supplier'?{data:[rfq]}:p.endsWith('/thread')?{rfq:{...rfq,_id:'other'},thread:{messages:[{content:'Foreign message'}]},offers:[]}:base(p,o));
+ show();fireEvent.click(await screen.findByRole('button',{name:'طلبات الأسعار',exact:true}));fireEvent.click(await screen.findByRole('button',{name:'تفاصيل ومحادثة'}));
+ expect(await screen.findByText('بيانات المحادثة غير مطابقة للطلب.')).toBeInTheDocument();
+ expect(screen.queryByText('Foreign message')).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'إرسال العرض'})).not.toBeInTheDocument();
+});
+test('supplier message submission is single flight and uncertain response blocks further sends until explicit refresh',async()=>{
+ const rfq={_id:'rfq-message',status:'pending',quantity:20,currency:'MAD',productId:{name:'Message product',unit:'piece'}};
+ const base=apiRequest.getMockImplementation();let finish;
+ apiRequest.mockImplementation((p,o)=>p==='/rfq/supplier'?Promise.resolve({data:[rfq]}):p.endsWith('/thread')?Promise.resolve({rfq,thread:{rfqId:rfq._id,status:'open',messages:[]},offers:[]}):p.endsWith('/messages')?new Promise(resolve=>{finish=resolve;}):base(p,o));
+ show();fireEvent.click(await screen.findByRole('button',{name:'طلبات الأسعار',exact:true}));fireEvent.click(await screen.findByRole('button',{name:'تفاصيل ومحادثة'}));
+ const input=await screen.findByLabelText('رسالتك');fireEvent.change(input,{target:{value:'Synthetic supplier message'}});
+ fireEvent.submit(input.closest('form'));fireEvent.submit(input.closest('form'));
+ expect(apiRequest.mock.calls.filter(([p])=>p.endsWith('/messages'))).toHaveLength(1);
+ await act(async()=>finish({}));
+ expect(await screen.findByText(/لم يتأكد إرسال الرسالة/)).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'إرسال العرض'})).toBeDisabled();
+ expect(input).toHaveValue('Synthetic supplier message');
+ fireEvent.submit(input.closest('form'));
+ expect(apiRequest.mock.calls.filter(([p])=>p.endsWith('/messages'))).toHaveLength(1);
+ fireEvent.click(screen.getByRole('button',{name:'تحديث المحادثة'}));
+ await act(async()=>{});
+ expect(screen.getByRole('button',{name:'إرسال العرض'})).toBeEnabled();
+});
+
+const noticeRfq={_id:'notice-rfq',type:'message_received',resourceType:'rfq',resourceId:'rfq-target',readAt:null};
+const directRfq={_id:'rfq-target',supplierId:{_id:'supplier-1'},buyerId:'buyer-1',buyerName:'Synthetic buyer',status:'responded',quantity:12,currency:'MAD',productId:{name:'Notification product',unit:'piece'}};
+const directThread={rfq:{...directRfq,supplierId:'supplier-1',status:'rejected'},thread:{rfqId:'rfq-target',supplierId:'supplier-1',buyerId:'buyer-1',status:'closed',messages:[]},offers:[]};
+function targetMock(overrides={}){
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation(async(p,o)=>{
+  if(Object.hasOwn(overrides,p))return typeof overrides[p]==='function'?overrides[p](o):overrides[p];
+  if(p==='/notifications?limit=50')return {data:[noticeRfq],unreadCount:1};
+  if(p==='/rfq/supplier')return {data:[]};
+  if(p==='/rfq/rfq-target')return directRfq;
+  if(p==='/rfq/rfq-target/thread')return directThread;
+  if(p==='/notifications/notice-rfq/read')return {notification:{...noticeRfq,readAt:'2026-11-28T00:00:00Z'}};
+  return base(p,o);
+ });
+}
+async function openInbox(){fireEvent.click(await screen.findByRole('button',{name:/^الإشعارات/}));return screen.findByRole('button',{name:'فتح الطلب'});}
+test('notification fetches absent RFQ and verified matching thread before marking read; latest closed state wins',async()=>{
+ targetMock();show();const open=await openInbox();fireEvent.click(open);fireEvent.click(open);
+ expect(await screen.findByRole('dialog')).toBeInTheDocument();expect(screen.queryByRole('button',{name:'إرسال العرض'})).toBeNull();
+ await waitFor(()=>expect(apiRequest.mock.calls.filter(([p])=>p==='/notifications/notice-rfq/read')).toHaveLength(1));
+ const calls=apiRequest.mock.calls;expect(calls.filter(([p])=>p==='/rfq/rfq-target')).toHaveLength(1);
+ expect(calls.findIndex(([p])=>p==='/rfq/rfq-target/thread')).toBeLessThan(calls.findIndex(([p])=>p==='/notifications/notice-rfq/read'));
+ expect(calls.find(([p])=>p==='/rfq/rfq-target')[1]).toMatchObject({cache:'no-store',token:'s2-dashboard-synthetic-session'});
+});
+test.each([
+ ['foreign record',{'/rfq/rfq-target':{...directRfq,supplierId:'foreign'}}],
+ ['wrong thread',{'/rfq/rfq-target/thread':{...directThread,thread:{...directThread.thread,rfqId:'other'}}}],
+ ['forbidden',{'/rfq/rfq-target':()=>{throw Error('Synthetic access denied')}}],
+ ['missing thread',{'/rfq/rfq-target/thread':{rfq:directRfq,thread:null,offers:[]}}]
+])('failed notification target (%s) never opens or marks read',async(_,overrides)=>{
+ targetMock(overrides);show();fireEvent.click(await openInbox());await screen.findByRole('alert');
+ expect(screen.queryByRole('dialog')).toBeNull();expect(apiRequest.mock.calls.some(([p,o])=>p.endsWith('/read')&&o?.method==='PUT')).toBe(false);
+});
+test('switching tab during pending lookup cancels late target and does not mark read',async()=>{
+ let finish;targetMock({'/rfq/rfq-target':()=>new Promise(r=>{finish=r})});show();fireEvent.click(await openInbox());
+ fireEvent.click(screen.getByRole('button',{name:'نظرة عامة',exact:true}));await act(async()=>finish(directRfq));
+ expect(screen.queryByRole('dialog')).toBeNull();expect(apiRequest.mock.calls.some(([p])=>p==='/rfq/rfq-target/thread'||p.endsWith('/read'))).toBe(false);
+});
+test('session replacement drops pending target and prevents old-session private dialog',async()=>{
+ let finish;targetMock({'/rfq/rfq-target':()=>new Promise(r=>{finish=r})});show();fireEvent.click(await openInbox());
+ await act(async()=>{require('../../api/session').setSession('new-supplier-session');finish(directRfq)});
+ expect(screen.queryByRole('dialog')).toBeNull();expect(apiRequest.mock.calls.some(([p])=>p==='/rfq/rfq-target/thread'||p.endsWith('/read'))).toBe(false);
+});
+test('unsupported notification type cannot trigger a sourcing lookup',async()=>{
+ targetMock({'/notifications?limit=50':{data:[{...noticeRfq,resourceType:'future',type:'future'}],unreadCount:1}});show();expect(await openInbox()).toBeDisabled();
+ expect(apiRequest.mock.calls.some(([p])=>p==='/sourcing/rfq-target')).toBe(false);
+});
+test('read acknowledgement failure keeps confirmed dialog and explicitly reports uncertain read state',async()=>{
+ targetMock({'/notifications/notice-rfq/read':()=>{throw Error('Synthetic read outage')}});show();fireEvent.click(await openInbox());
+ expect(await screen.findByRole('dialog')).toBeInTheDocument();expect(await screen.findByText(/لم يتأكد تعليم الإشعار كمقروء/)).toBeInTheDocument();
+});
+
+test('supplier sees excluded reviews without false confirmation and refresh failure clears stale rows',async()=>{
+ const base=apiRequest.getMockImplementation(),confirmed={_id:'1'.repeat(24),supplierId:user._id,stars:1,comment:'Synthetic confirmed negative',basis:'mutual_confirmation'},excluded={_id:'2'.repeat(24),supplierId:user._id,stars:5,comment:'Synthetic excluded review'};
+ let failure=false;
+ apiRequest.mockImplementation(async(p,o)=>p==='/suppliers/me/reviews'?failure?Promise.reject(Error('Synthetic review outage')):{data:[confirmed,excluded]}:base(p,o));
+ show();fireEvent.click(screen.getByRole('button',{name:'متقدم'}));fireEvent.click(screen.getByRole('button',{name:'التقييمات',exact:true}));
+ await screen.findByText(/Synthetic excluded review/);
+ expect(screen.getByText('تعامل أقره الطرفان')).toBeInTheDocument();
+ expect(screen.getByText('تقييم غير محتسب في المعدل — أدلة غير كافية للتحقق')).toBeInTheDocument();
+ failure=true;fireEvent.click(screen.getByRole('button',{name:'تحديث مساحة العمل'}));
+ await screen.findByText('Synthetic review outage');
+ expect(screen.queryByText(/Synthetic confirmed negative/)).not.toBeInTheDocument();
+ expect(screen.queryByText('لا توجد تقييمات')).not.toBeInTheDocument();
+ expect(screen.getByText('قائمة التقييمات غير مؤكدة. حدّث مساحة العمل.')).toBeInTheDocument();
+});
+
+test('reply confirmation can remove unsupported classification without changing the original score or comment',async()=>{
+ const base=apiRequest.getMockImplementation(),review={_id:'4'.repeat(24),supplierId:user._id,stars:1,comment:'Synthetic negative kept',basis:'mutual_confirmation'};
+ apiRequest.mockImplementation(async(p,o)=>p==='/suppliers/me/reviews'?{data:[review]}:p==='/suppliers/me/reviews/'+review._id+'/reply'?{review:{...review,basis:undefined,reply:{text:o.body.text}}}:base(p,o));
+ show();fireEvent.click(screen.getByRole('button',{name:'متقدم'}));fireEvent.click(screen.getByRole('button',{name:'التقييمات',exact:true}));
+ await screen.findByText('تعامل أقره الطرفان');
+ fireEvent.change(screen.getByLabelText('رد على التقييم'),{target:{value:'Synthetic reply'}});
+ fireEvent.click(screen.getByRole('button',{name:'رد',exact:true}));
+ await screen.findByText('Synthetic reply');
+ expect(screen.getByText('تقييم غير محتسب في المعدل — أدلة غير كافية للتحقق')).toBeInTheDocument();
+ expect(screen.queryByText('تعامل أقره الطرفان')).not.toBeInTheDocument();
+ expect(screen.getByText(/Synthetic negative kept/)).toBeInTheDocument();
+});
+
+test('owner opens direct conversation inbox in simple office mode',async()=>{
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation((p,o)=>p==='/direct-conversations?page=1'?Promise.resolve({actorId:user._id,role:'supplier',page:1,hasNext:false,data:[]}):base(p,o));
+ show();fireEvent.click(await screen.findByRole('button',{name:'المحادثات المباشرة'}));await screen.findByText('لا توجد محادثات مباشرة بعد.');
+ expect(apiRequest.mock.calls.some(([p])=>p==='/direct-conversations?page=1')).toBe(true);
+});
+
+test('owner notification opens direct conversation and refreshes unread count',async()=>{
+ const id='3'.repeat(24),pid='2'.repeat(24),nid='4'.repeat(24),now='2026-11-28T09:00:00Z',base=apiRequest.getMockImplementation();
+ const n={_id:nid,type:'direct_message',resourceType:'direct_conversation',resourceId:id,readAt:null,createdAt:now};let read=false;
+ apiRequest.mockImplementation(async(p,o)=>{
+ if(p==='/notifications?limit=50')return {data:[{...n,readAt:read?now:null}],unreadCount:read?0:1};
+ if(p==='/direct-conversations/'+id)return {actorId:user._id,role:'supplier',conversation:{_id:id,productId:pid,productName:'Synthetic owner notice',counterpartName:'Synthetic buyer',lastMessageAt:now},messages:[{clientId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',role:'buyer',content:'Synthetic owner inquiry',sentAt:now}],canSend:true};
+ if(p==='/notifications/'+nid+'/read'){read=true;return {notification:{...n,readAt:now}}}return base(p,o)
+ });
+ show();fireEvent.click(await screen.findByRole('button',{name:'الإشعارات (1)'}));fireEvent.click(await screen.findByRole('button',{name:'فتح المحادثة'}));
+ await screen.findByText('Synthetic owner inquiry');await screen.findByRole('button',{name:'الإشعارات (0)'});
+ expect(apiRequest.mock.calls.filter(([p])=>p==='/notifications/'+nid+'/read')).toHaveLength(1);
+});

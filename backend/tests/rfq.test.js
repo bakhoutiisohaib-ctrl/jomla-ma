@@ -12,8 +12,8 @@ const QuoteRequest = require('../models/QuoteRequest')
 const Membership = require('../models/Membership')
 const Notification = require('../models/Notification')
 let mongo, f
-beforeAll(async () => { mongo = await MongoMemoryServer.create({ instance: { storageEngine: 'wiredTiger' } }); await mongoose.connect(mongo.getUri()); f = await fixtures() })
-afterAll(async () => { await mongoose.disconnect(); if (mongo) await mongo.stop() })
+beforeAll(async () => { mongo = await MongoMemoryServer.create({ instance: { storageEngine: 'wiredTiger' } }); await mongoose.connect(mongo.getUri()); f = await fixtures() }, 120000)
+afterAll(async () => { await mongoose.disconnect(); if (mongo) await mongo.stop() }, 120000)
 const auth = who => ({ Authorization: 'Bearer ' + f.tokens[who] })
 async function create(body = {}) {
   return request(app).post('/api/rfq').set(auth('buyer')).send({ productId: f.product._id, quantity: 20, buyerPhone: '+212600000001', ...body })

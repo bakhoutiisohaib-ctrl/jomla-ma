@@ -1,0 +1,39 @@
+{
+  "baseline": "6dea9089c90f47f40442a766e22ac4ee84e4bfbc",
+  "passed": 105,
+  "total": 105,
+  "suites": [
+    {
+      "name": "rfq_supplier_rejection.test.js",
+      "passed": 43,
+      "total": 43,
+      "status": "passed"
+    },
+    {
+      "name": "reviews_trust.test.js",
+      "passed": 19,
+      "total": 19,
+      "status": "passed"
+    },
+    {
+      "name": "directConversation.test.js",
+      "passed": 8,
+      "total": 8,
+      "status": "passed"
+    },
+    {
+      "name": "security.test.js",
+      "passed": 16,
+      "total": 16,
+      "status": "passed"
+    },
+    {
+      "name": "rfq_creation.test.js",
+      "passed": 19,
+      "total": 19,
+      "status": "passed"
+    }
+  ],
+  "skipped": 0,
+  "exitCode": 0
+}

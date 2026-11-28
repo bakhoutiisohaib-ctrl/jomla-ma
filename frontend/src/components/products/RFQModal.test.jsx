@@ -123,3 +123,10 @@ test('without secure randomness no unkeyed request is sent', async () => {
   try { show(); submitForm(); expect(await screen.findByRole('alert')).toHaveTextContent('معرف آمن'); expect(apiRequest).not.toHaveBeenCalled() }
   finally { Object.defineProperty(window, 'crypto', { configurable: true, value: secure }) }
 })
+
+test('a now-invalid selected quantity requires explicit correction instead of silently using MOQ', () => {
+  show({ initialQuantity: 5 })
+  expect(screen.getByLabelText('الكمية المطلوبة')).toHaveValue(null)
+  expect(screen.getByLabelText('الكمية المطلوبة')).toBeRequired()
+  expect(apiRequest).not.toHaveBeenCalled()
+})

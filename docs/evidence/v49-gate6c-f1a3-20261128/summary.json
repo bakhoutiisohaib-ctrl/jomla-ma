@@ -1,0 +1,109 @@
+{
+  "baseline": "2ddba6d2e4313e552cf1b2ced2a5d32e1d5ab2db",
+  "frontend": {
+    "passed": 74,
+    "total": 74,
+    "suites": [
+      {
+        "name": "SupplierDashboard.test.jsx",
+        "passed": 30,
+        "total": 30,
+        "status": "passed"
+      },
+      {
+        "name": "RoutingPages.test.jsx",
+        "passed": 16,
+        "total": 16,
+        "status": "passed"
+      },
+      {
+        "name": "SupplierTrustJourneys.test.jsx",
+        "passed": 5,
+        "total": 5,
+        "status": "passed"
+      },
+      {
+        "name": "StructuredSearchJourneys.test.jsx",
+        "passed": 6,
+        "total": 6,
+        "status": "passed"
+      },
+      {
+        "name": "VisualSearchJourneys.test.jsx",
+        "passed": 5,
+        "total": 5,
+        "status": "passed"
+      },
+      {
+        "name": "MarketHome.test.jsx",
+        "passed": 2,
+        "total": 2,
+        "status": "passed"
+      },
+      {
+        "name": "CompanyLifecycle.test.jsx",
+        "passed": 10,
+        "total": 10,
+        "status": "passed"
+      }
+    ],
+    "exitCode": 0
+  },
+  "build": {
+    "status": "PASS",
+    "ci": true,
+    "artifact": "main.5411fbe6.js"
+  },
+  "browser": {
+    "passed": 6,
+    "total": 6,
+    "journeys": [
+      {
+        "journey": "default Morocco does not qualify"
+      },
+      {
+        "journey": "explicit owner declaration persists"
+      },
+      {
+        "journey": "catalog shows only declaring supplier"
+      },
+      {
+        "journey": "directory uses same declaration"
+      },
+      {
+        "journey": "owner withdrawal persists"
+      },
+      {
+        "journey": "withdrawal removes match and clear restores catalog"
+      }
+    ],
+    "exitCode": 0
+  },
+  "db": {
+    "initial": {
+      "a": {
+        "country": "MA",
+        "declaredCountry": null
+      },
+      "b": {
+        "country": "MA",
+        "declaredCountry": null
+      },
+      "verified": false,
+      "audits": 0
+    },
+    "final": {
+      "a": {
+        "country": "MA",
+        "declaredCountry": null
+      },
+      "b": {
+        "country": "MA",
+        "declaredCountry": null
+      },
+      "verified": false,
+      "audits": 2
+    },
+    "ownerOnly": true
+  }
+}

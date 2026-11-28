@@ -19,6 +19,7 @@ const StoreSchema = new mongoose.Schema({
   isActive:       { type: Boolean, default: false },
   adminSuspended: { type: Boolean, default: false },
   isVerified:     { type: Boolean, default: false },
+  verificationProjection: { type: Number, select: false },
   rating:         { type: Number, default: 0 },
   views:          { type: Number, default: 0 },
   createdAt:      { type: Date, default: Date.now }

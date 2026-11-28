@@ -13,9 +13,11 @@ const { validateSupplierRegister, validateSupplierLogin, validateMongoId } = req
 const { asyncHandler } = require('../middleware/errorHandler')
 const { getPaginationParams, formatPaginationResponse } = require('../utils/constants')
 const { auditedChange } = require('../utils/audit')
+const verification = require('../services/supplierVerification')
 const { PUBLIC_FIELDS: PRODUCT_PUBLIC_FIELDS, PUBLIC_VISIBILITY } = require('../utils/catalog')
 
 const PUBLIC_FIELDS = 'name city phone description avatar isVerified verificationStatus createdAt'
+const { validBusinessTypes, declaredBusinessTypes } = require('../utils/businessTypes')
 const ownerOnly = requireRole('supplier')
 const httpError = (status, message) => Object.assign(new Error(message), { status })
 const permissionsValid = values => Array.isArray(values) && values.every(v => Membership.STAFF_PERMISSIONS.includes(v))
@@ -25,10 +27,11 @@ function accountPayload(user, identity = {}) {
     id: String(user._id), _id: String(user._id), name: user.name, email: user.email,
     city: user.city, phone: user.phone, description: user.description, avatar: user.avatar,
     profilePending: Boolean(user.profilePending),
+    businessTypes: user.role === 'supplier' ? declaredBusinessTypes(user.businessTypes) : [],
     role: user.role, ownerId: identity.ownerId || String(user._id),
     organization: user.organization, organizationId: Object.prototype.hasOwnProperty.call(identity, 'organizationId') ? identity.organizationId : (user.organizationId || null),
     permissions: identity.permissions || (['supplier', 'admin'].includes(user.role) ? ['all'] : []),
-    isVerified: user.isVerified, verificationStatus: user.verificationStatus,
+    isVerified: user.isVerified, verificationStatus: user.verificationStatus, verificationRevision: user.verificationRevision ?? 0,
     iceNumber: user.iceNumber, tradeRegistry: user.tradeRegistry, verificationDoc: user.verificationDoc,
     rejectionReason: user.rejectionReason
   }
@@ -61,6 +64,9 @@ router.post('/register', validateSupplierRegister, asyncHandler(async (req, res)
   if (req.body.permissions !== undefined || req.body.parentSupplierId !== undefined || req.body.organizationId !== undefined) {
     return res.status(400).json({ message: 'تعيين الموظف وصلاحياته يتم بدعوة من مالك الشركة' })
   }
+  if (req.body.businessTypes !== undefined && (role !== 'supplier' || !validBusinessTypes(req.body.businessTypes))) {
+    return res.status(400).json({ message: 'أنواع نشاط المورد غير صالحة' })
+  }
   const normalizedEmail = String(email).trim().toLowerCase()
   if (await Supplier.exists({ email: normalizedEmail })) return res.status(409).json({ message: 'البريد الإلكتروني موجود بالفعل' })
   const supplier = new Supplier({
@@ -69,6 +75,7 @@ router.post('/register', validateSupplierRegister, asyncHandler(async (req, res)
     gender: req.body.gender || 'undisclosed',
     password: await bcrypt.hash(password, 12), role,
     organization: role === 'supplier' ? String(organization || name).trim() : '',
+    businessTypes: role === 'supplier' ? declaredBusinessTypes(req.body.businessTypes) : [],
     permissions: [], products: []
   })
   await auditedChange({
@@ -91,7 +98,27 @@ router.post('/login', validateSupplierLogin, asyncHandler(async (req, res) => {
 }))
 
 router.get('/me/profile', authenticate, asyncHandler(async (req, res) => {
+  if(req.account.role==='supplier'){
+    const current=await Supplier.findOne({_id:req.account._id,role:'supplier',isActive:{$ne:false}}).select('+verificationOperation').read('primary').maxTimeMS(5000)
+    if(!current)return res.status(404).json({message:'Supplier profile unavailable'})
+    return res.set('Cache-Control','private, no-store').json({...accountPayload(current,req.supplier),verificationSync:verification.safeSupplier(current).verificationSync})
+  }
   res.json(accountPayload(req.account, req.supplier))
+}))
+
+router.put('/me/business-types', authenticate, ownerOnly, asyncHandler(async (req, res) => {
+  if (!req.body || Object.keys(req.body).length !== 1 || !validBusinessTypes(req.body.businessTypes)) {
+    return res.status(400).json({ message: 'أنواع نشاط المورد غير صالحة' })
+  }
+  const businessTypes = declaredBusinessTypes(req.body.businessTypes)
+  await auditedChange({
+    action: 'SUPPLIER_BUSINESS_TYPES_UPDATED', targetType: 'Supplier', targetId: req.supplier.id,
+    actor: req.supplier, details: { businessTypes }
+  }, async () => {
+    const result = await Supplier.updateOne({ _id: req.supplier.id, role: 'supplier', isActive: { $ne: false } }, { $set: { businessTypes } }, { runValidators: true })
+    if (!result.matchedCount) throw httpError(403, 'حساب المورد غير متاح')
+  })
+  res.set('Cache-Control', 'private, no-store').json({ businessTypes })
 }))
 
 async function logout(req, res) {
@@ -119,6 +146,7 @@ router.put('/me/password', authenticate, asyncHandler(async (req, res) => {
 }))
 
 router.get('/me/organization', authenticate, asyncHandler(async (req, res) => {
+  res.set('Cache-Control','private, no-store')
   const organization = req.supplier.role === 'staff'
     ? (req.supplier.organizationId && await Organization.findById(req.supplier.organizationId))
     : await organizationFor(req.account)
@@ -130,18 +158,30 @@ router.get('/me/organization', authenticate, asyncHandler(async (req, res) => {
 }))
 
 router.put('/me/organization', authenticate, ownerOnly, asyncHandler(async (req, res) => {
+  res.set('Cache-Control','private, no-store')
   const allowed = ['name', 'description', 'city', 'country']
-  if (Object.keys(req.body).some(key => !allowed.includes(key))) return res.status(400).json({ message: 'حقول الشركة غير مسموحة' })
+  if (Object.keys(req.body).some(key => ![...allowed,'declareCountry'].includes(key))) return res.status(400).json({ message: 'حقول الشركة غير مسموحة' })
   if (req.body.name !== undefined && (typeof req.body.name !== 'string' || !req.body.name.trim())) {
     return res.status(400).json({ message: 'اسم الشركة مطلوب' })
   }
+  const {country,declareCountry}=req.body
+  if ((country!==undefined&&(typeof country!=='string'||(country!==''&&!/^[A-Za-z]{2}$/.test(country))))||
+    (declareCountry!==undefined&&typeof declareCountry!=='boolean')||(declareCountry===true&&!/^[A-Za-z]{2}$/.test(country||''))) return res.status(400).json({message:'Invalid country declaration'})
   const targetId = req.supplier.organizationId || new mongoose.Types.ObjectId()
   const { result } = await auditedChange({
     action: 'ORGANIZATION_UPDATED', targetType: 'Organization', targetId, actor: req.supplier,
     details: { fields: Object.keys(req.body) }
   }, async () => {
     const organization = await organizationFor(req.account, true, targetId)
+    const previous=organization.country
     for (const key of allowed) if (req.body[key] !== undefined) organization[key] = req.body[key]
+    if(declareCountry===true){
+      organization.declaredCountry=country.toUpperCase()
+      // Explicit declaration writes both values together even on a repeated save.
+      organization.markModified('country');organization.markModified('declaredCountry')
+    }else if(declareCountry===false||organization.country!==previous){
+      organization.declaredCountry=undefined;organization.markModified('declaredCountry')
+    }
     await organization.save()
     await Supplier.updateOne({ _id: req.supplier.id }, { $set: { organization: organization.name, organizationId: organization._id } })
     return organization
@@ -243,29 +283,37 @@ router.patch('/me/memberships/:id', authenticate, ownerOnly, validateMongoId, as
   res.json({ message: 'تم تحديث العضوية', membership })
 }))
 
+
+router.get('/me/verification-state',authenticate,ownerOnly,asyncHandler(async(req,res)=>{
+ res.set('Cache-Control','private, no-store')
+ res.json(await verification.readState(req.account._id,req.supplier))
+}))
+router.post('/me/verification-recover',authenticate,ownerOnly,asyncHandler(async(req,res)=>{
+ res.set('Cache-Control','private, no-store')
+ res.json(await verification.resume(req.account._id,req.supplier,req.body))
+}))
 router.post('/me/verify', authenticate, ownerOnly, asyncHandler(async (req, res) => {
-  const { iceNumber, tradeRegistry, verificationDoc } = req.body
-  if (![iceNumber, tradeRegistry].some(v => typeof v === 'string' && v.trim())) {
-    return res.status(400).json({ message: 'رقم ICE أو السجل التجاري مطلوب' })
+  const body = req.body || {}, supplier = req.account
+  const fields = ['iceNumber', 'tradeRegistry', 'verificationDoc']
+  // Older clients may submit the initial revision; subsequent edits must name it.
+  const expected = body.verificationRevision ?? 0
+  if (Object.keys(body).some(k => ![...fields, 'verificationRevision'].includes(k)) ||
+      !Number.isSafeInteger(expected) || expected < 0 ||
+      fields.some(k => body[k] !== undefined && (typeof body[k] !== 'string' || body[k].length > (k === 'verificationDoc' ? 2048 : 100)))) {
+    return res.status(400).json({ message: 'بيانات طلب التوثيق غير صحيحة' })
   }
-  if (verificationDoc && (typeof verificationDoc !== 'string' || !/^(https:\/\/|\/uploads\/)/.test(verificationDoc))) {
-    return res.status(400).json({ message: 'رابط وثيقة التوثيق غير صالح' })
+  const input = Object.fromEntries(fields.map(k => [k, (body[k] ?? supplier[k] ?? '').trim()]))
+  if (!input.iceNumber && !input.tradeRegistry) return res.status(400).json({ message: 'رقم ICE أو السجل التجاري مطلوب' })
+  if (input.verificationDoc) {
+    let valid = false
+    try {
+      const url = new URL(input.verificationDoc)
+      valid = url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password
+    } catch { /* A legacy managed reference can be retained, not newly supplied. */ }
+    if (!valid && input.verificationDoc !== supplier.verificationDoc) return res.status(400).json({ message: 'رابط وثيقة التوثيق غير صالح' })
   }
-  const supplier = req.account
-  await auditedChange({
-    action: 'SUPPLIER_VERIFICATION_SUBMITTED', targetType: 'Supplier', targetId: supplier._id,
-    actor: req.supplier, details: { previousStatus: supplier.verificationStatus, iceNumber, tradeRegistry }
-  }, async () => {
-    if (typeof iceNumber === 'string') supplier.iceNumber = iceNumber.trim().slice(0, 100)
-    if (typeof tradeRegistry === 'string') supplier.tradeRegistry = tradeRegistry.trim().slice(0, 100)
-    if (verificationDoc !== undefined) supplier.verificationDoc = verificationDoc
-    supplier.verificationStatus = 'pending'
-    supplier.isVerified = false
-    supplier.rejectionReason = ''
-    await supplier.save()
-    await Store.updateMany({ supplierId: supplier._id }, { $set: { isVerified: false } })
-  })
-  res.json({ message: 'تم إرسال طلب التوثيق للمراجعة', supplier: accountPayload(supplier, req.supplier) })
+  const {supplier:saved,replayed}=await verification.submit(supplier,req.supplier,input,expected)
+  res.json({ message: replayed?'هذه حالة ملف التوثيق المحفوظ':'تم إرسال طلب التوثيق للمراجعة', supplier: {...accountPayload(saved, req.supplier),verificationSync:verification.safeSupplier(saved).verificationSync}, ...(replayed?{replayed:true}:{}) })
 }))
 
 // Retired duplicate upload route: all writes use the validated catalog API.
@@ -293,25 +341,28 @@ router.patch('/me/orders/:orderId/status', authenticate, requirePermission('mana
 }))
 
 router.get('/me/reviews', authenticate, requirePermission('manage_store'), asyncHandler(async (req, res) => {
-  const Review = require('../models/Review')
+  const { ownerList } = require('../services/reviewEvidence')
   const { page, limit, skip } = getPaginationParams(req)
-  const filter = { supplierId: req.supplier.ownerId }
-  res.json(formatPaginationResponse(await Review.find(filter).limit(limit).skip(skip), await Review.countDocuments(filter), page, limit))
+  res.set('Cache-Control','private, no-store')
+  res.json(await ownerList(req.supplier.ownerId,page,limit,skip))
 }))
 // A supplier may reply but must not erase a buyer's independent review.
 router.delete('/me/reviews/:id', authenticate, (req, res) => res.status(403).json({ message: 'إزالة التقييمات تتم بمراجعة إدارة المنصة' }))
-router.post('/me/reviews/:id/reply', authenticate, requirePermission('manage_store'), asyncHandler(async (req, res) => {
-  if (typeof req.body.text !== 'string' || !req.body.text.trim() || req.body.text.length > 2000) return res.status(400).json({ message: 'نص رد صالح مطلوب' })
+router.post('/me/reviews/:id/reply', authenticate, requireRole('supplier'), validateMongoId, asyncHandler(async (req, res) => {
+  if (Object.keys(req.body || {}).some(key=>key!=='text') || typeof req.body.text !== 'string' || !req.body.text.trim() || req.body.text.length > 2000) return res.status(400).json({ message: 'نص رد صالح مطلوب' })
   const Review = require('../models/Review')
-  const review = await Review.findOne({ _id: req.params.id, supplierId: req.supplier.ownerId })
+  const review = await Review.findOne({ _id: req.params.id, supplierId: req.supplier.ownerId }).select('+tradeConfirmationId')
+  const { classified } = require('../services/reviewEvidence')
+  res.set('Cache-Control','private, no-store')
   if (!review) return res.status(404).json({ message: 'التقييم غير موجود' })
+  if(review.reply?.text===req.body.text.trim())return res.json({message:'الرد محفوظ بالفعل',review:await classified(review.toObject())})
   await auditedChange({
     action: 'REVIEW_REPLIED', targetType: 'Review', targetId: review._id, actor: req.supplier
   }, async () => {
     review.reply = { text: req.body.text.trim(), date: new Date() }
     await review.save()
   })
-  res.json({ message: 'تم إضافة الرد', review })
+  res.json({ message: 'تم إضافة الرد', review:await classified(review.toObject()) })
 }))
 
 router.get('/me/analytics', authenticate, requirePermission('manage_store', 'manage_products'), asyncHandler(async (req, res) => {

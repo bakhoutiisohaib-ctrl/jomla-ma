@@ -1,0 +1,22 @@
+[
+  {
+    "journey": "stale_editor_rejected_then_explicit_reload",
+    "baseRevision": 0,
+    "currentRevision": 1
+  },
+  {
+    "journey": "real_update_response_lost",
+    "baseRevision": 1,
+    "savedRevision": 2,
+    "noProductDataStored": true
+  },
+  {
+    "journey": "reload_read_only_recovery",
+    "revision": 2,
+    "noResend": true
+  },
+  {
+    "journey": "same_key_index_queue_recovery",
+    "revision": 3
+  }
+]

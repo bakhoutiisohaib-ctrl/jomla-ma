@@ -13,7 +13,8 @@ const pointer = value => String(value || '')
 const fail = (status, message, code = 'RFQ_SUPPLIER_REJECTION_RETRY') => Object.assign(new Error(message), { status, code })
 const conflict = () => fail(409, 'سجل رفض المورد يحتاج مراجعة؛ لم يُفرض قرار نهائي', 'RFQ_SUPPLIER_REJECTION_CONFLICT')
 const unavailable = () => fail(503, 'تعذر تأكيد رفض الطلب؛ أعد استكمال الطلب نفسه لاحقاً')
-const load = id => RFQ.findById(id).select('+supplierRejection +offerSubmission')
+const {firstResponse}=require('./supplierResponseFilter')
+const load = id => RFQ.findById(id).select('+supplierRejection +offerSubmission +responseMetricVersion +firstCommercialResponse')
 
 function authorize(req, rfq) {
   if (!rfq) throw fail(404, 'طلب عرض السعر غير موجود')
@@ -137,7 +138,8 @@ async function completeRejection(id) {
   // Re-verify every required projection, then publish the terminal RFQ LAST.
   if ((j.previousOfferId && !await Offer.exists({ ...offerIdentity, status: 'rejected', decisionId: j.id })) ||
       !await Thread.exists(closedThread) || !await Notification.exists(noticeIdentity)) throw conflict()
-  await RFQ.updateOne(fence(id, j), { $set: { status: 'rejected', 'supplierRejection.phase': 'completed', 'supplierRejection.completedAt': new Date() },
+  const completedAt=new Date()
+  await RFQ.updateOne(fence(id, j), { $set: { status: 'rejected', 'supplierRejection.phase': 'completed', 'supplierRejection.completedAt': completedAt, ...firstResponse(rfq,j,'refusal',j.id,completedAt) },
     $unset: { 'supplierRejection.nextAttemptAt': 1, 'supplierRejection.lastErrorCode': 1 }, $inc: { revision: 1 } }, { ...WRITE, runValidators: true })
   rfq = await checkpoint(id, j)
   if (rfq.supplierRejection.phase !== 'completed') throw conflict()

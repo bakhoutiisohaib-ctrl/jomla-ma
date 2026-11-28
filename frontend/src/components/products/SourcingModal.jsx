@@ -26,7 +26,7 @@ function SourcingForm({ initialData = {}, onClose, onSuccess, onRequireLogin, us
   const c = localizeCopy(copy, lang)
   const r = recovery[lang] || recovery.ar
   const [attempt, setAttempt] = useState(() => allowed ? getAttempt(buyerId) : null)
-  const [form, setForm] = useState(() => attempt?.body || ({ buyerPhone: allowed ? user?.phone || '' : '', buyerCity: allowed ? user?.city || '' : '', productName: initialData.productName || initialData.query || '', category: initialData.category || '', quantity: initialData.quantity || 1, unit: initialData.unit || c.piece, targetPrice: initialData.targetPrice || '', imageUrl: initialData.imageUrl || '', notes: '' }))
+  const [form, setForm] = useState(() => attempt?.body || ({ buyerPhone: allowed ? user?.phone || '' : '', buyerCity: allowed ? user?.city || '' : '', productName: initialData.productName || initialData.query || '', category: initialData.category || '', quantity: initialData.quantity || 1, unit: initialData.unit || c.piece, targetPrice: initialData.targetPrice ?? '', imageUrl: initialData.imageUrl || '', notes: '' }))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(null)
@@ -45,7 +45,7 @@ function SourcingForm({ initialData = {}, onClose, onSuccess, onRequireLogin, us
     busy.current = true; setLoading(true); setError('')
     controller.current = new AbortController()
     try {
-      const original = attempt || beginAttempt(buyerId, { ...form, quantity: Number(form.quantity), targetPrice: form.targetPrice === '' ? null : Number(form.targetPrice) })
+      const original = attempt || beginAttempt(buyerId, { ...form, quantity: Number(form.quantity), targetPrice: form.targetPrice == null || form.targetPrice === '' ? null : Number(form.targetPrice) })
       setAttempt(original)
       const data = await apiRequest(lookup ? '/sourcing/creation-result' : '/sourcing', { token,
         signal: controller.current.signal, cache: 'no-store', headers: { 'Idempotency-Key': original.key },
@@ -79,7 +79,7 @@ function SourcingForm({ initialData = {}, onClose, onSuccess, onRequireLogin, us
             <label>{c.quantity}<input required type="number" min="1" step="1" value={form.quantity} onChange={e => set('quantity', e.target.value)} style={input} /></label>
             <label>{c.unit}<input required maxLength={50} value={form.unit} onChange={e => set('unit', e.target.value)} style={input} /></label>
           </div>
-          <label>{c.target}<input type="number" min="0" step="0.01" value={form.targetPrice} onChange={e => set('targetPrice', e.target.value)} style={input} /></label>
+          <label>{c.target}<input type="number" min="0" step="0.01" value={form.targetPrice ?? ''} onChange={e => set('targetPrice', e.target.value)} style={input} /></label>
           <label>{c.notes}<textarea rows={3} maxLength={5000} value={form.notes} onChange={e => set('notes', e.target.value)} style={input} /></label>
           </fieldset>
           {error && <p role="alert" style={{ color: '#B91C1C', margin: 0 }}>{error}</p>}

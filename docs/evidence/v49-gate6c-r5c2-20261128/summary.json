@@ -1,0 +1,56 @@
+{
+  "baseline": "572a05bad24c2dbc9a799a7604300cdb44175832",
+  "passed": 113,
+  "total": 113,
+  "suites": [
+    {
+      "name": "SupplierDashboard.test.jsx",
+      "passed": 30,
+      "total": 30,
+      "status": "passed"
+    },
+    {
+      "name": "LocalReviewJourneys.test.jsx",
+      "passed": 17,
+      "total": 17,
+      "status": "passed"
+    },
+    {
+      "name": "ProductDetailAfter.test.jsx",
+      "passed": 26,
+      "total": 26,
+      "status": "passed"
+    },
+    {
+      "name": "RoutingPages.test.jsx",
+      "passed": 16,
+      "total": 16,
+      "status": "passed"
+    },
+    {
+      "name": "MarketHome.test.jsx",
+      "passed": 2,
+      "total": 2,
+      "status": "passed"
+    },
+    {
+      "name": "SupplierRating.test.jsx",
+      "passed": 18,
+      "total": 18,
+      "status": "passed"
+    },
+    {
+      "name": "reviewPresentation.test.js",
+      "passed": 4,
+      "total": 4,
+      "status": "passed"
+    }
+  ],
+  "skipped": 0,
+  "exitCode": 0,
+  "build": {
+    "status": "PASS",
+    "ci": true,
+    "artifact": "main.8dfac0ab.js"
+  }
+}

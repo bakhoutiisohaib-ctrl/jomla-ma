@@ -51,6 +51,10 @@ function OfferSession({ rfq, progress, token, onUpdated, onBlockClose, onReject,
         ...(original ? { headers: { 'Idempotency-Key': original.key }, body: original.body } : { body: { offerId: pendingId } })
       });
       if (!valid(active.signal)) return;
+      if(result?.rfq?._id!==rfq._id ||
+         (pendingId && result.submission?.offerId!==pendingId) ||
+         (result.offer?._id && result.offer._id!==result.submission?.offerId))
+        throw new Error(l('لم يتأكد إرسال العرض.', 'L’envoi de l’offre n’est pas confirmé.'));
       if (result.processing || (result.rfq?.status === 'offering' && !['completed', 'expired'].includes(result.submission?.phase))) {
         setUncertain(true); setKnownId(result.submission?.offerId || pendingId || null);
       } else if (result.offer?._id && ['completed', 'expired'].includes(result.submission?.phase)) {

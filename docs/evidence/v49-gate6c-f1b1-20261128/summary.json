@@ -1,0 +1,48 @@
+{
+  "baseline": "835d15486ad8aac44e86243b9ae3202286fb216f",
+  "passed": 111,
+  "total": 111,
+  "suites": [
+    {
+      "name": "reviews_trust.test.js",
+      "passed": 19,
+      "total": 19,
+      "status": "passed"
+    },
+    {
+      "name": "security.test.js",
+      "passed": 16,
+      "total": 16,
+      "status": "passed"
+    },
+    {
+      "name": "products.test.js",
+      "passed": 39,
+      "total": 39,
+      "status": "passed"
+    },
+    {
+      "name": "publicPages.test.js",
+      "passed": 23,
+      "total": 23,
+      "status": "passed"
+    },
+    {
+      "name": "businessTypes.test.js",
+      "passed": 14,
+      "total": 14,
+      "status": "passed"
+    }
+  ],
+  "skipped": 0,
+  "exitCode": 0,
+  "policy": {
+    "minimumReviews": 3,
+    "minimumAverage": 4.5,
+    "maxSuppliers": 1000,
+    "maxReviews": 10000,
+    "batchSize": 64,
+    "budgetMs": 8000,
+    "maxConcurrent": 2
+  }
+}

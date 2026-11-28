@@ -232,3 +232,15 @@ test('arbitrary external stock image picker is disabled', async () => {
   expect(res.status).toBe(410)
   expect(res.body.images).toEqual([])
 })
+
+test('V4.9 visual request rejects insufficient detail, confirms version and disables external text discovery',async()=>{
+  const flat=await sharp({create:{width:64,height:64,channels:3,background:'#ffffff'}}).png().toBuffer()
+  const invalid=await request(app).post('/api/image-search').field('visualVersion','v49-1').attach('image',flat,'blank.png')
+  expect(invalid.status).toBe(422);expect(invalid.body.code).toBe('VISUAL_INSUFFICIENT_DETAIL');expect(invalid.body).not.toHaveProperty('products')
+  const unknown=await request(app).post('/api/image-search').field('visualVersion','unknown').attach('image',flat,'blank.png')
+  expect(unknown.status).toBe(400)
+  const pixels=Buffer.from(Array.from({length:64*64*3},(_,i)=>Math.floor(i/(64*3))%8<4?30:230))
+  const detailed=await sharp(pixels,{raw:{width:64,height:64,channels:3}}).png().toBuffer()
+  const result=await request(app).post('/api/image-search').field('visualVersion','v49-1').field('q','shoe').attach('image',detailed,'arbitrary.png')
+  expect(result.status).toBe(200);expect(result.body).toMatchObject({visualVersion:'v49-1',queryQuality:'sufficient_detail',visualIdentityVerified:false,externalDiscovery:{enabled:false,reason:'visual_search_scope'}})
+})

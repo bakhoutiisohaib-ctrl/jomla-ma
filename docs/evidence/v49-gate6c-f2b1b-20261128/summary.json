@@ -1,0 +1,105 @@
+{
+  "status": "PASS",
+  "version": "ffmpeg version 9.1-essentials_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+  "cases": [
+    {
+      "case": "mp4",
+      "status": "PASS",
+      "source": {
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 320,
+        "height": 180,
+        "pix_fmt": "yuvj420p"
+      },
+      "output": {
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 320,
+        "height": 180,
+        "pix_fmt": "yuvj420p"
+      },
+      "bytes": 5968,
+      "frames": 55,
+      "durationUs": 2291667,
+      "normalizationMs": 87,
+      "verificationMs": 46
+    },
+    {
+      "case": "mp4 half truncation",
+      "status": "REJECTED"
+    },
+    {
+      "case": "mp4 wrong MIME",
+      "status": "REJECTED"
+    },
+    {
+      "case": "webm",
+      "status": "PASS",
+      "source": {
+        "codec_name": "vp9",
+        "codec_type": "video",
+        "width": 320,
+        "height": 180,
+        "pix_fmt": "yuv420p"
+      },
+      "output": {
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 320,
+        "height": 180,
+        "pix_fmt": "yuvj420p"
+      },
+      "bytes": 5415,
+      "frames": 56,
+      "durationUs": 2333333,
+      "normalizationMs": 85,
+      "verificationMs": 44
+    },
+    {
+      "case": "webm half truncation",
+      "status": "REJECTED"
+    },
+    {
+      "case": "webm wrong MIME",
+      "status": "REJECTED"
+    },
+    {
+      "case": "fake MP4 passes preflight but decoder rejects",
+      "status": "REJECTED"
+    },
+    {
+      "case": "duration over 30s",
+      "status": "REJECTED"
+    },
+    {
+      "case": "oversized dimensions",
+      "status": "REJECTED"
+    },
+    {
+      "case": "unsupported video codec",
+      "status": "REJECTED"
+    },
+    {
+      "case": "audio track outside pilot scope",
+      "status": "REJECTED"
+    },
+    {
+      "case": "corrupt encoded media with valid outer boxes",
+      "status": "REJECTED"
+    },
+    {
+      "case": "wall-clock timeout",
+      "status": "PASS"
+    },
+    {
+      "case": "stdout budget",
+      "status": "PASS"
+    },
+    {
+      "case": "stderr budget",
+      "status": "PASS"
+    }
+  ],
+  "scope": "lab only; silent clips; no OS sandbox or hard aggregate memory cap; no production route"
+}

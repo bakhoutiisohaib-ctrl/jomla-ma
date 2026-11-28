@@ -1,0 +1,18 @@
+# Gate 5C.2 — V4.9 visual search controls — 2026-11-28
+
+**Scoped local integration PASS. Gate 5 remains OPEN.** Baseline c4f7e99ae19301bc9047a3f7cfc1f2a5dad1cd69. Original V4.9 SHA256 927901518b55674939608ca9b08802eff0a1f169da3012ba716d1c33f21cf903 verified. Existing Codex visual engine and public catalog are retained.
+
+## Integration
+- Existing header camera entry opens an accessible dialog with separate file picker and rear-camera capture input, using the V4.9 dashed olive upload controls and existing AtlasDialog responsive shell. The UI accurately states that the image is sent to the catalog engine (not an on-device semantic AI). JPEG/PNG/WebP/GIF up to 10 MB, consistent with backend limits.
+- New image selection clears previous text intent/removals, preserves explicit manual filters, resets page and aborts previous requests; clearing the image returns to filtered catalog. Invalid selection/cancel does not initiate a request. A sourcing request does not infer a product name from the image.
+- Uses existing image-search endpoint with visualVersion=v49-1. Confirm contract, pagination, counts, descriptor meaning, match type, score and external discovery status before showing results. No fabricated recognition or percentage claim. Show distinct same-file and visual similarity counts, uncovered index entries, insufficient detail error, and no-sufficient-similarity wording. No automatic external search.
+- Scope is visual integration only; comparison remains a subsequent slice. Existing card structure unchanged, except explicit visual match label.
+
+## Verification
+- First targeted FE run caught missing MarketIcon import for the existing filters. Restored import; 34/34 across six suites (22.065 s). Five new visual journey tests and updated existing scope test fixtures for the dialog and actual contract.
+- Full frontend 479/479, 46/46 suites, 86.582 s. CI build flagged mixed logical operator notation in the visual response validator. Added explicit equivalent parentheses; final targeted recheck 34/34 (6 suites, 25.374 s), strict CI production build compiled successfully (main JS 202.25 kB gzip, CSS 20.77 kB). Full FE run preceded this equivalent syntax-only cleanup; final targeted/build/browser verified final source.
+- Actual Chrome + Express + disposable MongoDB wiredTiger: 5/5 browser records, direct database/API verification PASS, exit 0. Original file returns one exact image, resized JPEG returns one similar image, one public product lacks index coverage, blank file returns HTTP 422; no false empty state. Arabic/French/English and 390/1280 widths tested. Removal restores two public products. Reviewed actual screenshots. Camera input tested by supplying a synthetic file via browser automation, not hardware capture.
+- [Browser records](evidence/v49-gate5c2-visual-20261128/visual-results.json), [DB/API records](evidence/v49-gate5c2-visual-20261128/db-results.json), [AR dialog](evidence/v49-gate5c2-visual-20261128/ar390-upload-dialog.png), [AR results](evidence/v49-gate5c2-visual-20261128/ar390-exact-and-coverage.png), [EN results](evidence/v49-gate5c2-visual-20261128/en1280-visual-results.png).
+
+## Remaining
+5C.3 comparable commercial offers and final Gate 5 acceptance. Actual mobile camera permissions/behavior, real-product visual accuracy and full index coverage, visual parity of every original screen, production load, full backend inventory and deployment remain unverified. Manual filters intentionally retained rather than the original demo's all-filter reset; user informed in dialog. No new backend code or dependencies; previous 5C.1 isolated BE 78/78 remains separate evidence. No original DB, default branch, VPS, DNS, production or reference changes.

@@ -1,0 +1,90 @@
+[
+  {
+    "lang": "ar",
+    "width": 320,
+    "geometry": {
+      "vw": 320,
+      "scroll": 320,
+      "price": [
+        "‏18,00 د.م.‏",
+        "‏25,00 د.م.‏"
+      ],
+      "range": "10–19",
+      "dir": "ltr",
+      "dialogWidth": 320,
+      "cart": {
+        "height": 44,
+        "width": 288,
+        "iconWidth": 16,
+        "iconHeight": 16,
+        "hit": true
+      }
+    }
+  },
+  {
+    "lang": "ar",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "price": [
+        "‏18,00 د.م.‏",
+        "‏25,00 د.م.‏"
+      ],
+      "range": "10–19",
+      "dir": "ltr",
+      "dialogWidth": 390,
+      "cart": {
+        "height": 44,
+        "width": 358,
+        "iconWidth": 16,
+        "iconHeight": 16,
+        "hit": true
+      }
+    }
+  },
+  {
+    "lang": "fr",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "price": [
+        "18,00 MAD",
+        "25,00 MAD"
+      ],
+      "range": "10–19",
+      "dir": "ltr",
+      "dialogWidth": 390,
+      "cart": {
+        "height": 44,
+        "width": 358,
+        "iconWidth": 16,
+        "iconHeight": 16,
+        "hit": true
+      }
+    }
+  },
+  {
+    "lang": "en",
+    "width": 1280,
+    "geometry": {
+      "vw": 1280,
+      "scroll": 1280,
+      "price": [
+        "MAD 18.00",
+        "MAD 25.00"
+      ],
+      "range": "10–19",
+      "dir": "ltr",
+      "dialogWidth": 1150,
+      "cart": {
+        "height": 44,
+        "width": 550.53125,
+        "iconWidth": 16,
+        "iconHeight": 16,
+        "hit": true
+      }
+    }
+  }
+]

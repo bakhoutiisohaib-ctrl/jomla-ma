@@ -1,0 +1,183 @@
+{
+  "baseline": "92606795e25cf821bd97ffc62f0fcebbbb0955fe",
+  "backend": {
+    "passed": 94,
+    "total": 94,
+    "suites": [
+      {
+        "name": "reviews_trust.test.js",
+        "passed": 17,
+        "total": 17,
+        "status": "passed"
+      },
+      {
+        "name": "security.test.js",
+        "passed": 16,
+        "total": 16,
+        "status": "passed"
+      },
+      {
+        "name": "publicPages.test.js",
+        "passed": 23,
+        "total": 23,
+        "status": "passed"
+      },
+      {
+        "name": "reportPrivacy.test.js",
+        "passed": 35,
+        "total": 35,
+        "status": "passed"
+      },
+      {
+        "name": "reports_and_roles.test.js",
+        "passed": 3,
+        "total": 3,
+        "status": "passed"
+      }
+    ],
+    "exitCode": 0
+  },
+  "browser": {
+    "passed": 3,
+    "total": 3,
+    "journeys": [
+      {
+        "journey": "public product mixed reviews and correct average"
+      },
+      {
+        "journey": "real evidence outage 503, suppress rating, explicit retry"
+      },
+      {
+        "journey": "private supplier classification and isolation"
+      }
+    ],
+    "exitCode": 0
+  },
+  "performance": {
+    "before": [
+      {
+        "syntheticAdditionalConfirmed": 20,
+        "concurrency": 1,
+        "elapsedMs": 163,
+        "confirmationQueries": 21,
+        "calls": [
+          {
+            "status": 200,
+            "ms": 163
+          }
+        ]
+      },
+      {
+        "syntheticAdditionalConfirmed": 200,
+        "concurrency": 1,
+        "elapsedMs": 773,
+        "confirmationQueries": 201,
+        "calls": [
+          {
+            "status": 200,
+            "ms": 773
+          }
+        ]
+      },
+      {
+        "syntheticAdditionalConfirmed": 1000,
+        "concurrency": 1,
+        "elapsedMs": 3288,
+        "confirmationQueries": 1001,
+        "calls": [
+          {
+            "status": 200,
+            "ms": 3288
+          }
+        ]
+      },
+      {
+        "syntheticAdditionalConfirmed": 1000,
+        "concurrency": 4,
+        "elapsedMs": 7282,
+        "confirmationQueries": 4004,
+        "calls": [
+          {
+            "status": 200,
+            "ms": 7271
+          },
+          {
+            "status": 200,
+            "ms": 7276
+          },
+          {
+            "status": 200,
+            "ms": 7273
+          },
+          {
+            "status": 200,
+            "ms": 7282
+          }
+        ]
+      }
+    ],
+    "after": [
+      {
+        "syntheticAdditionalConfirmed": 20,
+        "concurrency": 1,
+        "elapsedMs": 44,
+        "confirmationQueries": 1,
+        "calls": [
+          {
+            "status": 200,
+            "ms": 44
+          }
+        ]
+      },
+      {
+        "syntheticAdditionalConfirmed": 200,
+        "concurrency": 1,
+        "elapsedMs": 54,
+        "confirmationQueries": 4,
+        "calls": [
+          {
+            "status": 200,
+            "ms": 54
+          }
+        ]
+      },
+      {
+        "syntheticAdditionalConfirmed": 1000,
+        "concurrency": 1,
+        "elapsedMs": 217,
+        "confirmationQueries": 16,
+        "calls": [
+          {
+            "status": 200,
+            "ms": 217
+          }
+        ]
+      },
+      {
+        "syntheticAdditionalConfirmed": 1000,
+        "concurrency": 4,
+        "elapsedMs": 1043,
+        "confirmationQueries": 64,
+        "calls": [
+          {
+            "status": 200,
+            "ms": 1042
+          },
+          {
+            "status": 200,
+            "ms": 1042
+          },
+          {
+            "status": 200,
+            "ms": 1043
+          },
+          {
+            "status": 200,
+            "ms": 1043
+          }
+        ]
+      }
+    ]
+  },
+  "scope": "isolated synthetic local HTTP, not production benchmark"
+}

@@ -3,13 +3,13 @@ const mongoose = require('mongoose')
 const ReportSchema = new mongoose.Schema({
   reporterName:    { type: String, trim: true, default: 'مستخدم المنصة' },
   reporterPhone:   { type: String, trim: true, default: '' },
-  targetType:      { type: String, enum: ['product', 'supplier'], required: true },
+  targetType:      { type: String, enum: ['product', 'supplier', 'trade_confirmation'], required: true },
   targetId:        { type: mongoose.Schema.Types.ObjectId, required: true },
   targetName:      { type: String, required: true },
   reason:          { 
     type: String, 
     required: true, 
-    enum: ['fake_product', 'copyright_infringement', 'incorrect_pricing', 'fraud', 'other'] 
+    enum: ['fake_product', 'copyright_infringement', 'incorrect_pricing', 'fraud', 'other', 'confirmation_dispute']
   },
   details:         { type: String, trim: true, default: '' },
   status:          { 
@@ -23,6 +23,7 @@ const ReportSchema = new mongoose.Schema({
   resolvedAt:      Date,
   resolvedBy:      { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
   reporterId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
+  tradeDispute: { type: new mongoose.Schema({ kind: {type:String,enum:['rfq','sourcing']}, sourceId: mongoose.Schema.Types.ObjectId, offerId: mongoose.Schema.Types.ObjectId, role: {type:String,enum:['buyer','supplier']} }, { _id:false }), default:undefined },
   moderationAction: { type: String, enum: ['none', 'hide_product', 'suspend_supplier'], default: 'none' },
   createdAt:       { type: Date, default: Date.now }
 })

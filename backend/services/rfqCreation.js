@@ -15,7 +15,7 @@ const same = (a, b) => a != null && b != null && String(a) === String(b)
 const text = (value, max = 5000) => typeof value === 'string' ? value.trim().slice(0, max) : ''
 const load = id => QuoteRequest.findById(id).select('+creation')
 const pending = rfq => rfq?.status === 'creating' && rfq.creation?.version === 1 && rfq.creation.phase === 'pending'
-const publicRfq = record => { const out = record.toObject ? record.toObject({ transform: false }) : { ...record }; delete out.creation; return out }
+const publicRfq = record => { const out = record.toObject ? record.toObject({ transform: false }) : { ...record }; delete out.creation; delete out.responseMetricVersion; delete out.firstCommercialResponse; return out }
 
 function inputIdentity(req) {
   const supplied = req.get('Idempotency-Key')
@@ -73,7 +73,7 @@ async function recordCreation(req) {
       supplierId: product.supplierId, buyerId, buyerName: req.supplier.name, currency: product.currency, wholesaleOpportunity,
       // Ready RFQs retain Phase B's original revision0; -1 fences only the new
       // intermediate state against late UI reads during creation recovery.
-      status: 'creating', revision: -1, createdAt: now, creation: { version: 1, key, hash, phase: 'pending',
+      status: 'creating', revision: -1, createdAt: now, responseMetricVersion: 1, creation: { version: 1, key, hash, phase: 'pending',
         threadId: new mongoose.Types.ObjectId(), notificationId: new mongoose.Types.ObjectId(),
         subject: product.name || 'طلب عرض سعر', initialContent: input.notes || 'الكمية المطلوبة: ' + input.quantity + ' ' + product.unit,
         attempts: 0, nextAttemptAt: now } })

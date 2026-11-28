@@ -1,0 +1,80 @@
+[
+  {
+    "lang": "ar",
+    "width": 320,
+    "geometry": {
+      "vw": 320,
+      "scroll": 320,
+      "frameWidth": 288,
+      "heart": {
+        "width": 44,
+        "height": 44,
+        "hit": true
+      },
+      "counterDirection": "ltr",
+      "thumbs": 3
+    },
+    "keyboard": true,
+    "swipe": true
+  },
+  {
+    "lang": "ar",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "frameWidth": 358,
+      "heart": {
+        "width": 44,
+        "height": 44,
+        "hit": true
+      },
+      "counterDirection": "ltr",
+      "thumbs": 3
+    },
+    "keyboard": true,
+    "swipe": true
+  },
+  {
+    "lang": "fr",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "frameWidth": 358,
+      "heart": {
+        "width": 44,
+        "height": 44,
+        "hit": true
+      },
+      "counterDirection": "ltr",
+      "thumbs": 3
+    },
+    "keyboard": true,
+    "swipe": true
+  },
+  {
+    "lang": "en",
+    "width": 1280,
+    "geometry": {
+      "vw": 1265,
+      "scroll": 1265,
+      "frameWidth": 648.53125,
+      "heart": {
+        "width": 44,
+        "height": 44,
+        "hit": true
+      },
+      "counterDirection": "ltr",
+      "thumbs": 3
+    },
+    "keyboard": true,
+    "swipe": false
+  },
+  {
+    "journey": "touch_zoom_escape"
+  },
+  {
+    "journey": "favorite_guest_return_to"
+  }
+]

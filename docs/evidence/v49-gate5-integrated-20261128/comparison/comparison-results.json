@@ -1,0 +1,34 @@
+[
+  {
+    "journey": "quick_preview_comparison_all_suppliers",
+    "quantity": 10,
+    "ordered": [
+      "Fes",
+      "Tanger",
+      "high MOQ"
+    ]
+  },
+  {
+    "journey": "quantity_changes_tier_and_ranking",
+    "quantity": 50,
+    "price": 20,
+    "total": 1000
+  },
+  {
+    "journey": "invalid_quantity_hides_old_quotes"
+  },
+  {
+    "journey": "navigate_offer_and_open_from_detail",
+    "quantity": 20
+  },
+  {
+    "journey": "expanded_image_same_comparison"
+  },
+  {
+    "journey": "french_desktop_same_quantity",
+    "widths": [
+      390,
+      1280
+    ]
+  }
+]

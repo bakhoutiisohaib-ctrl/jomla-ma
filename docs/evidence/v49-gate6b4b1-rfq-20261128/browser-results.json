@@ -1,0 +1,29 @@
+[
+  {
+    "journey": "controlled list exclusion verified before opening notice"
+  },
+  {
+    "journey": "foreign target refused",
+    "status": 403,
+    "unread": true
+  },
+  {
+    "journey": "missing target refused",
+    "status": 404,
+    "unread": true
+  },
+  {
+    "journey": "confirmed target outside filtered list",
+    "read": true
+  },
+  {
+    "journey": "supplier real rejection terminal"
+  },
+  {
+    "journey": "read failure preserves verified closed dialog",
+    "unread": true
+  },
+  {
+    "journey": "buyer observes closed rejected request"
+  }
+]

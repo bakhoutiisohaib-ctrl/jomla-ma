@@ -1,0 +1,17 @@
+{
+  "syntheticPublicProducts": 2,
+  "strictTotal": 0,
+  "alternativeCounts": [
+    {
+      "key": "city",
+      "total": 1
+    },
+    {
+      "key": "maxPrice",
+      "total": 1
+    }
+  ],
+  "moqPrice": 35,
+  "quantityPrice": 20,
+  "quantity": 50
+}

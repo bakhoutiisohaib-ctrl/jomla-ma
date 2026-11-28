@@ -1,0 +1,219 @@
+{
+  "runtime": "85a84b8295878c210ea58d82498172b4e70f3d79",
+  "backend": {
+    "passed": 190,
+    "total": 190,
+    "suites": [
+      {
+        "name": "rfq_consistency.test.js",
+        "passed": 40,
+        "total": 40,
+        "status": "passed"
+      },
+      {
+        "name": "sourcingDecision.test.js",
+        "passed": 48,
+        "total": 48,
+        "status": "passed"
+      },
+      {
+        "name": "reviews_trust.test.js",
+        "passed": 17,
+        "total": 17,
+        "status": "passed"
+      },
+      {
+        "name": "security.test.js",
+        "passed": 16,
+        "total": 16,
+        "status": "passed"
+      },
+      {
+        "name": "publicPages.test.js",
+        "passed": 23,
+        "total": 23,
+        "status": "passed"
+      },
+      {
+        "name": "reportPrivacy.test.js",
+        "passed": 35,
+        "total": 35,
+        "status": "passed"
+      },
+      {
+        "name": "admin.test.js",
+        "passed": 7,
+        "total": 7,
+        "status": "passed"
+      },
+      {
+        "name": "reports_and_roles.test.js",
+        "passed": 3,
+        "total": 3,
+        "status": "passed"
+      },
+      {
+        "name": "reportTransactions.test.js",
+        "passed": 1,
+        "total": 1,
+        "status": "passed"
+      }
+    ],
+    "exitCode": 0
+  },
+  "frontend": {
+    "passed": 164,
+    "total": 164,
+    "suites": [
+      {
+        "name": "SupplierDashboard.test.jsx",
+        "passed": 30,
+        "total": 30,
+        "status": "passed"
+      },
+      {
+        "name": "BuyerDashboard.test.jsx",
+        "passed": 24,
+        "total": 24,
+        "status": "passed"
+      },
+      {
+        "name": "LocalReviewJourneys.test.jsx",
+        "passed": 17,
+        "total": 17,
+        "status": "passed"
+      },
+      {
+        "name": "ProductDetailAfter.test.jsx",
+        "passed": 26,
+        "total": 26,
+        "status": "passed"
+      },
+      {
+        "name": "RoutingPages.test.jsx",
+        "passed": 16,
+        "total": 16,
+        "status": "passed"
+      },
+      {
+        "name": "TradeConfirmationDispute.test.jsx",
+        "passed": 16,
+        "total": 16,
+        "status": "passed"
+      },
+      {
+        "name": "MarketHome.test.jsx",
+        "passed": 2,
+        "total": 2,
+        "status": "passed"
+      },
+      {
+        "name": "AdminDashboard.test.jsx",
+        "passed": 5,
+        "total": 5,
+        "status": "passed"
+      },
+      {
+        "name": "Language.test.jsx",
+        "passed": 6,
+        "total": 6,
+        "status": "passed"
+      },
+      {
+        "name": "SupplierRating.test.jsx",
+        "passed": 18,
+        "total": 18,
+        "status": "passed"
+      },
+      {
+        "name": "reviewPresentation.test.js",
+        "passed": 4,
+        "total": 4,
+        "status": "passed"
+      }
+    ],
+    "exitCode": 0
+  },
+  "build": {
+    "status": "PASS",
+    "ci": true,
+    "artifact": "main.8dfac0ab.js",
+    "exitCode": 0
+  },
+  "browser": {
+    "passed": 10,
+    "total": 10,
+    "journeys": [
+      {
+        "journey": "RFQ buyer confirms, audit failure, identical replay recovers"
+      },
+      {
+        "journey": "unrelated supplier cannot access RFQ dispute"
+      },
+      {
+        "journey": "supplier sourcing confirmation and private complaint"
+      },
+      {
+        "journey": "admin records both outcomes with no moderation controls"
+      },
+      {
+        "journey": "buyer sees own reviewed status without eligibility or other party data"
+      },
+      {
+        "journey": "supplier sees own dismissed status"
+      },
+      {
+        "journey": "supplier confirms original RFQ after complaint review"
+      },
+      {
+        "journey": "buyer publishes one negative rating after mutual confirmation; legacy excluded"
+      },
+      {
+        "journey": "supplier replies without changing the negative review"
+      },
+      {
+        "journey": "anonymous visitor sees verified negative review and reply, unchanged average"
+      }
+    ],
+    "exitCode": 0
+  },
+  "db": {
+    "reports": [
+      {
+        "kind": "rfq",
+        "role": "buyer",
+        "status": "resolved",
+        "moderation": "none"
+      },
+      {
+        "kind": "sourcing",
+        "role": "supplier",
+        "status": "dismissed",
+        "moderation": "none"
+      }
+    ],
+    "confirmations": [
+      {
+        "kind": "rfq",
+        "buyer": true,
+        "supplier": true
+      },
+      {
+        "kind": "sourcing",
+        "buyer": false,
+        "supplier": true
+      }
+    ],
+    "submissionAudits": 2,
+    "decisionAudits": 2,
+    "reviews": 2,
+    "countedReviews": 1,
+    "average": 1,
+    "legacyReviews": 1,
+    "exactReviewAgreement": true,
+    "replyVerified": true,
+    "faults": 1,
+    "exactActorAndAgreementIdentity": true,
+    "supplierActive": true
+  }
+}

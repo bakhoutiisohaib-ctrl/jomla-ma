@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiRequest } from '../../api/config';
-import { setSession } from '../../api/session';
+import { getSessionToken, setSession } from '../../api/session';
 import { useLabels } from '../../i18n/useLabels';
 import { Field, Notice } from '../common/WorkspaceUI';
 import { MarketIcon } from '../common/MarketLayout';
@@ -20,25 +20,41 @@ export default function LoginPage({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const pending = useRef(null);
+  useEffect(() => () => {
+    pending.current?.abort();
+    pending.current = null;
+  }, []);
   async function submit(event) {
     event.preventDefault();
+    if (pending.current) return;
+    const controller = new AbortController();
+    const previousToken = getSessionToken();
+    const location = window.location.pathname + window.location.search;
+    pending.current = controller;
+    const current = () => pending.current === controller && !controller.signal.aborted &&
+      getSessionToken() === previousToken && window.location.pathname + window.location.search === location;
     setError('');
     setBusy(true);
     try {
       const data = await apiRequest('/suppliers/login', {
         method: 'POST',
         body: form,
-        token: ''
+        token: '', signal: controller.signal
       });
+      if (!current()) return;
       setSession(data.token);
       onLogin({
         ...data.supplier,
         _id: data.supplier._id || data.supplier.id
       });
     } catch (e) {
-      setError(e.message);
+      if (current() && e.name !== 'AbortError') setError(e.message);
     } finally {
-      setBusy(false);
+      if (pending.current === controller) {
+        pending.current = null;
+        setBusy(false);
+      }
     }
   }
   return <AuthScene onBack={onBack} seller={onBecomeSupplier && <>

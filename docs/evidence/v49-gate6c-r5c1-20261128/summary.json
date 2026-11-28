@@ -1,0 +1,51 @@
+{
+  "baseline": "1a8294e415a7e48edc11b442cda0e14a80b8fbd7",
+  "passed": 93,
+  "total": 93,
+  "suites": [
+    {
+      "name": "reviews_trust.test.js",
+      "passed": 16,
+      "total": 16,
+      "status": "passed"
+    },
+    {
+      "name": "security.test.js",
+      "passed": 16,
+      "total": 16,
+      "status": "passed"
+    },
+    {
+      "name": "publicPages.test.js",
+      "passed": 23,
+      "total": 23,
+      "status": "passed"
+    },
+    {
+      "name": "reportPrivacy.test.js",
+      "passed": 35,
+      "total": 35,
+      "status": "passed"
+    },
+    {
+      "name": "reports_and_roles.test.js",
+      "passed": 3,
+      "total": 3,
+      "status": "passed"
+    }
+  ],
+  "skipped": 0,
+  "exitCode": 0,
+  "syntheticRegression": {
+    "before": {
+      "avg": 4.4,
+      "total": 7
+    },
+    "after": {
+      "avg": 3,
+      "total": 2
+    },
+    "retained": 8,
+    "excluded": 6
+  }
+}

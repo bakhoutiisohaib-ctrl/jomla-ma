@@ -1,0 +1,39 @@
+{
+  "catalogUniqueIds": 305,
+  "storeUniqueIds": 16,
+  "syntheticAddedProducts": 600,
+  "syntheticAddedSuppliers": 30,
+  "syntheticAddedStores": 30,
+  "verifiedAddedProducts": 300,
+  "localOnly": true,
+  "staticRanking": true,
+  "rows": [
+    {
+      "concurrency": 1,
+      "requests": 48,
+      "successful": 48,
+      "p50Ms": 15,
+      "p95Ms": 25,
+      "maxMs": 30,
+      "elapsedMs": 788
+    },
+    {
+      "concurrency": 4,
+      "requests": 48,
+      "successful": 48,
+      "p50Ms": 30,
+      "p95Ms": 41,
+      "maxMs": 47,
+      "elapsedMs": 386
+    },
+    {
+      "concurrency": 8,
+      "requests": 48,
+      "successful": 48,
+      "p50Ms": 52,
+      "p95Ms": 65,
+      "maxMs": 68,
+      "elapsedMs": 316
+    }
+  ]
+}

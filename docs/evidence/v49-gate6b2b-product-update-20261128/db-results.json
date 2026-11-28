@@ -1,0 +1,8 @@
+{
+  "revision": 3,
+  "distinctEditJobs": 3,
+  "queueFaults": 1,
+  "isDraft": true,
+  "publicStatus": 404,
+  "staleWriteRejected": true
+}

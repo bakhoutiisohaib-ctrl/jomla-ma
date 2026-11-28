@@ -1,4 +1,4 @@
-import { parseRoute, safeReturnTo, productPath, storePath, navigate } from './navigation';
+import { parseRoute, safeReturnTo, productPath, storePath, navigate, authContinuationPath } from './navigation';
 const id = 'abcdef0123456789abcdef01';
 beforeEach(() => window.history.replaceState({}, '', '/'));
 test.each([['/', 'home'], ['/stores', 'stores'], ['/login', 'login'], ['/register', 'register'],
@@ -23,4 +23,27 @@ test('only the public product reference and RFQ intent survive an authentication
 test('programmatic navigation rejects an external origin', () => {
   expect(() => navigate('https://external.invalid')).toThrow();
   expect(window.location.pathname).toBe('/');
+});
+
+test.each([
+  ['?rfq=1&qty=50&token=never-copy', '?rfq=1&qty=50'],
+  ['?rfq=1&qty=1e2', ''],
+  ['?rfq=1&qty=9007199254740992', ''],
+  ['?rfq=1&qty=50&qty=60', ''],
+  ['?rfq=1&rfq=0&qty=50', ''],
+  ['?qty=50', '']
+])('sanitizes public quantity return intent %s', (query, expected) => {
+  expect(safeReturnTo('?returnTo=' + encodeURIComponent(productPath(id) + query), 'buyer')).toBe(productPath(id) + expected);
+});
+
+test('auth continuation keeps a validated quantity intent but not unrelated parameters', () => {
+  const search = '?returnTo=' + encodeURIComponent(productPath(id) + '?rfq=1&qty=50&token=never-copy') + '&token=secret&role=admin';
+  const recovery = authContinuationPath('/forgot-password', search);
+  expect(new URL(recovery, window.location.origin).searchParams.get('returnTo')).toBe(productPath(id) + '?rfq=1&qty=50');
+  expect(new URL(recovery, window.location.origin).searchParams.has('token')).toBe(false);
+  const register = authContinuationPath('/register', search, 'buyer');
+  expect(new URL(register, window.location.origin).searchParams.get('role')).toBe('buyer');
+  expect(authContinuationPath('/login', '?returnTo=%2F%2Fevil.test')).toBe('/login');
+  expect(authContinuationPath('/login', '?returnTo=%2Fbuyer&returnTo=%2Fadmin')).toBe('/login');
+  expect(authContinuationPath('/login', '?returnTo=%2Fsupplier')).toBe('/login?returnTo=%2Fsupplier');
 });

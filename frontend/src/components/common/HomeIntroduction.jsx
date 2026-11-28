@@ -1,6 +1,7 @@
 import { useLabels } from '../../i18n/useLabels';
 import { MarketIcon } from './MarketLayout';
-import ProtectedImage from './ProtectedImage';
+import { useEffect, useState } from 'react';
+import { apiRequest } from '../../api/config';
 
 // Public category illustrations owned by this project, not cached supplier media.
 const categoryIllustrations = {
@@ -31,7 +32,7 @@ export function HomeIntroduction({ user, onSupplier, onSourcing }) {
     </div>
     <aside className="atlas-home-supplier" aria-labelledby="home-supplier-title">
       <MarketIcon name="store" />
-      <div><h2 id="home-supplier-title">{supplier ? l('متجرك يبدأ من مساحتك', 'Votre boutique, votre espace') : l('أنت مورد؟', 'Vous êtes fournisseur ?')}</h2>
+      <div><h2 id="home-supplier-title">{supplier ? l('متجرك يبدأ من مساحتك', 'Votre boutique, votre espace') : user ? l('مساحتك التجارية', 'Votre espace commercial', 'Your business workspace') : l('أنت مورد؟', 'Vous êtes fournisseur ?')}</h2>
         <p>{l('عرّف بمنتجاتك وتابع طلبات عروض الأسعار في مساحة واحدة.', 'Présentez vos produits et suivez vos demandes de devis au même endroit.')}</p></div>
       <button type="button" className="primary" onClick={onSupplier}>{supplier ? l('فتح مساحة المورد', 'Mon espace fournisseur') : user ? l('فتح مساحة حسابي', 'Ouvrir mon espace') : l('إنشاء حساب مورد', 'Créer mon compte')}<MarketIcon name="arrow" /></button>
       <small>{l('متجر · منتجات · طلبات عروض', 'Boutique · Produits · Demandes de devis')}</small>
@@ -39,23 +40,74 @@ export function HomeIntroduction({ user, onSupplier, onSourcing }) {
   </section>;
 }
 
-export function HomeCategories({ products, selected, onSelect, loading }) {
+const CATEGORY_LIMIT = 12;
+function parseDirectory(response, page) {
+  const { data, pagination } = response || {};
+  if (!Array.isArray(data) || data.length > CATEGORY_LIMIT ||
+      !data.every(item => typeof item?.category === 'string' && item.category.trim() === item.category &&
+        item.category.length > 0 && [...item.category].length <= 100 && Number.isSafeInteger(item.count) && item.count > 0) ||
+      new Set(data.map(item => item.category)).size !== data.length ||
+      pagination?.page !== page || pagination.limit !== CATEGORY_LIMIT ||
+      !Number.isSafeInteger(pagination.total) || pagination.total < 0 ||
+      pagination.pages !== Math.ceil(pagination.total / CATEGORY_LIMIT) ||
+      pagination.hasNextPage !== (page < pagination.pages) || pagination.hasPrevPage !== (page > 1) ||
+      data.length !== Math.min(CATEGORY_LIMIT, Math.max(0, pagination.total - (page - 1) * CATEGORY_LIMIT))) {
+    throw new Error('Invalid category directory');
+  }
+  return { data, pagination };
+}
+
+// The parent keys this component by activity, so previous activity state is
+// never displayed during a transition. Page navigation is independent of products.
+export function HomeCategories({ businessType = '', taxonomyPath = '', supplierTrust = '', selected, exact, onSelect }) {
   const l = useLabels();
-  // Category choices come from the current API results; never invent stock.
-  const categories = [...new Set([selected, ...products.map(product => product.category)].filter(Boolean))];
+  const [page, setPage] = useState(1), [retry, setRetry] = useState(0);
+  const [result, setResult] = useState(null), [failed, setFailed] = useState(false);
+  const loading = !result && !failed;
+  useEffect(() => {
+    const controller = new AbortController();
+    setResult(null); setFailed(false);
+    const params = new URLSearchParams({ page: String(page), limit: String(CATEGORY_LIMIT) });
+    if (businessType) params.set('businessType', businessType);
+    if (taxonomyPath) params.set('taxonomyPath', taxonomyPath);
+    if (supplierTrust) params.set('supplierTrust', supplierTrust);
+    apiRequest('/products/categories?' + params.toString(), { token: '', cache: 'no-store', signal: controller.signal })
+      .then(response => {
+        if (controller.signal.aborted) return;
+        const next = parseDirectory(response, page);
+        // A page can disappear when the catalog changes between requests.
+        if (page > 1 && page > next.pagination.pages) { setPage(1); return; }
+        setResult(next);
+      }).catch(() => { if (!controller.signal.aborted) setFailed(true); });
+    return () => controller.abort();
+  }, [businessType, taxonomyPath, supplierTrust, page, retry]);
+  const changePage = value => { setResult(null); setFailed(false); setPage(value); };
+  const categories = result?.data || [];
+  const hasSelected = exact && categories.some(item => item.category === selected);
   return <section className="atlas-home-categories" aria-labelledby="home-categories-title" aria-busy={loading}>
-    <h2 id="home-categories-title">{l('استكشف حسب الفئة', 'Explorez par catégorie')}</h2>
-    <div className="atlas-home-category-list" aria-label={l('فئات النتائج', 'Catégories des résultats')}>
-      <button type="button" aria-label={l('كل الفئات', 'Toutes les catégories')} aria-pressed={!selected} onClick={() => onSelect('')}>
+    <h2 id="home-categories-title">{l('استكشف حسب الفئة', 'Explorez par catégorie', 'Explore by category')}</h2>
+    <div className="atlas-home-category-list" aria-label={l('فئات الكتالوج', 'Catégories du catalogue', 'Catalog categories')}>
+      <button type="button" aria-label={l('كل الفئات', 'Toutes les catégories', 'All categories')} aria-pressed={!selected} onClick={() => onSelect('')}>
         <span className="atlas-home-category-art atlas-home-category-all"><MarketIcon name="grid" /></span>
         <span>{l('الكل', 'Tout', 'All')}</span>
       </button>
-      {categories.map(category => <button type="button" key={category} aria-pressed={selected === category} onClick={() => onSelect(category)}>
-        <span className="atlas-home-category-art"><MarketIcon name="package" />{typeof categoryIllustrations[category] === 'string'
-          ? <img src={categoryIllustrations[category]} alt="" width="70" height="64" />
-          : <ProtectedImage value={products.find(product => product.category === category && product.imageUrl)?.imageUrl} alt="" loading="lazy" />}</span>
-        <span>{category}</span>
+      {categories.map(({category, count}) => <button type="button" key={category} aria-label={category} title={count + ' ' + l('منتج في الكتالوج', 'produit(s) au catalogue', 'catalog product(s)')} aria-pressed={Boolean(exact && selected === category)} onClick={() => onSelect(category)}>
+        <span className="atlas-home-category-art"><MarketIcon name="package" />{Object.prototype.hasOwnProperty.call(categoryIllustrations, category)
+          && <img src={categoryIllustrations[category]} alt="" width="70" height="64" />}</span>
+        <span>{category}</span><small className="atlas-category-count">{count}</small>
       </button>)}
     </div>
+    <div className="atlas-category-feedback" aria-live="polite">
+      {loading && <span>{l('جاري تحميل الفئات…', 'Chargement des catégories…', 'Loading categories…')}</span>}
+      {failed && <><span>{l('تعذر تحميل دليل الفئات.', 'Impossible de charger les catégories.', 'Unable to load categories.')}</span><button type="button" onClick={() => { setFailed(false); setRetry(n => n + 1); }}>{l('إعادة تحميل الفئات', 'Recharger les catégories', 'Reload categories')}</button></>}
+      {result && !categories.length && <span>{l('لا توجد فئات منشورة لهذا الاختيار حالياً.', 'Aucune catégorie publiée pour ce choix actuellement.', 'No published categories for this selection currently.')}</span>}
+      {result && categories.length > 0 && <span>{l('الأعداد من الكتالوج، وليس نتائج البحث الحالي.', 'Les nombres concernent le catalogue, pas la recherche en cours.', 'Counts are from the catalog, not current search results.')}</span>}
+      {selected && !hasSelected && <span>{l('الفئة المفلترة', 'Catégorie filtrée', 'Filtered category')}: {selected}</span>}
+    </div>
+    {(page > 1 || result?.pagination.hasNextPage) && <nav className="atlas-category-pager" aria-label={l('صفحات الفئات', 'Pages de catégories', 'Category pages')}>
+      <button type="button" disabled={loading || page <= 1} onClick={() => changePage(page - 1)}>{l('الفئات السابقة', 'Catégories précédentes', 'Previous categories')}</button>
+      <span>{page} / {result?.pagination.pages || '…'}</span>
+      <button type="button" disabled={loading || !result?.pagination.hasNextPage} onClick={() => changePage(page + 1)}>{l('فئات أخرى', 'Autres catégories', 'More categories')}</button>
+    </nav>}
   </section>;
 }

@@ -50,5 +50,5 @@ export default function SupplierPage({
   return <><WorkspaceHeader title={store?.name || supplier?.name || l('المتجر', 'Boutique')} onBack={onBack} /><main className="container"><Notice error>{error}</Notice>{loading && <p role="status">{l('جاري التحميل…', 'Chargement…')}</p>}{supplier && <><section className="panel"><h1>{store?.name || supplier.name}</h1><p>{store?.description || supplier.description}</p><p>{store?.city || supplier.city} · {store?.address}</p>{supplier.isVerified && supplier.verificationStatus === 'verified' && <span className="badge green">{l('راجعته إدارة المنصة', 'Vérifié par la plateforme')}</span>}</section><div className="product-grid">{products.map(p => <ProductCard key={p._id} product={{
             ...p,
             supplierId: supplier
-          }} user={user} onRequireLogin={onRequireLogin} onViewSupplier={() => {}} />)}</div>{!products.length && <p className="empty">{l('لا توجد منتجات منشورة متوفرة', 'Aucun produit publié disponible')}</p>}<ReviewSection supplierId={supplier._id || supplier.id} /></>}</main></>;
+          }} user={user} onRequireLogin={onRequireLogin} onViewSupplier={() => {}} />)}</div>{!products.length && <p className="empty">{l('لا توجد منتجات منشورة متوفرة', 'Aucun produit publié disponible')}</p>}<ReviewSection supplierId={supplier._id || supplier.id} user={user} /></>}</main></>;
 }

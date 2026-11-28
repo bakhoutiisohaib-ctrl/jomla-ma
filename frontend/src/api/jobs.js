@@ -9,7 +9,7 @@ function pause(ms, signal) {
   });
 }
 
-export async function waitForJob(job, { signal, timeoutMs = 100000, intervalMs = 1200 } = {}) {
+export async function waitForJob(job, { signal, token, timeoutMs = 100000, intervalMs = 1200 } = {}) {
   const deadline = Date.now() + timeoutMs;
   while (true) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
@@ -23,6 +23,6 @@ export async function waitForJob(job, { signal, timeoutMs = 100000, intervalMs =
       throw new Error(french ? 'La tâche reste enregistrée. Consultez les tâches de votre espace ou continuez manuellement.' : 'المهمة ما زالت محفوظة. تابعها من مهام لوحة المورد أو أكمل البيانات يدوياً.');
     }
     await pause(intervalMs, signal);
-    ({ job } = await apiRequest('/jobs/' + job.id, { signal }));
+    ({ job } = await apiRequest('/jobs/' + job.id, { signal, ...(token!==undefined?{token}:{}) }));
   }
 }

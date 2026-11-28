@@ -1,0 +1,11 @@
+[
+  {
+    "journey": "response catalog includes only supplier meeting 80% threshold"
+  },
+  {
+    "journey": "real evidence outage fails closed and retry restores only matching products"
+  },
+  {
+    "journey": "directory filters by same metric and clear restores all"
+  }
+]

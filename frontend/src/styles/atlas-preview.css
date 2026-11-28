@@ -21,3 +21,14 @@
 .atlas-preview-actions button { min-height: 44px; font-size: 13px; }
 .atlas-preview-content { min-width: 0; overflow-wrap: anywhere; }
 @media(max-width: 700px) { .atlas-preview { grid-template-columns: 1fr; gap: 20px; } .atlas-preview-image img { height: 220px; } .atlas-preview-image { min-height: 220px; } .atlas-preview h3 { font-size: 22px; } }
+
+/* AtlasDialog is rendered in a portal outside .atlas-public. */
+.atlas-preview-actions .atlas-add-cart {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; width: 100%; box-sizing: border-box; padding: 8px 12px;
+  background: #eaf0df; color: #355640; border-color: #cfddbe;
+}
+.atlas-preview-actions .atlas-add-cart .atlas-icon {
+  width: 16px; height: 16px; flex: 0 0 16px;
+}
+.atlas-preview-actions .atlas-add-cart:disabled { opacity: 1; cursor: default; }

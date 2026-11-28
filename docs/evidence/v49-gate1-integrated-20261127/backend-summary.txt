@@ -1,0 +1,19 @@
+PASS tests/mediaRateLimits.test.js (61.976 s)
+PASS tests/pilot_journey.test.js (11.574 s)
+PASS tests/requestParserSecurity.test.js (10.689 s)
+PASS tests/wholesaleOpportunities.test.js (8.841 s)
+PASS tests/rfq.test.js (9.478 s)
+PASS tests/publicMedia.test.js (10.527 s)
+PASS tests/launchBlockers.test.js (7.937 s)
+PASS tests/favorites.test.js (8.199 s)
+PASS tests/buyerOnboarding.test.js (7.81 s)
+PASS tests/reviews_trust.test.js (7.766 s)
+PASS tests/publicPages.test.js (9.634 s)
+PASS tests/businessTypes.test.js (7.127 s)
+PASS tests/products.test.js (6.713 s)
+PASS tests/visualIndex.test.js
+PASS tests/mediaCancellation.test.js
+Test Suites: 15 passed, 15 total
+Tests:       230 passed, 230 total
+Snapshots:   0 total
+Time:        175.174 s, estimated 269 s

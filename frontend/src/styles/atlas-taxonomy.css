@@ -1,0 +1,39 @@
+.atlas-taxonomy { margin: 0 0 12px; min-width: 0; }
+.atlas-taxonomy h2 { margin: 0 0 6px; font-size: 18px; line-height: 1.45; }
+.atlas-taxonomy-rail { display: flex; gap: 6px; overflow-x: auto; padding: 3px 3px 7px; max-width: 100%; }
+.atlas-public .atlas-taxonomy-rail button { flex: 0 0 auto; max-width: 190px; min-height: 44px; display: flex; gap: 5px; align-items: center; justify-content: center; white-space: normal; padding: 7px 10px; font-size: 13px; color: #355640; background: #fffefa; border: 1px solid #dce3d4; border-radius: 9px; }
+.atlas-taxonomy-rail button .atlas-icon { width: 19px; height: 19px; flex: none; }
+.atlas-public .atlas-taxonomy-rail button[aria-pressed=true] { background: #edf2e5; border-color: #355640; box-shadow: inset 0 0 0 1px #355640; }
+.atlas-public .atlas-taxonomy-rail button:focus-visible { outline: 2px solid #8c6e2c; outline-offset: 1px; }
+.atlas-taxonomy-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: #58664f; font-size: 12px; margin: 3px 0; overflow-wrap: anywhere; }
+.atlas-taxonomy-status button { min-height: 44px; }
+.atlas-taxonomy-fields { display: grid; gap: 8px; min-width: 0; }
+.atlas-taxonomy-fields label { display: grid; gap: 4px; min-width: 0; }
+.atlas-taxonomy-fields select { width: 100%; min-width: 0; min-height: 44px; }
+.supplier-taxonomy { margin: 8px 0; min-width: 0; }
+.supplier-taxonomy > button { min-height: 44px; }
+@media(max-width:600px) { .atlas-taxonomy h2 { font-size: 16px; } .atlas-public .atlas-taxonomy-rail button { max-width: 150px; font-size: 12px; padding: 6px 8px; } }
+
+/* Scoped sector browser refinement; product cards and supplier editor are unchanged. */
+.atlas-taxonomy-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+.atlas-taxonomy-head h2 { margin:0; }
+.atlas-public .atlas-taxonomy-all { min-height:44px; flex:none; font-size:12px; color:#355640; background:transparent; border:0; padding:4px 6px; text-decoration:underline; text-underline-offset:3px; }
+.atlas-sector-art { display:grid; place-items:center; flex:none; width:36px; height:36px; border-radius:9px; color:#355640; }
+.atlas-sector-art svg,.atlas-taxonomy-rail button .atlas-sector-art .atlas-icon { width:24px; height:24px; }
+.atlas-public .atlas-taxonomy-rail button { flex-direction:column; width:130px; min-height:86px; gap:5px; line-height:1.35; text-align:center; }
+.atlas-trade-dialog:has(.atlas-taxonomy-modal) { width:min(560px,100%); max-height:calc(100dvh - 32px); height:auto; border-radius:14px; }
+.atlas-trade-backdrop:has(.atlas-taxonomy-modal) { padding:16px; align-items:center; }
+.atlas-trade-dialog:has(.atlas-taxonomy-modal) .trade-dialog-header { padding:12px 16px; }
+.atlas-trade-dialog:has(.atlas-taxonomy-modal) .trade-dialog-body { padding:12px 16px 16px; }
+.atlas-taxonomy-modal>p { margin:0 0 12px; font-size:13px; }
+.atlas-sector-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:12px; }
+.atlas-sector-grid button { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; text-align:center; min-height:90px; font-size:13px; line-height:1.4; padding:8px 5px; border-radius:9px; background:#fffefa; overflow-wrap:anywhere; }
+.atlas-taxonomy-children { display:grid; gap:7px; margin-bottom:12px; }
+.atlas-taxonomy-children button { text-align:start; padding:8px 12px; border-radius:8px; background:#fffefa; }
+.atlas-taxonomy-modal button[aria-pressed=true] { background:#edf2e5; border-color:#355640; box-shadow:inset 0 0 0 1px #355640; }
+@media(max-width:600px) {
+  .atlas-public .atlas-taxonomy-rail button { width:112px; min-height:82px; }
+  .atlas-sector-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .atlas-sector-grid button { min-height:74px; font-size:12px; }
+  .atlas-taxonomy-modal>p { font-size:12px; }
+}

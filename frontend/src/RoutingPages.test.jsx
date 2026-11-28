@@ -20,7 +20,7 @@ function api(url, options = {}) {
   if (path.includes('/media/')) return media();
   if (path === '/api/products/' + pid) return response(productStatus === 200 ? { product, store } : { message: 'المنتج غير متاح' }, productStatus);
   if (path === '/api/stores/' + sid) return response({ store, products: [product], pagination: { page: 1, pages: 2, total: 13, hasNextPage: true } });
-  if (path.includes('/reviews/')) return response({ data: [], stats: { total: 0, avg: 0 } });
+  if (path.includes('/reviews/')) {const limit=Number(new URL(url,'http://localhost').searchParams.get('limit')||5);return response({data:[],stats:{total:0,avg:0},legacyTotal:0,pagination:{page:1,limit,total:0,pages:0,hasNextPage:false,hasPrevPage:false}});}
   if (path.includes('/me/profile')) return response(profile || {}, profile ? 200 : 401);
   if (path === '/api/suppliers/login') return response({ token: jwt, supplier: buyer });
   if (path === '/api/rfq' && options.method === 'POST') return response({ rfq: { _id: 'synthetic-rfq' } }, 201);
@@ -169,4 +169,84 @@ test('withdrawal revalidation clears previously loaded details, metadata and ima
     expect(document.title).not.toContain(product.name);
     expect(URL.revokeObjectURL).toHaveBeenCalled();
   } finally { jest.useRealTimers(); }
+});
+
+test('guest chosen quantity is restored after login and sent once without turning an estimate into a target price', async () => {
+  const view = openProduct();
+  await screen.findByRole('heading', { name: product.name, level: 1 });
+  fireEvent.change(screen.getByLabelText('اختر الكمية'), { target: { value: '50' } });
+  fireEvent.click(screen.getByRole('button', { name: 'طلب عرض سعر', exact: true }));
+  await screen.findByRole('heading', { name: 'مرحباً بعودتك' });
+  expect(new URLSearchParams(window.location.search).get('returnTo')).toBe(productPath(pid) + '?rfq=1&qty=50');
+  view.unmount(); render(<App />);
+  fireEvent.change(screen.getByLabelText('البريد الإلكتروني'), { target: { value: 'buyer@synthetic.test' } });
+  fireEvent.change(screen.getByLabelText('كلمة المرور'), { target: { value: 'Synthetic-only123!' } });
+  profile = buyer;
+  fireEvent.click(screen.getByRole('button', { name: 'دخول', exact: true }));
+  await screen.findByRole('dialog', { name: 'طلب عرض سعر بالجملة' });
+  expect(screen.getByLabelText('الكمية المطلوبة')).toHaveValue(50);
+  expect(screen.getByLabelText('سعر مستهدف اختياري (MAD)')).toHaveValue(null);
+  expect(window.location.search).toBe('');
+  expect(fetch.mock.calls.filter(([url, options]) => String(url).endsWith('/rfq') && options.method === 'POST')).toHaveLength(0);
+  fireEvent.click(screen.getByRole('button', { name: 'إرسال طلب عرض السعر', exact: true }));
+  await screen.findByRole('heading', { name: 'Buyer workspace test' });
+  const sent = fetch.mock.calls.filter(([url, options]) => String(url).endsWith('/rfq') && options.method === 'POST');
+  expect(sent).toHaveLength(1);
+  expect(JSON.parse(sent[0][1].body)).toMatchObject({ productId: pid, quantity: 50, targetPrice: null });
+});
+
+test('product actions reuse one RFQ button, the real cart and public store destination', async () => {
+  openProduct(); await screen.findByRole('heading', { name: product.name, level: 1 });
+  const region = screen.getByRole('region', { name: 'إجراءات المنتج' });
+  expect(region.querySelectorAll('button.primary')).toHaveLength(1);
+  expect(region.querySelector('.atlas-detail-store-action')).toHaveAttribute('href', storePath(sid));
+  const add = region.querySelector('.atlas-add-cart');
+  expect(add).toBeEnabled();
+  fireEvent.click(add);
+  expect(add).toBeDisabled();
+  expect(region.querySelectorAll('button.primary')).toHaveLength(1);
+  expect(fetch.mock.calls.filter(([url, options]) => String(url).endsWith('/rfq') && options.method === 'POST')).toHaveLength(0);
+  fireEvent.click(region.querySelector('.atlas-detail-store-action'));
+  await screen.findByRole('heading', { name: store.name, level: 1 });
+  expect(screen.queryByRole('region', { name: 'إجراءات المنتج' })).not.toBeInTheDocument();
+});
+
+test('supplier action region has no buyer cart and cannot launch RFQ', async () => {
+  localStorage.setItem('supplierToken', jwt); profile = { ...buyer, role: 'supplier' };
+  openProduct(); await screen.findByText('إرسال طلب عرض السعر متاح لحساب المشتري.');
+  const region = screen.getByRole('region', { name: 'إجراءات المنتج' });
+  expect(region.querySelector('button.primary')).toBeDisabled();
+  expect(region.querySelector('.atlas-add-cart')).toBeNull();
+  expect(region.querySelector('.atlas-detail-store-action')).toHaveAttribute('href', storePath(sid));
+});
+
+test('forgot-password round trip preserves a guest commercial intent without issuing a request', async () => {
+  openProduct(); await screen.findByRole('heading', {name:product.name,level:1});
+  fireEvent.change(screen.getByLabelText('اختر الكمية'), {target:{value:'50'}});
+  fireEvent.click(screen.getByRole('button',{name:'طلب عرض سعر',exact:true}));
+  fireEvent.click(await screen.findByRole('button',{name:'نسيت كلمة المرور؟'}));
+  await screen.findByRole('heading',{name:'استرجاع حسابك'});
+  expect(new URLSearchParams(window.location.search).get('returnTo')).toBe(productPath(pid)+'?rfq=1&qty=50');
+  fireEvent.click(screen.getByRole('button',{name:'العودة للدخول'}));
+  await screen.findByRole('heading',{name:'مرحباً بعودتك'});
+  expect(new URLSearchParams(window.location.search).get('returnTo')).toBe(productPath(pid)+'?rfq=1&qty=50');
+  expect(fetch.mock.calls.filter(([url,options])=>String(url).endsWith('/rfq') && options.method==='POST')).toHaveLength(0);
+});
+
+test('duplicate login submission is blocked and a late login response after leaving cannot establish a session', async () => {
+  let finish;
+  fetch.mockImplementation((url,options)=>String(url).endsWith('/suppliers/login')?new Promise(resolve=>{finish=resolve;}):api(url,options));
+  window.history.replaceState({}, '', '/login'); render(<App />);
+  fireEvent.change(screen.getByLabelText('البريد الإلكتروني'),{target:{value:'buyer@synthetic.test'}});
+  fireEvent.change(screen.getByLabelText('كلمة المرور'),{target:{value:'Synthetic-only123!'}});
+  const form=screen.getByRole('button',{name:'دخول',exact:true}).closest('form');
+  fireEvent.submit(form);fireEvent.submit(form);
+  const calls=fetch.mock.calls.filter(([url])=>String(url).endsWith('/suppliers/login'));
+  expect(calls).toHaveLength(1);
+  act(()=>navigate('/forgot-password'));
+  await screen.findByRole('heading',{name:'استرجاع حسابك'});
+  expect(calls[0][1].signal.aborted).toBe(true);
+  await act(async()=>{finish(await response({token:jwt,supplier:buyer}));});
+  expect(localStorage.getItem('supplierToken')).toBeNull();
+  expect(window.location.pathname).toBe('/forgot-password');
 });

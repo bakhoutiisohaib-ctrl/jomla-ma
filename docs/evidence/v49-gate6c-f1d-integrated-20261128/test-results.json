@@ -1,0 +1,83 @@
+{
+  "backend": {
+    "passed": 219,
+    "failed": 0,
+    "suites": [
+      {
+        "name": "rfq_supplier_rejection.test.js"
+      },
+      {
+        "name": "rfq_offer_submission.test.js"
+      },
+      {
+        "name": "reviews_trust.test.js"
+      },
+      {
+        "name": "supplier_response_filter.test.js"
+      },
+      {
+        "name": "products.test.js"
+      },
+      {
+        "name": "publicPages.test.js"
+      },
+      {
+        "name": "rfq_creation.test.js"
+      },
+      {
+        "name": "pilot_security.test.js"
+      },
+      {
+        "name": "businessTypes.test.js"
+      },
+      {
+        "name": "visualIndex.test.js"
+      }
+    ]
+  },
+  "frontend": {
+    "passed": 100,
+    "failed": 0,
+    "suites": [
+      {
+        "name": "SupplierTrustJourneys.test.jsx"
+      },
+      {
+        "name": "CategoryJourneys.test.jsx"
+      },
+      {
+        "name": "TaxonomyJourneys.test.jsx"
+      },
+      {
+        "name": "BusinessTypesJourneys.test.jsx"
+      },
+      {
+        "name": "RoutingPages.test.jsx"
+      },
+      {
+        "name": "StoreDirectoryJourneys.test.jsx"
+      },
+      {
+        "name": "StructuredSearchJourneys.test.jsx"
+      },
+      {
+        "name": "VisualSearchJourneys.test.jsx"
+      },
+      {
+        "name": "CompanyLifecycle.test.jsx"
+      },
+      {
+        "name": "MarketHome.test.jsx"
+      },
+      {
+        "name": "MarketLayout.test.jsx"
+      },
+      {
+        "name": "SupplierRating.test.jsx"
+      }
+    ]
+  },
+  "build": "main.0ebbcea7.js",
+  "buildFrom": "ed09189ba7a005daec3cab560d0bb85738120172",
+  "testedCommit": "785cc2b91544643efe9dd525331c1fb7e4175fe1"
+}

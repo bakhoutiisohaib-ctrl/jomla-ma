@@ -60,7 +60,17 @@ test('a late saved staff submission replaces unsent local fields with its origin
   expect(await screen.findByLabelText(/سعر الوحدة/)).toHaveValue(75);
   expect(screen.getByLabelText('شروط الدفع')).toHaveValue('saved staff terms'); expect(screen.getByLabelText('شروط الدفع')).toBeDisabled();
   expect(apiRequest).not.toHaveBeenCalled();
-  apiRequest.mockResolvedValue(done); fireEvent.click(screen.getByRole('button', { name: 'استكمال إرسال العرض' }));
+  apiRequest.mockResolvedValue({...done,offer:{_id:'staff-offer'},submission:{phase:'completed',offerId:'staff-offer'}}); fireEvent.click(screen.getByRole('button', { name: 'استكمال إرسال العرض' }));
   await screen.findByText(/تأكد حفظ العرض/);
   expect(apiRequest.mock.calls[0][1].body).toEqual({ offerId: 'staff-offer' });
+});
+
+test('mismatched offer acknowledgement retains the original attempt instead of confirming success',async()=>{
+ apiRequest.mockResolvedValueOnce({...done,rfq:{...rfq,_id:'other'}}).mockResolvedValueOnce(done);
+ const updated=jest.fn();show({onUpdated:updated});fill();fireEvent.click(screen.getByRole('button',{name:'إرسال العرض'}));
+ await screen.findByRole('button',{name:'استكمال إرسال العرض'});
+ expect(updated).not.toHaveBeenCalled();expect(screen.queryByText(/تأكد حفظ العرض/)).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'استكمال إرسال العرض'}));
+ await screen.findByText(/تأكد حفظ العرض/);
+ expect(apiRequest.mock.calls[1][1].headers).toEqual(apiRequest.mock.calls[0][1].headers);
 });

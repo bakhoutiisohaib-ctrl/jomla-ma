@@ -1,0 +1,20 @@
+[
+  {
+    "journey": "RFQ buyer confirms, audit failure, identical replay recovers"
+  },
+  {
+    "journey": "unrelated supplier cannot access RFQ dispute"
+  },
+  {
+    "journey": "supplier sourcing confirmation and private complaint"
+  },
+  {
+    "journey": "admin records both outcomes with no moderation controls"
+  },
+  {
+    "journey": "buyer sees own reviewed status without eligibility or other party data"
+  },
+  {
+    "journey": "supplier sees own dismissed status"
+  }
+]

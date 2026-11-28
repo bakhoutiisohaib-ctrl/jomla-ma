@@ -1,0 +1,19 @@
+# Gate 4E.3 — transaction-linked reviews — 2026-11-27
+
+Status: scoped local PASS. Baseline 1f68f2e. Gate 4 remains OPEN until integrated acceptance.
+
+## Implementation
+- New owner-scoped RFQ and sourcing confirmation endpoints. Only the authenticated buyer and supplier owner may attest that a transaction actually took place. An accepted offer alone does not qualify. RFQ agreement hash, accepted offer, closed thread and completed decision are checked; sourcing uses the existing checked decision receipt. Historical accepted records without a valid receipt are excluded.
+- One deterministic confirmation record per accepted agreement, atomic per-party timestamp writes, repeat-safe acknowledgement, no client-selected counterparty/score/identity. Both confirmations are required for a new buyer review. Existing unique buyer/supplier index still prevents duplicate ratings; an audited administrative deletion now blocks repost for that buyer/supplier pair (including pending removal intent). Legacy removals without buyer identifiers cannot be reconstructed.
+- Public rating average/count include only new reviews linked to mutual confirmation. Legacy comments remain readable and visibly identified, excluded from the average. No backfill or invented reviews. Internal buyer/confirmation IDs are not exposed by the public review endpoint. Old authenticated reviews still occupy the unique buyer/supplier slot.
+- Buyer and advanced supplier workspaces expose explicit completion actions; review eligibility is checked privately on product/store/supplier pages. No default stars, no claim of successful save on unconfirmed responses, no blind repeat; supplier owner may reply but cannot change the score or delete the review. Staff cannot confirm completion or reply in place of the owner. Admin removal retains audited reason.
+- No change to original data, approved visual identity, dependencies or external infrastructure.
+
+## Verified
+- First isolated review test suite: 8/8. Final isolated backend 54/54 across reviews_trust, admin, security, publicPages (4 suites; 26.715 s). Includes actual API RFQ and sourcing acceptance, unilateral denial, concurrent confirmations, replay, unauthorized roles, forged fields, uniqueness, historical rating exclusion and administrative removal/repost guard.
+- Focused frontend first pass 38/38 across ProductDetailAfter and LocalReviewJourneys. Final full FE 468/468 (44 suites, 88.133 s) including two new eligibility/unconfirmed response regressions. CI production build compiled successfully. Existing React act warnings in test log; no failures.
+- Actual Chrome + Express + MongoDB isolated lab: 27/27 browser records, including previous negotiation journey and six new review records. First run failed because the preview harness omitted direct /buyer route; corrected harness only, rerun passed. Direct DB: one accepted RFQ, two offers (one superseded), closed thread, one confirmation with both timestamps, one linked 4/5 review, owner reply; private confirmation linkage checked.
+- Evidence: evidence/v49-gate4e3-reviews-2026-11-27/ (synthetic only). Browser and DB summaries separate.
+
+## Limits and decisions
+Mutual attestation is not independent verification of payment, shipping or delivery. Colluding accounts can still falsely attest; supplier refusal to attest can prevent an otherwise valid review; dispute/adjudication and independent commercial proof are not implemented. No top-rated filter or new purchase-verified badge claim. No historical backfill. Sourcing qualification exercised through isolated real HTTP/database tests, not a full sourcing browser journey. No new full backend inventory, live government registry/payment providers, physical device or production deployment. Original project, original DB and default branch untouched. Local technical acceptance only.

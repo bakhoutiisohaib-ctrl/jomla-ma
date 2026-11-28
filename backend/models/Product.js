@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const { PATHS } = require('../utils/taxonomy')
 
 const requiredWhenPublished = function () { return this.isDraft === false }
 const PriceTierSchema = new mongoose.Schema({
@@ -10,6 +11,7 @@ const PriceTierSchema = new mongoose.Schema({
 const ProductSchema = new mongoose.Schema({
   name: { type: String, trim: true, maxlength: 160, required: requiredWhenPublished },
   category: { type: String, trim: true, maxlength: 100, required: requiredWhenPublished },
+  taxonomyPath: { type: String, enum: ['', ...PATHS] },
   pricingMode: { type: String, enum: ['fixed', 'on_request'], default: 'fixed' },
   price: { type: Number, min: 0, required: function () { return this.isDraft === false && this.pricingMode !== 'on_request' } },
   currency: { type: String, uppercase: true, trim: true, match: /^[A-Z]{3}$/, default: 'MAD' },
@@ -44,6 +46,14 @@ const ProductSchema = new mongoose.Schema({
   moderatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
   moderatedAt: Date,
   createdAt: { type: Date, default: Date.now },
+  // Merchant edit revision is independent of view counters and timestamps.
+  editRevision: { type: Number, default: 0, min: 0, validate: Number.isSafeInteger },
+  updateReceipt: { type: new mongoose.Schema({
+    version: { type: Number, enum: [1], required: true },
+    key: { type: String, required: true }, hash: { type: String, required: true },
+    baseRevision: { type: Number, required: true }, actorId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    organizationId: { type: mongoose.Schema.Types.ObjectId, default: null }
+  }, { _id: false }), select: false, default: undefined },
   // Internal receipt is inserted atomically with the product, never accepted
   // from editable input and never exposed in catalog/editor serialization.
   creationReceipt: {
@@ -85,6 +95,6 @@ ProductSchema.index({ supplierId: 1, 'creationReceipt.key': 1 }, {
   partialFilterExpression: { 'creationReceipt.key': { $type: 'string' } }
 })
 for (const format of ['toJSON', 'toObject']) ProductSchema.set(format, {
-  transform: (_document, value) => { delete value.creationReceipt; return value }
+  transform: (_document, value) => { delete value.creationReceipt; delete value.updateReceipt; return value }
 })
 module.exports = mongoose.model('Product', ProductSchema)

@@ -1,3 +1,4 @@
+import {comparisonFixture} from './comparisonFixture';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import App from './App';
 import { setSession, clearSession } from './api/session';
@@ -18,6 +19,7 @@ beforeEach(() => {
     const path = new URL(url, 'http://localhost').pathname;
     if (path.endsWith('/suppliers/login')) return reply({ token: jwt(uid), supplier: buyer });
     if (path.endsWith('/me/profile')) return reply(buyer);
+    if(path.endsWith('/comparable'))return reply(comparisonFixture(product,Number(new URL(url,'http://localhost').searchParams.get('quantity'))));
     if (path.endsWith('/products/' + pid)) return reply(productStatus === 200 ? { product, store: { _id: sid, name: 'متجر الاختبار' } } : { message: 'Unavailable' }, productStatus);
     if (path.endsWith('/rfq') && options.method === 'POST') { rfqAttempts++; return rfqAttempts === 1 ? Promise.reject(new Error('offline after submission')) : reply({ rfq: { _id: '444444444444444444444444', status: 'pending' } }, 201); }
     return reply({ data: [product], pagination: { total: 1, pages: 1 }, unreadCount: 0 });
@@ -73,11 +75,16 @@ test('compact cards keep detail links and move comparison and reporting into the
   const dialog = await screen.findByRole('dialog');
   const compare = await within(dialog).findByRole('button', { name: 'مقارنة' });
   fireEvent.click(compare);
-  expect(within(dialog).getByRole('button', { name: 'إزالة المقارنة' })).toHaveAttribute('aria-pressed', 'true');
-  fireEvent.click(within(dialog).getByRole('button', { name: 'أضف لسلة العروض' }));
-  expect(within(dialog).getByRole('button', { name: 'في سلة العروض' })).toBeDisabled();
+  const comparison=screen.getByRole('dialog',{name:'مقارنة منتجات من النوع نفسه'});
+  await waitFor(()=>expect(comparison.querySelector('.atlas-comparison-row')).toHaveTextContent(product.name));
+  fireEvent.click(within(comparison).getByRole('button',{name:'إغلاق'}));
+  fireEvent.click(trigger);
+  const reopened=await screen.findByRole('dialog',{name:'معاينة سريعة'});
+  await within(reopened).findByText(product.description);
+  fireEvent.click(within(reopened).getByRole('button', { name: 'أضف لسلة العروض' }));
+  expect(within(reopened).getByRole('button', { name: 'في سلة العروض' })).toBeDisabled();
   expect(screen.getByRole('link', { name: 'سلة طلبات العروض (1)' })).toBeInTheDocument();
-  fireEvent.click(within(dialog).getByRole('button', { name: 'إبلاغ عن المنتج' }));
+  fireEvent.click(within(reopened).getByRole('button', { name: 'إبلاغ عن المنتج' }));
   expect(screen.queryByRole('dialog', { name: 'معاينة سريعة' })).not.toBeInTheDocument();
   expect(within(screen.getByRole('dialog')).getByText(product.name, { selector: 'strong' })).toBeInTheDocument();
 });
@@ -138,4 +145,75 @@ test('a withdrawn cart product stays selected for review but cannot be sent', as
   await screen.findByText('لم يعد متاحاً في الكتالوج.');
   expect(screen.queryByRole('button', { name: 'مراجعة وإرسال الطلب' })).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'سلة طلبات العروض (1)' })).toBeInTheDocument();
+});
+
+test('catalog price range follows the completed search response and preserves the quantity-specific price', async () => {
+  const original = fetch.getMockImplementation();
+  const priced = { ...product, price: 50, pricingMode: 'fixed', priceTiers: [{ minQty: 10, maxQty: 29, price: 40 }, { minQty: 30, price: 20 }] };
+  fetch.mockImplementation((url, options) => {
+    const parsed = new URL(url, 'http://localhost');
+    if (!parsed.pathname.endsWith('/products/search')) return original(url, options);
+    const quantity = Number(parsed.searchParams.get('quantity'));
+    return reply({ data: [{ ...priced, effectiveUnitPrice: quantity >= 30 ? 20 : quantity >= 10 ? 40 : 50 }], pagination: { total: 1, pages: 1 } });
+  });
+  render(<App />);
+  const card = (await screen.findByRole('button', { name: 'معاينة سريعة: ' + product.name })).closest('article');
+  expect(card.querySelector('[data-price-kind]')).toHaveAttribute('data-price-kind', 'range');
+  expect(within(card).getByText('حسب الكمية')).toBeInTheDocument();
+  expect(card.querySelector('[data-price-kind]')).toHaveTextContent('20 – 40');
+  expect(card.querySelector('[data-price-kind]')).not.toHaveTextContent('20,00');
+  fireEvent.change(screen.getByLabelText('الكمية المطلوبة'), { target: { value: '50' } });
+  await screen.findByText('للكمية المطلوبة: 50 قطعة');
+  expect(screen.getByRole('button', { name: 'معاينة سريعة: ' + product.name }).closest('article').querySelector('[data-price-kind]')).toHaveAttribute('data-price-kind', 'quantity');
+  fireEvent.change(screen.getByLabelText('الكمية المطلوبة'), { target: { value: '' } });
+  await screen.findByText('حسب الكمية');
+  fireEvent.change(screen.getByLabelText('أعلى سعر'), { target: { value: '60' } });
+  await screen.findByText('السعر الأساسي للبحث');
+  expect(screen.getByRole('button', { name: 'معاينة سريعة: ' + product.name }).closest('article').querySelector('[data-price-kind]')).toHaveAttribute('data-price-kind', 'base');
+});
+
+test.each([
+  ['range', {price:50,priceTiers:[{minQty:10,maxQty:29,price:40},{minQty:30,price:20}]}],
+  ['request', {pricingMode:'on_request'}],
+  ['unknown', {priceTiers:[{minQty:10,maxQty:50,price:22},{minQty:30,price:18}]}],
+  ['unknown', {price:null}],
+  ['unknown', {priceTiers:'invalid'}]
+])('quick preview presents validated fresh price kind %s', async (kind, patch) => {
+  const original = fetch.getMockImplementation();
+  const fresh = {...product,...patch};
+  fetch.mockImplementation((url,options) => new URL(url,'http://localhost').pathname.endsWith('/products/'+pid) ? reply({product:fresh}) : original(url,options));
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button',{name:'معاينة سريعة: '+product.name}));
+  const dialog = await screen.findByRole('dialog');
+  await waitFor(() => expect(dialog.querySelector('.atlas-preview-price')).toHaveAttribute('data-price-kind',kind));
+  const price = dialog.querySelector('.atlas-preview-price');
+  if(kind==='range'){
+    expect(price.querySelectorAll('bdi')[0].textContent).toBe(new Intl.NumberFormat('ar-MA',{style:'currency',currency:'MAD'}).format(20));
+    expect(price.querySelectorAll('bdi')[1].textContent).toBe(new Intl.NumberFormat('ar-MA',{style:'currency',currency:'MAD'}).format(40));
+    expect(dialog.querySelector('.atlas-preview-tiers bdi')).toHaveTextContent('10–29');
+    expect(dialog.querySelector('.atlas-preview-tiers bdi')).toHaveAttribute('dir','ltr');
+  }else{
+    expect(price).toHaveTextContent(kind==='request'?'السعر عند الطلب':'السعر غير متاح');
+    expect(dialog.querySelector('.atlas-preview-tiers')).toBeNull();
+    expect(price.querySelector('small')).toBeNull();
+  }
+});
+
+test('quick preview recalculates selected search quantity from fresh DTO instead of stale effective price', async () => {
+  const original = fetch.getMockImplementation();
+  const fresh = {...product,price:25,priceTiers:[{minQty:30,price:18}]};
+  fetch.mockImplementation((url,options) => {
+    const pathname = new URL(url,'http://localhost').pathname;
+    if(pathname.endsWith('/products/'+pid)) return reply({product:fresh});
+    if(pathname.endsWith('/products/search')) return reply({data:[{...fresh,effectiveUnitPrice:20}],pagination:{total:1,pages:1}});
+    return original(url,options);
+  });
+  render(<App />);
+  fireEvent.change(screen.getByLabelText('الكمية المطلوبة'),{target:{value:'50'}});
+  await screen.findByText('للكمية المطلوبة: 50 قطعة');
+  fireEvent.click(screen.getByRole('button',{name:'معاينة سريعة: '+product.name}));
+  const dialog = await screen.findByRole('dialog');
+  await waitFor(()=>expect(dialog.querySelector('.atlas-preview-price')).toHaveAttribute('data-price-kind','quantity'));
+  expect(dialog.querySelector('.atlas-preview-price bdi').textContent).toBe(new Intl.NumberFormat('ar-MA',{style:'currency',currency:'MAD'}).format(18));
+  expect(dialog.querySelector('.atlas-preview-price-context')).toHaveTextContent('50');
 });

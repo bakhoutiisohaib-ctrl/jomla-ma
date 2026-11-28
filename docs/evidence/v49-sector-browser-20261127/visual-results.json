@@ -1,0 +1,141 @@
+[
+  {
+    "lang": "ar",
+    "width": 320,
+    "geometry": {
+      "vw": 320,
+      "scroll": 320,
+      "rail": 288,
+      "railScroll": 1298,
+      "buttons": [
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375
+      ]
+    }
+  },
+  {
+    "lang": "fr",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "rail": 358,
+      "railScroll": 1298,
+      "buttons": [
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375
+      ]
+    }
+  },
+  {
+    "lang": "en",
+    "width": 1280,
+    "geometry": {
+      "vw": 1265,
+      "scroll": 1265,
+      "rail": 1225,
+      "railScroll": 1496,
+      "buttons": [
+        92.09375,
+        92.09375,
+        92.09375,
+        92.09375,
+        92.09375,
+        92.09375,
+        92.09375,
+        92.09375,
+        92.09375,
+        92.09375,
+        92.09375
+      ]
+    }
+  },
+  {
+    "lang": "ar",
+    "width": 390,
+    "geometry": {
+      "vw": 390,
+      "scroll": 390,
+      "rail": 358,
+      "railScroll": 1298,
+      "buttons": [
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375,
+        87.375
+      ]
+    }
+  },
+  {
+    "directory": "ar",
+    "width": 320,
+    "geometry": {
+      "width": 288,
+      "left": 16,
+      "right": 304,
+      "top": 101.703125,
+      "bottom": 742.28125,
+      "vw": 320,
+      "vh": 844,
+      "icons": 10
+    }
+  },
+  {
+    "directory": "fr",
+    "width": 390,
+    "geometry": {
+      "width": 358,
+      "left": 16,
+      "right": 374,
+      "top": 110.109375,
+      "bottom": 733.890625,
+      "vw": 390,
+      "vh": 844,
+      "icons": 10
+    }
+  },
+  {
+    "directory": "en",
+    "width": 1280,
+    "geometry": {
+      "width": 560,
+      "left": 360,
+      "right": 920,
+      "top": 128.34375,
+      "bottom": 715.640625,
+      "vw": 1280,
+      "vh": 844,
+      "icons": 10
+    }
+  },
+  "directory_leaf_focus_restore",
+  "public_leaf_before",
+  "private_draft_saved_and_not_public",
+  "draft_reopened_and_published",
+  "public_reclassified_leaf"
+]
