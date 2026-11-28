@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6C.2A.3 country browser scoped PASS: FE 74/74, CI build PASS, Chrome 6/6 and DB PASS. Corrected same-account profile refresh clearing confirmed notice. [Report](v49-gate6c-f1a3-country-browser-20261128.md). 6C.2A scoped closed; next bounded rating metric F1B.
+
 2026-11-28 - Gate 6C.2A.2 declared country UI scoped PASS: FE 73/73, seven suites, strict CI build PASS. Optional owner declaration/withdrawal with exact receipt and fresh readback, public declared Morocco control. [Report](v49-gate6c-f1a2-country-ui-20261128.md). Next 6C.2A.3 actual browser acceptance.
 
 2026-11-28 - Gate 6C.2A.1 declared company country backend scoped PASS: final BE 96/96 (6 suites), exit 0. Explicit owner declaration; default MA does not qualify; shared catalog/store/text/image scope; no verified location claim. [Report](v49-gate6c-f1a1-declared-country-20261128.md). F1 OPEN; next 6C.2A.2 declaration UI and public filter integration.

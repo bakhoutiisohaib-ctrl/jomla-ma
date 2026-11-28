@@ -111,3 +111,17 @@ test('successful write receipt followed by mismatched readback does not claim de
  await screen.findByText('تعذر تأكيد حفظ تصريح البلد. أعد تحميل الشركة.');
  expect(changed).not.toHaveBeenCalled();expect(screen.queryByText('تم حفظ ملف الشركة')).not.toBeInTheDocument();
 });
+
+test('confirmed country message survives same-account profile refresh',async()=>{
+ const base=apiRequest.getMockImplementation();let saved={...organization};
+ apiRequest.mockImplementation(async(p,o)=>{
+  if(p!=='/suppliers/me/organization')return base(p,o);
+  if(o?.method==='PUT'){saved={...saved,...o.body,declaredCountry:o.body.declareCountry?o.body.country:undefined};return {organization:saved}}
+  return {organization:saved,memberships:[]};
+ });
+ const changed=jest.fn(),view=company(changed);const checkbox=await screen.findByRole('checkbox',{name:'أصرح بأن هذا هو بلد مقر شركتي'});
+ await waitFor(()=>expect(checkbox).toBeEnabled());fireEvent.click(checkbox);fireEvent.click(screen.getByRole('button',{name:'حفظ الشركة'}));
+ await screen.findByText('تم حفظ ملف الشركة');expect(changed).toHaveBeenCalled();
+ view.rerender(<LanguageProvider><OrganizationPanel profile={{...owner,organization:saved.name}} onChanged={changed}/></LanguageProvider>);
+ await act(async()=>{});expect(screen.getByText('تم حفظ ملف الشركة')).toBeInTheDocument();expect(checkbox).toBeChecked();
+});

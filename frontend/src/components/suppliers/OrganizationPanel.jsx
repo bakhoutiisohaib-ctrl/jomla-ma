@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSessionToken, useSessionToken } from '../../api/session';
 import useAccountAttempt from '../auth/useAccountAttempt';
 import { apiRequest } from '../../api/config';
@@ -22,6 +22,7 @@ export default function OrganizationPanel({
   });
   const [declareCountry,setDeclareCountry]=useState(false);
   const profileOwner=profile.ownerId||profile._id;
+  const fallback=useRef(null);fallback.current={name:profile.organization||profile.name,city:profile.city||'',description:'',country:'MA'};
   const countryCode=typeof organization.country==='string'?organization.country.toUpperCase():'';
   const validCountry=/^[A-Z]{2}$/.test(countryCode);
   const [members, setMembers] = useState([]),
@@ -47,12 +48,12 @@ export default function OrganizationPanel({
       if(typeof org.organization._id!=='string'||(profile.role==='supplier'&&org.organization.ownerSupplierId!==profileOwner))throw Error('Invalid company identity');
       setOrganization(org.organization);
       setDeclareCountry(typeof org.organization.country==='string'&&/^[A-Z]{2}$/.test(org.organization.country)&&org.organization.declaredCountry===org.organization.country);
-    } else {setOrganization({name:profile.organization||profile.name,city:profile.city||'',description:'',country:'MA'});setDeclareCountry(false);}
+    } else {setOrganization(fallback.current);setDeclareCountry(false);}
     setMembers(org.memberships);
     setInvitations(inv.data);
     setReady(true);
     return org;
-  }, [profile.organization,profile.name,profile.city,profile.role,profileOwner]);
+  }, [profile.role,profileOwner]);
   useEffect(() => {
     const controller = new AbortController();
     const current = () => !controller.signal.aborted && session === getSessionToken();
