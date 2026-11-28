@@ -26,6 +26,8 @@ export function statusLabel(status, lang = 'ar') {
     active: ['فعال', 'Actif'],
     superseded: ['عرض سابق', 'Offre remplacée'],
     open: ['مفتوح', 'Ouvert'],
+    quoted: ['مفتوح للعروض', 'Ouverte aux offres', 'Open for offers'],
+    fulfilled: ['تم اختيار عرض', 'Offre sélectionnée', 'Offer selected'],
     closed: ['مغلق', 'Fermé'],
     resolved: ['تمت المعالجة', 'Résolu'],
     dismissed: ['محفوظ', 'Classé'],

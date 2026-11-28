@@ -1,0 +1,23 @@
+{
+  "requests": 2,
+  "targetQuotes": 2,
+  "activeQuotes": 0,
+  "accepted": 1,
+  "rejected": 1,
+  "unitPrice": 42,
+  "total": 4200,
+  "quantity": 100,
+  "offerNotices": 2,
+  "decisionNotices": 2,
+  "decisionRecipientsCorrect": true,
+  "foreignUnchanged": true,
+  "readState": {
+    "status": "fulfilled",
+    "own": "accepted",
+    "rival": "rejected",
+    "read": true,
+    "forged": false,
+    "missing": false
+  },
+  "privateDto": true
+}

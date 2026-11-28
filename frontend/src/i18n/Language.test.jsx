@@ -40,6 +40,10 @@ test('English covers dynamic status and notification labels and grouped form cop
   expect(localizeCopy({ ar:{send:'إرسال'}, fr:{send:'Envoyer'} },'en')).toEqual({send:'Send'});
   expect(labelFor('en','ع','Unknown','Explicit English')).toBe('Explicit English');
 });
+test.each([['ar','مفتوح للعروض','تم اختيار عرض'],['fr','Ouverte aux offres','Offre sélectionnée'],['en','Open for offers','Offer selected']])('sourcing statuses are localized in %s', (lang, quoted, fulfilled) => {
+  expect(statusLabel('quoted',lang)).toBe(quoted);
+  expect(statusLabel('fulfilled',lang)).toBe(fulfilled);
+});
 test('English catalog, navigation, cart and sign-in remain reachable without changing a cart selection', async () => {
   localStorage.setItem('jomla_lang','en');
   const selection = JSON.stringify(['111111111111111111111111']);

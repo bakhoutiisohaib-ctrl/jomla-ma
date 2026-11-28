@@ -1,0 +1,15 @@
+{
+  "rfqStatus": "rejected",
+  "rejectionPhase": "completed",
+  "threadStatus": "closed",
+  "rejectionMessageCount": 1,
+  "buyerDecisionNoticeCount": 1,
+  "foreignRfqUnchanged": true,
+  "readState": {
+    "actual": true,
+    "forged": false,
+    "missing": false,
+    "fail": false
+  },
+  "readFaults": 1
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "journey": "real supplier offer",
+    "unitPrice": 42
+  },
+  {
+    "journey": "buyer notification opens competitive offers"
+  },
+  {
+    "journey": "buyer real competitor rejection"
+  },
+  {
+    "journey": "buyer real acceptance and immutable terms"
+  },
+  {
+    "journey": "fulfilled request absent from actual open list"
+  },
+  {
+    "journey": "foreign closed sourcing forbidden and unread",
+    "status": 403
+  },
+  {
+    "journey": "missing sourcing refused and unread",
+    "status": 404
+  },
+  {
+    "journey": "closed sourcing opened from genuine notice, read and private"
+  },
+  {
+    "journey": "read notice can reopen same closed target"
+  }
+]
