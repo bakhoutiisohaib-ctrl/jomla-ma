@@ -33,12 +33,12 @@ function OwnedPanel({token, owner, onConfirmed}) {
         token,signal:controller.signal,cache:'no-store',...(write?{method:'POST',body:{...form,verificationRevision:row.verificationRevision}}:{})});
       if(!current())return;
       const saved=write?result?.supplier:result;
-      if(!valid(saved,owner) || (write && (!fields.every(k=>saved[k]===form[k].trim()) ||
+      if(!valid(saved,owner) || (row && saved.verificationRevision<row.verificationRevision) || (write && (!fields.every(k=>saved[k]===form[k].trim()) ||
           !['pending','verified'].includes(saved.verificationStatus) || saved.verificationRevision<row.verificationRevision || saved.verificationSync!=='idle')))
         throw new Error(labels.current('لم تتأكد حالة ملف التوثيق. حدّث الحالة المحفوظة.','État du dossier non confirmé. Actualisez la version enregistrée.','Verification state unconfirmed. Refresh the saved record.'));
       setRow(saved);setForm(inputs(saved));setUncertain(false);confirmed.current?.(saved);
       if(write)setMessage(saved.verificationStatus==='pending'?labels.current('أرسل ملفك للمراجعة','Dossier envoyé pour examen'):labels.current('ملف التوثيق معتمد بالفعل','Dossier déjà vérifié','Verification already approved'));
-    }catch(e){if(current()){setError(e.message);if(write)setUncertain(true);}}
+    }catch(e){if(current()){setError(e.message);setUncertain(true);}}
     finally{if(request.current===controller){request.current=null;locked.current=false;if(current())setBusy(false);}}
   }
   useEffect(()=>{mounted.current=true;execute();return()=>{mounted.current=false;request.current?.abort();request.current=null;locked.current=false;};
@@ -58,6 +58,6 @@ function OwnedPanel({token, owner, onConfirmed}) {
       <button className="primary" style={{marginTop:12}} disabled={!form.iceNumber.trim()&&!form.tradeRegistry.trim()}>{l('إرسال للمراجعة','Envoyer pour examen')}</button>
     </fieldset>
     <button type="button" disabled={busy} onClick={()=>execute()}>{l('تحديث حالة التوثيق','Actualiser la vérification','Refresh verification status')}</button>
-    <Notice error>{error}</Notice><Notice>{message}</Notice>
+    <Notice error>{error&&<>{error}{row&&uncertain&&<span className="supplier-help"> {l('الحالة المعروضة آخر نسخة مؤكدة فقط. الحفظ متوقف حتى ينجح تحديث الحالة.','Les données affichées sont la dernière version confirmée. Enregistrement bloqué jusqu’à une actualisation réussie.','The displayed record is only the last confirmed version. Saving is blocked until a successful refresh.')}</span>}</>}</Notice><Notice>{message}</Notice>
   </form>;
 }

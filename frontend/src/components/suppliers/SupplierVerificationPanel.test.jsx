@@ -47,3 +47,44 @@ test('missing synchronization contract fails closed',async()=>{
  render(<LanguageProvider><SupplierVerificationPanel owner={owner}/></LanguageProvider>);
  await screen.findByRole('alert');expect(screen.getByLabelText('ICE')).toBeDisabled();
 });
+
+test('failed refresh of an editable dossier blocks new writes until a valid fresh read',async()=>{
+ apiRequest.mockResolvedValueOnce(initial).mockRejectedValueOnce(Error('Synthetic refresh outage')).mockResolvedValueOnce(initial);
+ render(<LanguageProvider><SupplierVerificationPanel owner={owner}/></LanguageProvider>);
+ await waitFor(()=>expect(screen.getByLabelText('ICE')).toBeEnabled());
+ fireEvent.change(screen.getByLabelText('ICE'),{target:{value:pending.iceNumber}});
+ fireEvent.click(screen.getByRole('button',{name:'تحديث حالة التوثيق'}));
+ await screen.findByText('Synthetic refresh outage');
+ expect(screen.getByLabelText('ICE')).toBeDisabled();
+ expect(screen.getByLabelText('ICE')).toHaveValue(pending.iceNumber);
+ fireEvent.submit(screen.getByLabelText('ICE').closest('form'));
+ expect(apiRequest.mock.calls.filter(([,o])=>o.method==='POST')).toHaveLength(0);
+ fireEvent.click(screen.getByRole('button',{name:'تحديث حالة التوثيق'}));
+ await waitFor(()=>expect(screen.getByLabelText('ICE')).toBeEnabled());
+ expect(screen.getByLabelText('ICE')).toHaveValue('');
+});
+test('malformed refreshed contract cannot reopen the previously editable dossier',async()=>{
+ apiRequest.mockResolvedValueOnce(initial).mockResolvedValueOnce({...initial,verificationSync:undefined}).mockResolvedValueOnce(pending);
+ render(<LanguageProvider><SupplierVerificationPanel owner={owner}/></LanguageProvider>);
+ await waitFor(()=>expect(screen.getByLabelText('ICE')).toBeEnabled());
+ fireEvent.click(screen.getByRole('button',{name:'تحديث حالة التوثيق'}));
+ await screen.findByRole('alert');
+ expect(screen.getByLabelText('ICE')).toBeDisabled();
+ fireEvent.click(screen.getByRole('button',{name:'تحديث حالة التوثيق'}));
+ await screen.findByText('الملف قيد المراجعة؛ لا يمكن تعديله قبل القرار.');
+ expect(screen.getByLabelText('ICE')).toBeDisabled();
+ expect(apiRequest.mock.calls.filter(([,o])=>o.method==='POST')).toHaveLength(0);
+});
+test('a regressive profile revision cannot replace the latest confirmed dossier',async()=>{
+ const current={...pending,verificationRevision:2,verificationStatus:'verified',isVerified:true};
+ apiRequest.mockResolvedValueOnce(current).mockResolvedValueOnce(initial).mockResolvedValueOnce(current);
+ render(<LanguageProvider><SupplierVerificationPanel owner={owner}/></LanguageProvider>);
+ await waitFor(()=>expect(screen.getByLabelText('ICE')).toBeEnabled());
+ fireEvent.click(screen.getByRole('button',{name:'تحديث حالة التوثيق'}));
+ await screen.findByRole('alert');
+ expect(screen.getByLabelText('ICE')).toHaveValue(current.iceNumber);
+ expect(screen.getByLabelText('ICE')).toBeDisabled();
+ fireEvent.click(screen.getByRole('button',{name:'تحديث حالة التوثيق'}));
+ await waitFor(()=>expect(screen.getByLabelText('ICE')).toBeEnabled());
+ expect(apiRequest.mock.calls.filter(([,o])=>o.method==='POST')).toHaveLength(0);
+});

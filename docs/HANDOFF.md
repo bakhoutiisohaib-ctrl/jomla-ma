@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6B.3D independent UI defect correction scoped PASS: failed/invalid/regressive verification profile refresh freezes edits until valid read; preserve inputs on failure. Initial 25/28 (duplicate alerts), corrected final 28/28 (3 suites), CI build PASS. [Report](v49-gate6b3d-verification-refresh-20261128.md). Manual recovery and browser fault acceptance remain blocked; Gate 6B.3 OPEN.
+
 2026-11-28 - Gate 6B.3C full exact-source regression PASS: BE 778/778 (45), FE 504/504 (48), both tracked inventories matched, no skipped/failed, CI build PASS. [Report and inventory](v49-gate6b3c-regression-20261128.md). Browser lab execution blocked, manual recovery still unimplemented. Gate 6B.3 OPEN. No runtime changes.
 
 2026-11-28 - Gate 6B.3B read-only completion visibility and UI guards scoped PASS: BE 33/33 (3), FE 25/25 (3), CI build PASS. Existing authorized profile/list expose bounded sync status; UI blocks edits and decisions until idle. [Report](v49-gate6b3b-verification-status-20261128.md). Dedicated manual recovery remains unimplemented, browser/full acceptance pending; Gate 6B.3 OPEN.
