@@ -15,6 +15,7 @@ async function resolveReport(id, input, actor) {
   if (['resolved', 'dismissed'].includes(original.status)) throw fail(409, 'تم اتخاذ قرار في هذا البلاغ مسبقاً')
   if ((intent.moderationAction === 'hide_product' && original.targetType !== 'product') ||
       (intent.moderationAction === 'suspend_supplier' && original.targetType !== 'supplier')) throw fail(400, 'إجراء الإشراف لا يطابق نوع البلاغ')
+  if (original.targetType === 'trade_confirmation') await require('./tradeConfirmationDispute').requireSubmitted(original)
   if (intent.moderationAction !== 'none') {
     const target = intent.moderationAction === 'hide_product' ? await Product.exists({ _id: original.targetId })
       : await Supplier.exists({ _id: original.targetId, role: 'supplier' })

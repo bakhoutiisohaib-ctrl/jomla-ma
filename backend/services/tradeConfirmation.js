@@ -111,4 +111,4 @@ async function eligible(buyerId,supplierId,productId) {
   }
   return null
 }
-module.exports={confirm,list,eligible}
+module.exports={confirm,list,eligible,resolve,matches}

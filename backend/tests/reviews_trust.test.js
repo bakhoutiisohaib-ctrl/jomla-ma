@@ -236,3 +236,82 @@ test('noncanonical copied confirmation does not qualify even with matching agree
  expect((await request(app).post('/api/reviews').set(auth(buyer.token)).send({supplierId:String(owner.user._id),stars:5})).status).toBe(403);
  expect(await Review.countDocuments()).toBe(0);
 });
+
+test('private trade dispute is scoped, repeat safe, and never grants review eligibility',async()=>{
+ const Report=require('../models/Report'),owner=await account('supplier'),buyer=await account(),outsider=await account(),admin=await account('admin');
+ const url=await acceptSourcing(buyer,owner),endpoint=url+'/dispute',details='Synthetic confirmation dispute';
+ const send=(who,body={details})=>request(app).post(endpoint).set(auth(who.token)).send(body);
+ const get=who=>request(app).get(endpoint).set(auth(who.token));
+ expect((await request(app).post(endpoint).send({details})).status).toBe(401);
+ expect((await send(outsider)).status).toBe(404);
+ expect((await send(admin)).status).toBe(403);
+ expect((await send(buyer)).status).toBe(409);
+ expect((await confirm(url,buyer)).status).toBe(200);
+ expect((await send(owner)).status).toBe(409);
+ expect((await send(buyer,{details,reporterId:String(owner.user._id)})).status).toBe(400);
+ expect((await send(buyer,{details:'  '})).status).toBe(400);
+ expect((await request(app).post('/api/reports').send({targetType:'trade_confirmation',targetId:String(new mongoose.Types.ObjectId()),reason:'confirmation_dispute',details})).status).toBe(400);
+ const results=await Promise.all([send(buyer),send(buyer),send(buyer)]);
+ expect(results.map(r=>r.status).sort()).toEqual([200,200,201]);
+ const id=results[0].body.dispute._id;
+ expect(results.every(r=>r.body.dispute._id===id)).toBe(true);
+ expect((await send(buyer,{details:'Different claim'})).status).toBe(409);
+ expect(await Report.countDocuments({targetType:'trade_confirmation'})).toBe(1);
+ expect(await AuditLog.countDocuments({action:'REPORT_SUBMITTED',targetId:id,phase:'completed','performedBy.id':buyer.user._id})).toBe(1);
+ const own=await get(buyer),other=await get(owner);
+ expect(own.headers['cache-control']).toBe('private, no-store');
+ expect(own.body.dispute).toEqual({_id:id,status:'pending'});
+ expect(other.body.dispute).toBeNull();
+ expect((await get(outsider)).status).toBe(404);
+ const list=await request(app).get('/api/reports').set(auth(admin.token));
+ expect(list.body.data.find(r=>r._id===id)).toMatchObject({details,reporterId:String(buyer.user._id),tradeDispute:{kind:'sourcing',role:'buyer'}});
+ expect((await request(app).get('/api/reports').set(auth(owner.token))).status).toBe(403);
+ const decision=body=>request(app).put('/api/reports/'+id+'/resolve').set(auth(admin.token)).send(body);
+ expect((await decision({action:'resolved',resolutionNotes:'Admin examined',moderationAction:'suspend_supplier'})).status).toBe(400);
+ expect((await decision({action:'resolved',resolutionNotes:'Admin examined',moderationAction:'none'})).status).toBe(200);
+ expect((await get(buyer)).body.dispute).toEqual({_id:id,status:'resolved'});
+ expect((await send(buyer)).body.dispute.status).toBe('resolved');
+ expect((await request(app).get('/api/reviews/eligibility/'+owner.user._id).set(auth(buyer.token))).body.eligible).toBe(false);
+ expect((await request(app).post('/api/reviews').set(auth(buyer.token)).send({supplierId:String(owner.user._id),stars:1})).status).toBe(403);
+ expect((await confirm(url,owner)).body.trade.completed).toBe(true);
+ expect((await send(owner)).status).toBe(409);
+ expect((await request(app).post('/api/reviews').set(auth(buyer.token)).send({supplierId:String(owner.user._id),stars:1})).status).toBe(201);
+ expect(await Report.countDocuments({targetType:'trade_confirmation'})).toBe(1);
+ expect((await Supplier.findById(owner.user._id)).isActive).not.toBe(false);
+});
+
+test('trade dispute recovers saved record after acknowledgement loss and never duplicates audit',async()=>{
+ const Report=require('../models/Report'),owner=await account('supplier'),buyer=await account();
+ const url=await acceptSourcing(buyer,owner);await confirm(url,buyer);
+ const endpoint=url+'/dispute',send=()=>request(app).post(endpoint).set(auth(buyer.token)).send({details:'Synthetic saved intent'});
+ const original=Report.updateOne;
+ const fault=jest.spyOn(Report,'updateOne').mockImplementationOnce(async function(...args){await original.apply(this,args);throw Error('Synthetic lost acknowledgement')});
+ try{expect((await send()).status).toBe(200)}finally{fault.mockRestore()}
+ expect((await send()).status).toBe(200);
+ const saved=await Report.findOne({targetType:'trade_confirmation'}).lean();
+ expect(saved).toBeTruthy();
+ expect(await Report.countDocuments({targetType:'trade_confirmation'})).toBe(1);
+ expect(await AuditLog.countDocuments({action:'REPORT_SUBMITTED',targetId:saved._id,phase:'completed'})).toBe(1);
+});
+
+test('trade dispute receipt remains unconfirmed until its durable submission audit is recovered',async()=>{
+ const Report=require('../models/Report'),owner=await account('supplier'),buyer=await account();
+ const url=await acceptSourcing(buyer,owner);await confirm(url,buyer);
+ const endpoint=url+'/dispute',details='Synthetic audit failure',send=()=>request(app).post(endpoint).set(auth(buyer.token)).send({details});
+ const fault=jest.spyOn(AuditLog,'updateOne').mockRejectedValueOnce(Error('Synthetic audit failure before write'));
+ try{expect((await send()).status).toBe(503)}finally{fault.mockRestore()}
+ const saved=await Report.findOne({targetType:'trade_confirmation'}).lean();
+ expect(saved).toBeTruthy();
+ expect(await AuditLog.countDocuments({action:'REPORT_SUBMITTED',targetId:saved._id})).toBe(0);
+ expect((await request(app).get(endpoint).set(auth(buyer.token))).status).toBe(503);
+ const admin=await account('admin');
+ expect((await request(app).put('/api/reports/'+saved._id+'/resolve').set(auth(admin.token)).send({action:'resolved',resolutionNotes:'Examined',moderationAction:'none'})).status).toBe(503);
+ expect((await Report.findById(saved._id)).status).toBe('pending');
+ expect((await send()).status).toBe(200);
+ const read=await request(app).get(endpoint).set(auth(buyer.token));
+ expect(read.status).toBe(200);
+ expect(read.body.dispute).toEqual({_id:String(saved._id),status:'pending'});
+ expect(await Report.countDocuments({targetType:'trade_confirmation'})).toBe(1);
+ expect(await AuditLog.countDocuments({action:'REPORT_SUBMITTED',targetId:saved._id,phase:'completed'})).toBe(1);
+ expect((await request(app).get('/api/reviews/eligibility/'+owner.user._id).set(auth(buyer.token))).body.eligible).toBe(false);
+});

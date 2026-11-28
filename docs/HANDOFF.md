@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6C.1B.1 confirmation dispute backend scoped PASS: final BE 53/53 (4 suites), exit 0; three new tests, deterministic private complaint and submission audit, recovery and admin no-moderation fence. [Report](v49-gate6c-r5b1-confirmation-dispute-20261128.md). R5 OPEN; next UI/private status and admin integration (6C.1B.2).
+
 2026-11-28 - Gate 6C.1A R5 review eligibility integrity scoped PASS: two failing regressions reproduced before fix, three new tests; final isolated BE 105/105 (5 suites), exit 0, after correcting test prerequisites. Canonical confirmation and original accepted agreement checks; no historic-data mutation or verified purchase claim. [Report](v49-gate6c-r5a-review-eligibility-20261128.md). R5 and Gate 6C remain OPEN for dispute and legacy policy.
 
 2026-11-28 - Gate 6B.4B.2 sourcing and RFQ final regression PASS: 9/9 sourcing + DB, 7/7 RFQ + DB on same rebuilt frontend; FE 92/92 (5), strict CI build PASS. Fixed AR/FR/EN sourcing status labels following visual review. Three test-only failures corrected, then successful rechecks. [Report](v49-gate6b4b2-sourcing-browser-20261128.md). Gate 6B.4 local scoped CLOSED; Gate 6 remains OPEN, next 6C (R5/F1-F4).

@@ -1,0 +1,33 @@
+{
+  "baseline": "395849af349058cd5250442036a0e64a4e211a55",
+  "passed": 53,
+  "total": 53,
+  "suites": [
+    {
+      "name": "reviews_trust.test.js",
+      "passed": 14,
+      "total": 14,
+      "status": "passed"
+    },
+    {
+      "name": "reportPrivacy.test.js",
+      "passed": 35,
+      "total": 35,
+      "status": "passed"
+    },
+    {
+      "name": "reports_and_roles.test.js",
+      "passed": 3,
+      "total": 3,
+      "status": "passed"
+    },
+    {
+      "name": "reportTransactions.test.js",
+      "passed": 1,
+      "total": 1,
+      "status": "passed"
+    }
+  ],
+  "skipped": 0,
+  "exitCode": 0
+}
