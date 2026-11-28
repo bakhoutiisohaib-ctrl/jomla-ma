@@ -15,6 +15,7 @@ import WholesaleWorkspace from '../wholesale/WholesaleWorkspace';
 import SupplierVerificationPanel from './SupplierVerificationPanel';
 import TradeCompletionPanel from '../common/TradeCompletionPanel';
 import SupplierReviewReply from './SupplierReviewReply';
+import { reviewBasisLabel, validReviewRows, validReviewStars } from '../reviews/reviewPresentation';
 import JobsPanel from './JobsPanel';
 import { SupplierHeader, SupplierSidebar, advancedSupplierTabs } from './SupplierWorkspace';
 import SupplierSetupGuide from './SupplierSetupGuide';
@@ -173,7 +174,10 @@ function SupplierContent({
       fetchInto('/sourcing?status=open', d => setSourcing(d.data || []));
     }
     fetchInto('/notifications?limit=50', d => {setNotifications(d.data || []);setUnreadTotal(Number.isSafeInteger(d.unreadCount) && d.unreadCount>=0 ? d.unreadCount : null);},'notifications');
-    if (['overview', 'reviews'].includes(tab) && profile.role === 'supplier') fetchInto('/suppliers/me/reviews', d => setReviews(d.data || []));
+    if (['overview', 'reviews'].includes(tab) && profile.role === 'supplier') {
+      setReviews([]);
+      fetchInto('/suppliers/me/reviews', d => {if(!validReviewRows(d.data,owner))throw Error('Invalid review list');setReviews(d.data);},'reviews');
+    }
     if (tab === 'overview' && can('manage_products')) fetchInto('/suppliers/me/analytics', setAnalytics);
     Promise.allSettled(tasks).then(results => {
       if (active) {
@@ -184,7 +188,7 @@ function SupplierContent({
     return () => {
       active = false;
     };
-  }, [can, page, tab, revision, profile.role]);
+  }, [can, page, tab, revision, profile.role, owner]);
   useEffect(() => {
     if (tab !== 'notifications') return;
     let active = true, controller;
@@ -360,7 +364,7 @@ function SupplierContent({
     {tab === 'sourcing' && can('manage_rfq') && <section className="panel"><h2>{l('طلبات توريد مفتوحة', 'Demandes de sourcing ouvertes')}</h2>{sourcing.map(s => <article className="panel" key={s._id}><h3>{s.productName}</h3><p>{s.quantity} {s.unit} · {s.buyerCity}</p><p>{s.notes}</p><p>{l('عدد العروض', 'Nombre d’offres')}: {s.quotesCount}</p><button onClick={() => openSourcing(s._id)}>{s.offerRecovery ? l('استكمال العرض المحفوظ', 'Reprendre l’offre enregistrée') : l('تقديم عرض محفوظ', 'Soumettre une offre')}</button></article>)}</section>}
     {tab === 'verification' && profile.role === 'supplier' && <SupplierVerificationPanel owner={profile._id || profile.id} onConfirmed={saved=>setProfile(saved)}/>}
     {tab === 'trades' && profile.role === 'supplier' && <TradeCompletionPanel user={profile}/>}
-    {tab === 'reviews' && <section className="panel"><h2>{l('تقييمات العملاء', 'Avis clients')}</h2>{reviews.map(r => <article className="panel" key={r._id}><strong>{r.userName || r.buyerName || r.name}</strong><p>{'★'.repeat(r.stars || 0)} {r.comment}</p><p className="muted">{r.basis==='mutual_confirmation'?l('تعامل أقره الطرفان','Transaction confirmée mutuellement','Mutually confirmed transaction'):l('تقييم تاريخي','Avis historique','Legacy review')}</p>{r.reply?.text && <p className="notice">{r.reply.text}</p>}<SupplierReviewReply key={revision+':'+r._id} review={r} owner={profile._id||profile.id} onSaved={saved=>setReviews(rows=>rows.map(row=>row._id===saved._id?saved:row))} onRefresh={()=>{setReviews([]);refresh();}}/></article>)}{!reviews.length && <p>{l('لا توجد تقييمات', 'Aucun avis')}</p>}</section>}
+    {tab === 'reviews' && <section className="panel"><h2>{l('تقييمات العملاء', 'Avis clients')}</h2>{loadedMetrics.reviews&&reviews.map(r => <article className="panel" key={r._id}><strong>{r.userName || r.buyerName || r.name}</strong><p>{validReviewStars(r.stars)?'★'.repeat(r.stars):''} {r.comment}</p><p className="muted">{reviewBasisLabel(l,r)}</p>{r.reply?.text && <p className="notice">{r.reply.text}</p>}<SupplierReviewReply key={revision+':'+r._id} review={r} owner={profile._id||profile.id} onSaved={saved=>setReviews(rows=>rows.map(row=>row._id===saved._id?saved:row))} onRefresh={()=>{setReviews([]);refresh();}}/></article>)}{!loadedMetrics.reviews&&<p role="status">{l('قائمة التقييمات غير مؤكدة. حدّث مساحة العمل.','Liste des avis non confirmée. Actualisez.','Review list unconfirmed. Refresh.')}</p>}{loadedMetrics.reviews&&!reviews.length && <p>{l('لا توجد تقييمات', 'Aucun avis','No reviews')}</p>}</section>}
     {tab === 'notifications' && <section className="panel"><div className="actions"><h2>{l('الإشعارات', 'Notifications')}</h2><button disabled={busy||openingTarget} onClick={() => action(() => apiRequest('/notifications/read-all', {
             method: 'PUT'
           }))}>{l('تحديد الكل كمقروء', 'Tout marquer comme lu')}</button><button onClick={refresh}>{l('تحديث', 'Actualiser')}</button></div>{notifications.map(n => <article className="message" key={n._id}><p>{lang === 'en' ? n.titleEn || notificationLabel(n.type, lang) : lang === 'fr' ? n.titleFr || n.title || notificationLabel(n.type, lang) : n.titleAr || n.title || notificationLabel(n.type, lang)}</p><p>{lang === 'en' ? n.bodyEn : lang === 'fr' ? n.bodyFr || n.body || n.message : n.bodyAr || n.body || n.message}</p><button disabled={busy||openingTarget||!can('manage_rfq')||!supportedNotice(n)||!n.resourceId} onClick={()=>openNotice(n)}>{l('فتح الطلب', 'Ouvrir la demande')}</button>{!n.readAt && <button disabled={busy||openingTarget} onClick={() => action(() => apiRequest('/notifications/' + n._id + '/read', {

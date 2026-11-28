@@ -18,7 +18,14 @@ beforeEach(() => {
     if (path === '/api/products/' + pid) return response(productStatus === 200 ? { product, store: { _id: storeId, name: 'متجر الاختبار' } } : { message: 'Unavailable' }, productStatus);
     if (path === '/api/products/' + otherId) return response({ product: { ...source, _id: otherId, name: 'منتج مشابه', images: [] }, store: { _id: storeId, name: 'متجر الاختبار' } });
     if (path === '/api/products/search') return searchStatus !== 200 ? response({ message: 'Unavailable' }, searchStatus) : response({ data: parsed.searchParams.has('category') ? [product, { ...source, _id: otherId, name: 'منتج مشابه' }] : [product, { ...source, _id: otherId, name: 'منتج مشابه' }, { ...source, _id: recentId, name: 'منتج آخر', category: 'نسيج' }] });
-    if (path === '/api/reviews/' + sid) return response({ data: reviews, stats, pagination: { hasNextPage: parsed.searchParams.get('page') === '1' && stats.total > 5, pages: Math.ceil(stats.total / 5) } }, reviewStatus);
+    if (path === '/api/reviews/' + sid) {
+      const page=Number(parsed.searchParams.get('page')||1),limit=Number(parsed.searchParams.get('limit')||5);
+      const rows=reviews.map((r,i)=>({...r,_id:(i+1).toString(16).padStart(24,'0'),supplierId:sid}));
+      const confirmed=rows.filter(r=>r.basis==='mutual_confirmation').length;
+      for(let i=confirmed;i<stats.total;i++)rows.push({_id:(rows.length+1).toString(16).padStart(24,'0'),supplierId:sid,stars:4,basis:'mutual_confirmation'});
+      const total=rows.length,pages=Math.ceil(total/limit);
+      return response({data:rows.slice((page-1)*limit,page*limit),stats,legacyTotal:total-stats.total,pagination:{page,limit,total,pages,hasNextPage:page<pages,hasPrevPage:page>1}},reviewStatus);
+    }
     if (path === '/api/reviews/eligibility/' + sid) return response({supplierId:sid,buyerId,eligible:eligibilityReason==='eligible',reason:eligibilityReason});
     if (path === '/api/reviews' && options.method === 'POST') { const body=JSON.parse(options.body);posts.push(body); return response(reviewAcknowledged?{ review:{...body,_id:'777777777777777777777777',buyerId,basis:'mutual_confirmation'} }:{message:'unconfirmed'}, 201); }
     if (path === '/api/suppliers/me/profile') return response({ _id: buyerId, role: 'buyer', name: 'Test buyer', phone: '+212600000010' });
@@ -346,4 +353,32 @@ test('unconfirmed review response never displays success or enables a blind seco
   expect(within(section).queryByText('تم نشر تقييمك للمورد.')).not.toBeInTheDocument();
   expect(within(section).queryByRole('button',{name:'نشر التقييم'})).not.toBeInTheDocument();
   expect(posts).toHaveLength(1);
+});
+
+test('unconfirmed opinions remain visible but only confirmed evidence contributes to supplier average',async()=>{
+ stats={avg:1,total:1};reviews=[{userName:'Negative experience',stars:1,basis:'mutual_confirmation',comment:'Synthetic confirmed negative'},{userName:'Unconfirmed opinion',stars:5,comment:'Synthetic excluded opinion'},{userName:'Invalid old score',stars:999999,comment:'Synthetic retained text'}];
+ await open();const section=screen.getByRole('region',{name:'تقييمات المورد وتعليقاته'});
+ await within(section).findByText('Synthetic excluded opinion');
+ expect(within(section).getByText('Synthetic confirmed negative')).toBeInTheDocument();
+ expect(within(section).getByText('Synthetic retained text')).toBeInTheDocument();
+ expect(within(section).getByText('تقييمات غير محتسبة في المعدل: 2')).toBeInTheDocument();
+ expect(within(section).getByText('تعامل أقره الطرفان')).toBeInTheDocument();
+ expect(within(section).getAllByText('تقييم غير محتسب في المعدل — أدلة غير كافية للتحقق')).toHaveLength(2);
+ expect(within(section).queryByText('999999/5')).not.toBeInTheDocument();
+ expect(within(section).getByText(/1 تقييم محتسب/)).toBeInTheDocument();
+});
+test('all excluded opinions distinguish no counted rating from no comments',async()=>{
+ reviews=[{userName:'Unconfirmed opinion',stars:5,comment:'Synthetic retained opinion'}];
+ await open();const section=screen.getByRole('region',{name:'تقييمات المورد وتعليقاته'});
+ await within(section).findByText('لا توجد تقييمات محتسبة في المعدل حتى الآن.');
+ expect(within(section).getByText('Synthetic retained opinion')).toBeInTheDocument();
+ expect(within(section).queryByText('0.0/5')).not.toBeInTheDocument();
+ expect(within(section).queryByText('لا توجد تعليقات منشورة في هذه الصفحة بعد.')).not.toBeInTheDocument();
+});
+test('failed evidence read offers explicit retry and does not leave a false empty state',async()=>{
+ reviewStatus=503;await open();const section=screen.getByRole('region',{name:'تقييمات المورد وتعليقاته'});
+ await within(section).findByText('تعذر التحقق من التقييمات حالياً.');
+ expect(within(section).queryByText('لا توجد تعليقات منشورة في هذه الصفحة بعد.')).not.toBeInTheDocument();
+ reviewStatus=200;fireEvent.click(within(section).getByRole('button',{name:'إعادة تحميل التقييمات'}));
+ await within(section).findByText('لا توجد تعليقات منشورة في هذه الصفحة بعد.');
 });

@@ -20,7 +20,7 @@ function api(url, options = {}) {
   if (path.includes('/media/')) return media();
   if (path === '/api/products/' + pid) return response(productStatus === 200 ? { product, store } : { message: 'المنتج غير متاح' }, productStatus);
   if (path === '/api/stores/' + sid) return response({ store, products: [product], pagination: { page: 1, pages: 2, total: 13, hasNextPage: true } });
-  if (path.includes('/reviews/')) return response({ data: [], stats: { total: 0, avg: 0 } });
+  if (path.includes('/reviews/')) {const limit=Number(new URL(url,'http://localhost').searchParams.get('limit')||5);return response({data:[],stats:{total:0,avg:0},legacyTotal:0,pagination:{page:1,limit,total:0,pages:0,hasNextPage:false,hasPrevPage:false}});}
   if (path.includes('/me/profile')) return response(profile || {}, profile ? 200 : 401);
   if (path === '/api/suppliers/login') return response({ token: jwt, supplier: buyer });
   if (path === '/api/rfq' && options.method === 'POST') return response({ rfq: { _id: 'synthetic-rfq' } }, 201);

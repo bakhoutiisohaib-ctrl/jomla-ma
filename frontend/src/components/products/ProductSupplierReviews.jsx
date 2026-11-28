@@ -6,6 +6,7 @@ import { usePublicResource } from '../common/usePublicPage';
 import { useLabels } from '../../i18n/useLabels';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { Field, Notice } from '../common/WorkspaceUI';
+import { reviewBasisLabel, validReviewStars, validatedPublicReviews } from '../reviews/reviewPresentation';
 
 export default function ProductSupplierReviews(props) {
   const token=useSessionToken();
@@ -15,7 +16,7 @@ function Reviews({ supplierId, user, token, compact=false }) {
   const l = useLabels(), { lang } = useTranslation();
   const [page, setPage] = useState(1), [revision, setRevision] = useState(0);
   const [form, setForm] = useState({ stars: '', comment: '' }), [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [submitError, setSubmitError] = useState('');
-  const { data, loading, error } = usePublicResource('/reviews/' + supplierId + '?limit=5&page=' + page + '&revision=' + revision);
+  const { data:raw, loading, error, refresh } = usePublicResource('/reviews/' + supplierId + '?limit=5&page=' + page + '&revision=' + revision);
   const [eligibility,setEligibility]=useState(null), [check,setCheck]=useState(0);
   const lock=useRef(false), mounted=useRef(true), request=useRef(null);
   const buyerId=user?._id||user?.id, buyer=user?.role==='buyer'&&Boolean(token&&buyerId);
@@ -30,9 +31,9 @@ function Reviews({ supplierId, user, token, compact=false }) {
     }).catch(()=>{if(!c.signal.aborted&&token===getSessionToken())setEligibility('unavailable');});
     return()=>c.abort();
   },[buyer,buyerId,token,supplierId,check]);
-  const stats = data?.stats;
-  const validStats = Number.isInteger(stats?.total) && stats.total > 0 && Number.isFinite(stats.avg) && stats.avg >= 1 && stats.avg <= 5;
-  const reviews = Array.isArray(data?.data) ? data.data.filter(review => Number.isInteger(review.stars) && review.stars >= 1 && review.stars <= 5) : [];
+  const data=validatedPublicReviews(raw,supplierId,page,5),stats=data?.stats;
+  const unavailable=Boolean(error||(!loading&&!data));
+  const reviews=data?.data||[];
   async function submit(event) {
     event.preventDefault();
     if(lock.current||eligibility!=='eligible'||token!==getSessionToken()||!form.stars||form.comment.trim().length<3)return;
@@ -52,17 +53,19 @@ function Reviews({ supplierId, user, token, compact=false }) {
   }
   return <section id={compact?'supplier-reviews':'product-reviews'} className={compact?'panel atlas-detail-reviews':'atlas-detail-section atlas-detail-reviews'} aria-label={l('تقييمات المورد وتعليقاته', 'Avis et commentaires sur le fournisseur')}>
     <div className="atlas-detail-section-heading"><h2>{l('تقييمات المورد وتعليقاته', 'Avis et commentaires sur le fournisseur')}</h2>
-      {validStats && <p className="atlas-detail-rating"><span aria-hidden="true">★</span> <strong>{stats.avg.toFixed(1)}/5</strong> · {stats.total} {l('تقييم', 'avis')}</p>}
+      {stats?.total>0 && <p className="atlas-detail-rating"><span aria-hidden="true">★</span> <strong>{stats.avg.toFixed(1)}/5</strong> · {stats.total} {l('تقييم محتسب','avis comptabilisés','counted reviews')}</p>}
     </div>
-    <p className="atlas-detail-muted">{l('المعدل يحتسب تقييمات التعاملات التي أقرها الطرفان فقط؛ لا يمثل إثباتاً مستقلاً للدفع أو التسليم.', 'La moyenne inclut uniquement les transactions confirmées par les deux parties, sans preuve indépendante de paiement ou de livraison.')}</p>
+    <p className="atlas-detail-muted">{l('المعدل يحتسب فقط تقييمات التعاملات التي أقرها الطرفان وتتوفر أدلة كافية للتحقق من ارتباطها بالاتفاق؛ لا يمثل إثباتاً مستقلاً للدفع أو التسليم.','La moyenne inclut uniquement les avis liés à des accords vérifiables confirmés par les deux parties ; elle ne prouve ni paiement ni livraison.','The average counts only reviews linked to verifiable agreements confirmed by both parties; it is not proof of payment or delivery.')}</p>
     {loading && <p role="status">{l('جاري تحميل التقييمات…', 'Chargement des avis…')}</p>}
-    <Notice error>{error?.message}</Notice>
+    {unavailable&&<><Notice error>{l('تعذر التحقق من التقييمات حالياً.','Impossible de vérifier les avis actuellement.','Reviews cannot currently be verified.')}</Notice><button type="button" onClick={refresh}>{l('إعادة تحميل التقييمات','Recharger les avis','Reload reviews')}</button></>}
+    {data&&stats.total===0&&data.pagination.total>0&&<p className="atlas-detail-muted">{l('لا توجد تقييمات محتسبة في المعدل حتى الآن.','Aucun avis comptabilisé pour le moment.','No reviews count toward the average yet.')}</p>}
+    {data&&data.legacyTotal>0&&<p className="atlas-detail-muted">{l('تقييمات غير محتسبة في المعدل','Avis exclus de la moyenne','Reviews excluded from the average')}: {data.legacyTotal}</p>}
     {data && !error && !reviews.length && <p className="atlas-reviews-empty">{l('لا توجد تعليقات منشورة في هذه الصفحة بعد.', 'Aucun commentaire publié sur cette page pour le moment.')}</p>}
     {reviews.map(review => {
       const date = new Date(review.date), validDate = Boolean(review.date) && !Number.isNaN(date.getTime());
       return <article key={review._id} className="atlas-detail-review">
-        <header><strong>{review.userName || l('مستخدم المنصة', 'Utilisateur de la plateforme')}</strong><span aria-label={l('التقييم: ', 'Note : ') + review.stars + '/5'}>{'★'.repeat(review.stars)} <span>{review.stars}/5</span></span></header>
-        <p className="muted">{review.basis==='mutual_confirmation'?l('تعامل أقره الطرفان','Transaction confirmée mutuellement','Mutually confirmed transaction'):l('تقييم تاريخي غير محتسب في المعدل','Avis historique exclu de la moyenne','Legacy review excluded from rating')}</p>
+        <header><strong>{review.userName || l('مستخدم المنصة', 'Utilisateur de la plateforme')}</strong>{validReviewStars(review.stars)&&<span aria-label={l('التقييم: ', 'Note : ','Rating: ') + review.stars + '/5'}>{'★'.repeat(review.stars)} <span>{review.stars}/5</span></span>}</header>
+        <p className="muted">{reviewBasisLabel(l,review)}</p>
         {validDate && <time dateTime={date.toISOString()}>{date.toLocaleDateString(localeFor(lang))}</time>}
         {review.comment && <p>{review.comment}</p>}
         {review.reply?.text && <blockquote><strong>{l('رد المورد', 'Réponse du fournisseur')}</strong><p>{review.reply.text}</p></blockquote>}

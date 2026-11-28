@@ -294,3 +294,31 @@ test('read acknowledgement failure keeps confirmed dialog and explicitly reports
  targetMock({'/notifications/notice-rfq/read':()=>{throw Error('Synthetic read outage')}});show();fireEvent.click(await openInbox());
  expect(await screen.findByRole('dialog')).toBeInTheDocument();expect(await screen.findByText(/لم يتأكد تعليم الإشعار كمقروء/)).toBeInTheDocument();
 });
+
+test('supplier sees excluded reviews without false confirmation and refresh failure clears stale rows',async()=>{
+ const base=apiRequest.getMockImplementation(),confirmed={_id:'1'.repeat(24),supplierId:user._id,stars:1,comment:'Synthetic confirmed negative',basis:'mutual_confirmation'},excluded={_id:'2'.repeat(24),supplierId:user._id,stars:5,comment:'Synthetic excluded review'};
+ let failure=false;
+ apiRequest.mockImplementation(async(p,o)=>p==='/suppliers/me/reviews'?failure?Promise.reject(Error('Synthetic review outage')):{data:[confirmed,excluded]}:base(p,o));
+ show();fireEvent.click(screen.getByRole('button',{name:'متقدم'}));fireEvent.click(screen.getByRole('button',{name:'التقييمات',exact:true}));
+ await screen.findByText(/Synthetic excluded review/);
+ expect(screen.getByText('تعامل أقره الطرفان')).toBeInTheDocument();
+ expect(screen.getByText('تقييم غير محتسب في المعدل — أدلة غير كافية للتحقق')).toBeInTheDocument();
+ failure=true;fireEvent.click(screen.getByRole('button',{name:'تحديث مساحة العمل'}));
+ await screen.findByText('Synthetic review outage');
+ expect(screen.queryByText(/Synthetic confirmed negative/)).not.toBeInTheDocument();
+ expect(screen.queryByText('لا توجد تقييمات')).not.toBeInTheDocument();
+ expect(screen.getByText('قائمة التقييمات غير مؤكدة. حدّث مساحة العمل.')).toBeInTheDocument();
+});
+
+test('reply confirmation can remove unsupported classification without changing the original score or comment',async()=>{
+ const base=apiRequest.getMockImplementation(),review={_id:'4'.repeat(24),supplierId:user._id,stars:1,comment:'Synthetic negative kept',basis:'mutual_confirmation'};
+ apiRequest.mockImplementation(async(p,o)=>p==='/suppliers/me/reviews'?{data:[review]}:p==='/suppliers/me/reviews/'+review._id+'/reply'?{review:{...review,basis:undefined,reply:{text:o.body.text}}}:base(p,o));
+ show();fireEvent.click(screen.getByRole('button',{name:'متقدم'}));fireEvent.click(screen.getByRole('button',{name:'التقييمات',exact:true}));
+ await screen.findByText('تعامل أقره الطرفان');
+ fireEvent.change(screen.getByLabelText('رد على التقييم'),{target:{value:'Synthetic reply'}});
+ fireEvent.click(screen.getByRole('button',{name:'رد',exact:true}));
+ await screen.findByText('Synthetic reply');
+ expect(screen.getByText('تقييم غير محتسب في المعدل — أدلة غير كافية للتحقق')).toBeInTheDocument();
+ expect(screen.queryByText('تعامل أقره الطرفان')).not.toBeInTheDocument();
+ expect(screen.getByText(/Synthetic negative kept/)).toBeInTheDocument();
+});

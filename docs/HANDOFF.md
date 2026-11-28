@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6C.1C.2 review presentation scoped PASS: final FE 113/113 (7 suites), strict CI build PASS. Neutral excluded-opinion classification, exact supplier and public envelope checks, private stale-read handling. [Report](v49-gate6c-r5c2-review-presentation-20261128.md). R5 OPEN; next actual browser and review performance acceptance (6C.1C.3).
+
 2026-11-28 - Gate 6C.1C.1 historical review evidence scoped PASS: reproduced 4.4/7 vs 3.0/2 aggregate defect; exact agreement verification, no record rewrite; final BE 93/93 (5 suites), exit 0. [Report](v49-gate6c-r5c1-historical-review-evidence-20261128.md). R5 OPEN; next UI labels/browser and performance acceptance.
 
 2026-11-28 - Gate 6C.1B.3 dispute browser scoped PASS: 6/6 and DB PASS, exit 0. Initial test navigation corrected to advanced supplier mode; fresh RFQ/sourcing, buyer/supplier/admin and audit failure recovery. [Report](v49-gate6c-r5b3-dispute-browser-20261128.md). 6C.1B scoped closed, R5 OPEN; next 6C.1C historical reviews.

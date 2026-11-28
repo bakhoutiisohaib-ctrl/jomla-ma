@@ -3,6 +3,7 @@ import {apiRequest} from '../../api/config';
 import {getSessionToken,useSessionToken} from '../../api/session';
 import {useLabels} from '../../i18n/useLabels';
 import {Notice} from '../common/WorkspaceUI';
+import {validReviewRows} from '../reviews/reviewPresentation';
 
 export default function SupplierReviewReply({review,owner,onSaved,onRefresh}) {
   const token=useSessionToken();
@@ -19,7 +20,7 @@ function Reply({review,owner,onSaved,onRefresh,token}) {
     try {
       const d=await apiRequest('/suppliers/me/reviews/'+review._id+'/reply',{token,signal:c.signal,method:'POST',body:{text:value}});
       if(c.signal.aborted||!mounted.current||token!==getSessionToken())return;
-      const r=d.review;if(r?._id!==review._id||r.supplierId!==owner||r.reply?.text!==value||r.stars!==review.stars||r.comment!==review.comment)throw Error('Unconfirmed reply');
+      const r=d.review;if(!validReviewRows([r],owner)||r?._id!==review._id||r.supplierId!==owner||r.reply?.text!==value||r.stars!==review.stars||r.comment!==review.comment)throw Error('Unconfirmed reply');
       setText('');onSaved(r);
     } catch(e){if(!c.signal.aborted&&mounted.current&&token===getSessionToken()){setUncertain(true);setError(l('تعذر تأكيد حفظ الرد؛ حدّث التقييمات قبل إعادة المحاولة.','Réponse non confirmée ; actualisez les avis avant de réessayer.','Reply not confirmed; refresh reviews before retrying.'));}}
     finally{lock.current=false;if(mounted.current&&token===getSessionToken())setBusy(false);}
