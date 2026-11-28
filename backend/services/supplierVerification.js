@@ -174,4 +174,37 @@ async function syncStore(s){
  try{owner=await load(s.supplierId);if(owner&&(s.verificationProjection!==stamp(owner)||s.isVerified!==approved(owner)))await project(owner,s._id);return {store:storeDto(s,owner)}}
  catch{return {store:storeDto(s,owner),verificationProjectionPending:true}}
 }
-module.exports={submit,decide,createVerificationRecovery,recoverPendingVerifications,safeSupplier,syncStore,storeDto,approved,stamp}
+
+function stateDto(s,actor){
+ const r=s.verificationOperation
+ if(r)validate(s,r)
+ if(!validRevision(revision(s))||!['unverified','pending','verified','rejected'].includes(s.verificationStatus))throw retry()
+ return {supplierId:String(s._id),verificationRevision:revision(s),verificationStatus:s.verificationStatus,isVerified:approved(s),
+   operation:r?{id:String(r.id),kind:r.kind,phase:r.phase,baseRevision:r.baseRevision,attempts:r.attempts||0,
+     canResume:Boolean(pending(r)&&(actor.role==='admin'||(r.kind==='submit'&&same(r.actor?.id,actor.id))))}:null}
+}
+function authorizeScope(id,actor){
+ if(actor?.role!=='admin'&&!(actor?.role==='supplier'&&same(actor.id,id)))throw fail(403,'ليست لديك صلاحية لهذه العملية')
+}
+async function readState(id,actor){
+ authorizeScope(id,actor)
+ const s=await load(id);if(!s)throw missing()
+ return stateDto(s,actor)
+}
+async function resume(id,actor,body){
+ authorizeScope(id,actor)
+ const operationId=body?.operationId
+ if(!body||Array.isArray(body)||Object.keys(body).length!==1||typeof operationId!=='string'||!(/^[a-f0-9]{24}$/i.test(operationId)))throw fail(400,'معرف عملية التوثيق غير صالح')
+ const s=await load(id);if(!s)throw missing()
+ const r=s.verificationOperation
+ if(!same(r?.id,operationId))throw conflict()
+ validate(s,r)
+ if(actor.role!=='admin'&&!(r.kind==='submit'&&same(r.actor?.id,actor.id)))throw fail(403,'ليست لديك صلاحية استكمال هذه العملية')
+ if(!pending(r))return stateDto(s,actor)
+ try{await advance(id,r.id)}
+ catch(e){if(e.status!==404){if(e.status===409)throw e;throw retry()}}
+ const current=await load(id)
+ if(!current||!same(current.verificationOperation?.id,operationId))throw conflict()
+ return stateDto(current,actor)
+}
+module.exports={submit,decide,createVerificationRecovery,recoverPendingVerifications,safeSupplier,syncStore,storeDto,approved,stamp,readState,resume}

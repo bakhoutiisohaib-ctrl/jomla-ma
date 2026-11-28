@@ -1,5 +1,7 @@
 # تسليم Jomla.ma لوكيل أو حاسوب آخر
 
+2026-11-28 - Gate 6B.3F.1 authorized manual verification recovery backend scoped PASS: initial 34/34, final 82/82 (9 suites), 3 new cases. Previously blocked command executed unchanged; strict operationId-only resume, owner/admin scope, original actor/audit preserved, stale/forged/concurrent/cancelled paths tested. [Report](v49-gate6b3f1-manual-recovery-contract-20261128.md). Gate 6B.3 OPEN; next 6B.3F.2 UI and manual browser acceptance.
+
 2026-11-28 - Gate 6B.3E actual automatic verification fault/reload browser acceptance PASS 6/6 and DB PASS (one submission, one approval, two completed audits, revision 1/projection 3). Previously blocked browser command executed unchanged on 883f5e0; no source changes. [Report](v49-gate6b3e-verification-browser-20261128.md). Gate 6B.3 OPEN for dedicated manual recovery.
 
 2026-11-28 - Gate 6B.3D independent UI defect correction scoped PASS: failed/invalid/regressive verification profile refresh freezes edits until valid read; preserve inputs on failure. Initial 25/28 (duplicate alerts), corrected final 28/28 (3 suites), CI build PASS. [Report](v49-gate6b3d-verification-refresh-20261128.md). Manual recovery and browser fault acceptance remain blocked; Gate 6B.3 OPEN.

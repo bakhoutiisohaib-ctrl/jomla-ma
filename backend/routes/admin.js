@@ -51,6 +51,15 @@ router.get('/suppliers', asyncHandler(async (req, res) => {
   res.set('Cache-Control','private, no-store').json(formatPaginationResponse(suppliers.map(verification.safeSupplier), await Supplier.countDocuments(filter), page, limit))
 }))
 
+
+router.get('/suppliers/:id/verification-state',validateMongoId,asyncHandler(async(req,res)=>{
+ res.set('Cache-Control','private, no-store')
+ res.json(await verification.readState(req.params.id,req.supplier))
+}))
+router.post('/suppliers/:id/verification-recover',validateMongoId,asyncHandler(async(req,res)=>{
+ res.set('Cache-Control','private, no-store')
+ res.json(await verification.resume(req.params.id,req.supplier,req.body))
+}))
 router.put('/suppliers/:id/verify', validateMongoId, asyncHandler(async (req, res) => {
   const { action, rejectionReason, verificationRevision } = req.body
   if (!['approve', 'reject'].includes(action) || !Number.isSafeInteger(verificationRevision) || verificationRevision < 0 || (rejectionReason !== undefined && (typeof rejectionReason !== 'string' || rejectionReason.length > 2000))) return res.status(400).json({ message: 'إجراء مراجعة أو إصدار ملف غير صالح' })

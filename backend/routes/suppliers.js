@@ -270,6 +270,15 @@ router.patch('/me/memberships/:id', authenticate, ownerOnly, validateMongoId, as
   res.json({ message: 'تم تحديث العضوية', membership })
 }))
 
+
+router.get('/me/verification-state',authenticate,ownerOnly,asyncHandler(async(req,res)=>{
+ res.set('Cache-Control','private, no-store')
+ res.json(await verification.readState(req.account._id,req.supplier))
+}))
+router.post('/me/verification-recover',authenticate,ownerOnly,asyncHandler(async(req,res)=>{
+ res.set('Cache-Control','private, no-store')
+ res.json(await verification.resume(req.account._id,req.supplier,req.body))
+}))
 router.post('/me/verify', authenticate, ownerOnly, asyncHandler(async (req, res) => {
   const body = req.body || {}, supplier = req.account
   const fields = ['iceNumber', 'tradeRegistry', 'verificationDoc']
