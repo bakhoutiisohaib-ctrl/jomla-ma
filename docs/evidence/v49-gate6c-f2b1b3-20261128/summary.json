@@ -1,0 +1,60 @@
+{
+  "status": "PASS_OFFLINE_CONTRACT_ONLY",
+  "baseline": "895351cdaa8015288afd191667cdcd326e379229",
+  "first": {
+    "passed": 129,
+    "failed": 0,
+    "suites": [
+      {
+        "name": "videoWorkerLab.test.js",
+        "passed": 20
+      },
+      {
+        "name": "mediaPrivacy.test.js",
+        "passed": 39
+      },
+      {
+        "name": "publicMedia.test.js",
+        "passed": 30
+      },
+      {
+        "name": "videoContainer.test.js",
+        "passed": 35
+      },
+      {
+        "name": "mediaCancellation.test.js",
+        "passed": 5
+      }
+    ]
+  },
+  "final": {
+    "passed": 131,
+    "failed": 0,
+    "suites": [
+      {
+        "name": "mediaPrivacy.test.js",
+        "passed": 39
+      },
+      {
+        "name": "publicMedia.test.js",
+        "passed": 30
+      },
+      {
+        "name": "videoWorkerLab.test.js",
+        "passed": 22
+      },
+      {
+        "name": "videoContainer.test.js",
+        "passed": 35
+      },
+      {
+        "name": "mediaCancellation.test.js",
+        "passed": 5
+      }
+    ]
+  },
+  "realSyntheticSubprocess": true,
+  "quarantineNoCloseTest": "test double",
+  "nativeBrokerIntegrated": false,
+  "uploadEnabled": false
+}
