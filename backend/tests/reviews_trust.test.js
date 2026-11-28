@@ -360,7 +360,7 @@ test('historical evidence outage never publishes a partial rating and missing so
  const saved=await Confirmation.findOne().lean(),url='/api/reviews/'+owner.user._id;
  const before=await request(app).get(url);expect(before.status).toBe(200);expect(before.headers['cache-control']).toBe('no-store');
  expect(before.body.stats).toEqual({avg:1,total:1});
- const fault=jest.spyOn(Confirmation,'findOne').mockImplementationOnce(()=>{throw Object.assign(Error('Synthetic evidence unavailable'),{status:503})});
+ const fault=jest.spyOn(Confirmation,'find').mockImplementationOnce(()=>{throw Object.assign(Error('Synthetic evidence unavailable'),{status:503})});
  try{
   const unavailable=await request(app).get(url);
   expect(unavailable.status).toBe(503);expect(unavailable.body.stats).toBeUndefined();expect(unavailable.body.data).toBeUndefined();
@@ -371,4 +371,33 @@ test('historical evidence outage never publishes a partial rating and missing so
  expect(after.body.data.find(r=>r._id===result.body.review._id)).not.toHaveProperty('basis');
  expect(await Review.countDocuments({supplierId:owner.user._id})).toBe(2);
  expect(await Confirmation.countDocuments()).toBe(1);
+});
+
+test('batched historical checks preserve exact BSON scope, RFQ closure and page-boundary classification',async()=>{
+ const f=await require('./helpers/tradeFixtures')(),buyer={user:f.buyer,token:f.tokens.buyer},owner={user:f.supplier,token:f.tokens.supplier};
+ const created=await request(app).post('/api/rfq').set(auth(buyer.token)).set('Idempotency-Key',crypto.randomUUID()).send({productId:String(f.product._id),quantity:40,buyerPhone:f.buyer.phone});
+ expect(created.status).toBe(201);const id=created.body.rfq._id;
+ const offered=await request(app).put('/api/rfq/'+id+'/respond').set(auth(owner.token)).set('Idempotency-Key',crypto.randomUUID()).send({unitPrice:88,deliveryDays:3});
+ expect(offered.status).toBe(200);const offerId=offered.body.offer._id;
+ expect((await request(app).put('/api/rfq/'+id+'/action').set(auth(buyer.token)).send({action:'accept',offerId})).status).toBe(200);
+ const trade='/api/trade-confirmations/rfq/'+id+'/'+offerId;
+ expect((await confirm(trade,buyer)).status).toBe(200);expect((await confirm(trade,owner)).status).toBe(200);
+ expect((await request(app).post('/api/reviews').set(auth(buyer.token)).send({supplierId:String(f.supplier._id),stars:1})).status).toBe(201);
+ const saved=await Confirmation.findOne().lean(),r=await Review.findOne({buyerId:f.buyer._id}).select('+tradeConfirmationId').lean();
+ const {historicalEvidence,historicalEvidenceBatch}=require('../services/tradeConfirmation');
+ const check=async expected=>{expect(await historicalEvidence(r)).toBe(expected);expect(await historicalEvidenceBatch([r])).toEqual([expected]);};
+ await check(true);
+ await Confirmation.collection.updateOne({_id:saved._id},{$set:{buyerId:String(saved.buyerId)}});await check(false);
+ await Confirmation.collection.updateOne({_id:saved._id},{$set:{buyerId:saved.buyerId}});await check(true);
+ const Offer=require('../models/QuoteOffer'),Thread=require('../models/MessageThread');
+ await Offer.collection.updateOne({_id:new mongoose.Types.ObjectId(offerId)},{$set:{decisionId:String(saved.decisionId)}});await check(false);
+ await Offer.collection.updateOne({_id:new mongoose.Types.ObjectId(offerId)},{$set:{decisionId:saved.decisionId}});
+ await Thread.collection.updateOne({rfqId:saved.sourceId},{$set:{status:'open'}});await check(false);
+ await Thread.collection.updateOne({rfqId:saved.sourceId},{$set:{status:'closed'}});await check(true);
+ await Review.collection.insertMany(Array.from({length:65},()=>({supplierId:f.supplier._id,userName:'Synthetic excluded',stars:5,date:new Date(Date.now()+1000)})));
+ const url='/api/reviews/'+f.supplier._id;
+ const first=await request(app).get(url+'?page=1&limit=5'),last=await request(app).get(url+'?page=14&limit=5');
+ for(const res of [first,last]){expect(res.status).toBe(200);expect(res.body.stats).toEqual({avg:1,total:1});expect(res.body.legacyTotal).toBe(65);}
+ expect(last.body.data[0].basis).toBe('mutual_confirmation');
+ expect(await Review.countDocuments()).toBe(66);
 });

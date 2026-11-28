@@ -1,5 +1,5 @@
 const Review=require('../models/Review')
-const {historicalEvidence}=require('./tradeConfirmation')
+const {historicalEvidence,historicalEvidenceBatch}=require('./tradeConfirmation')
 const {formatPaginationResponse}=require('../utils/constants')
 const validStars=r=>Number.isInteger(r.stars)&&r.stars>=1&&r.stars<=5
 const fields=['_id','productId','supplierId','userName','stars','comment','reply','date']
@@ -22,14 +22,27 @@ async function publicList(supplierId,page,limit,skip){
     .read('primary').maxTimeMS(8000).lean().cursor()
   let total=0,count=0,sum=0
   const data=[]
-  for await(const r of cursor){
-    if(Date.now()>deadline)throw Object.assign(Error('Review verification temporarily unavailable'),{status:503})
-    const confirmed=await verified(r)
-    if(Date.now()>deadline)throw Object.assign(Error('Review verification temporarily unavailable'),{status:503})
-    if(confirmed){count++;sum+=r.stars}
-    if(total>=skip&&data.length<limit)data.push(dto(r,confirmed))
-    total++
+  const checkDeadline=()=>{if(Date.now()>deadline)throw Object.assign(Error('Review verification temporarily unavailable'),{status:503})}
+  let batch=[]
+  async function consume(){
+    checkDeadline()
+    const candidates=batch.filter(r=>validStars(r)&&r.basis==='mutual_confirmation')
+    const results=await historicalEvidenceBatch(candidates)
+    checkDeadline()
+    let i=0
+    for(const r of batch){
+      const confirmed=validStars(r)&&r.basis==='mutual_confirmation'&&results[i++]
+      if(confirmed){count++;sum+=r.stars}
+      if(total>=skip&&data.length<limit)data.push(dto(r,confirmed))
+      total++
+    }
+    batch=[]
   }
+  for await(const r of cursor){
+    checkDeadline();batch.push(r)
+    if(batch.length===64)await consume()
+  }
+  if(batch.length)await consume()
   return {...formatPaginationResponse(data,total,page,limit),legacyTotal:total-count,
     stats:{avg:count?Number((sum/count).toFixed(1)):0,total:count}}
 }

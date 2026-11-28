@@ -8,6 +8,7 @@ const Supplier = require('../models/Supplier')
 const Confirmation = require('../models/TradeConfirmation')
 const { agreementHash } = require('./commercialAgreement')
 const { checkedReceipt } = require('./sourcingDecision')
+const isOid=value=>value instanceof mongoose.Types.ObjectId
 const same = (a,b) => a != null && b != null && String(a) === String(b)
 const validId = value => typeof value === 'string' && /^[a-f0-9]{24}$/.test(value)
 const fail = (status,message) => Object.assign(new Error(message),{status})
@@ -20,25 +21,27 @@ const matches = (row,identity) => row && identityKeys.every(k=>same(row[k],ident
 function key(kind,sourceId,offerId) {
   return new mongoose.Types.ObjectId(createHash('sha256').update([kind,sourceId,offerId].join(':')).digest('hex').slice(0,24))
 }
-async function resolve(kind,sourceId,offerId,actor,{historical=false}={}) {
+async function resolve(kind,sourceId,offerId,actor,{historical=false,loaded}={}) {
+  if(loaded&&!historical)throw Error('Preloaded evidence is historical only')
   if (!['rfq','sourcing'].includes(kind) || !validId(sourceId) || !validId(offerId)) throw fail(400,'مرجع المعاملة غير صحيح')
   const scope = { _id: sourceId, [ownKey(actor)]: actor.id }
   let identity, title
   if (kind === 'rfq') {
-    const r = await RFQ.findOne(scope).lean()
-    if (!r) throw fail(404,'المعاملة غير متاحة')
+    const r = loaded ? loaded.rfqs.get(sourceId) : await RFQ.findOne(scope).lean()
+    if (!r || (loaded&&!isOid(r[ownKey(actor)])) || !same(r[ownKey(actor)],actor.id)) throw fail(404,'المعاملة غير متاحة')
     const d = r.decision, a = d?.agreement
     if (r.status !== 'accepted' || d?.version !== 1 || d.phase !== 'completed' || d.action !== 'accept' ||
       !same(d.offerId,offerId) || !same(r.currentOfferId,offerId) || d.actor?.role !== 'buyer' || !same(d.actor.id,r.buyerId) ||
       a?.version !== 1 || !same(a.rfqId,r._id) || !same(a.offerId,offerId) || !same(a.buyer?.id,r.buyerId) ||
       !same(a.supplier?.id,r.supplierId) || !same(a.product?.id,r.productId) || agreementHash(a) !== d.agreementHash) throw invalid()
-    if (!await Offer.exists({_id:offerId,rfqId:r._id,supplierId:r.supplierId,status:'accepted',decisionId:d.id}) ||
-        !await Thread.exists({rfqId:r._id,status:'closed',decisionId:d.id})) throw invalid()
+    const offerOk=loaded?(()=>{const o=loaded.offers.get(offerId);return o&&[o.rfqId,o.supplierId,o.decisionId].every(isOid)&&same(o.rfqId,r._id)&&same(o.supplierId,r.supplierId)&&o.status==='accepted'&&same(o.decisionId,d.id)})():await Offer.exists({_id:offerId,rfqId:r._id,supplierId:r.supplierId,status:'accepted',decisionId:d.id})
+    const threadOk=loaded?loaded.threads.has(String(r._id)+':'+String(d.id)):await Thread.exists({rfqId:r._id,status:'closed',decisionId:d.id})
+    if(!offerOk||!threadOk)throw invalid()
     identity={kind,sourceId:r._id,offerId:d.offerId,decisionId:d.id,buyerId:r.buyerId,supplierId:r.supplierId,productId:r.productId,decisionHash:d.agreementHash}
     title=a.product.name
   } else {
-    const s=await Sourcing.findOne(actor.role==='buyer'?scope:{_id:sourceId,'quotes.supplierId':actor.id}).lean()
-    if(!s) throw fail(404,'المعاملة غير متاحة')
+    const s=loaded?loaded.sourcing.get(sourceId):await Sourcing.findOne(actor.role==='buyer'?scope:{_id:sourceId,'quotes.supplierId':actor.id}).lean()
+    if(!s||(actor.role==='buyer'&&((loaded&&!isOid(s.buyerId))||!same(s.buyerId,actor.id)))) throw fail(404,'المعاملة غير متاحة')
     const q=s.quotes?.find(q=>same(q._id,offerId) && (actor.role==='buyer'||same(q.supplierId,actor.id)))
     if(!q) throw fail(404,'المعاملة غير متاحة')
     if(s.operation || q.status!=='accepted' || q.decisionReceipt?.action!=='accept')throw invalid()
@@ -111,15 +114,46 @@ async function eligible(buyerId,supplierId,productId) {
   }
   return null
 }
-async function historicalEvidence(review){
+const validHistoricalReview=review=>{
   const {buyerId,supplierId,productId,tradeConfirmationId,date}=review
-  if(![buyerId,supplierId,tradeConfirmationId].every(v=>v instanceof mongoose.Types.ObjectId)||
-    (productId!=null&&!(productId instanceof mongoose.Types.ObjectId))||!(date instanceof Date)||!Number.isFinite(date.getTime()))return false
-  const row=await Confirmation.findOne({_id:tradeConfirmationId,buyerId,supplierId,buyerConfirmedAt:{$type:'date',$lte:date},supplierConfirmedAt:{$type:'date',$lte:date},...(productId?{productId}:{})}).read('primary').maxTimeMS(8000).lean()
-  if(!row||!['rfq','sourcing'].includes(row.kind)||!validId(String(row.sourceId))||!validId(String(row.offerId))||!same(row._id,key(row.kind,String(row.sourceId),String(row.offerId))))return false
+  return [buyerId,supplierId,tradeConfirmationId].every(v=>v instanceof mongoose.Types.ObjectId)&&
+    (productId==null||productId instanceof mongoose.Types.ObjectId)&&date instanceof Date&&Number.isFinite(date.getTime())
+}
+const validHistoricalRow=(row,review)=>row&&[row._id,row.buyerId,row.supplierId].every(isOid)&&same(row._id,review.tradeConfirmationId)&&same(row.buyerId,review.buyerId)&&same(row.supplierId,review.supplierId)&&
+  (!review.productId||(isOid(row.productId)&&same(row.productId,review.productId)))&&
+  [row.buyerConfirmedAt,row.supplierConfirmedAt].every(d=>d instanceof Date&&Number.isFinite(d.getTime())&&d<=review.date)&&
+  ['rfq','sourcing'].includes(row.kind)&&validId(String(row.sourceId))&&validId(String(row.offerId))&&same(row._id,key(row.kind,String(row.sourceId),String(row.offerId)))
+async function verifyHistoricalRow(row,review,loaded){
+  if(!validHistoricalRow(row,review))return false
   try{
-    const trade=await resolve(row.kind,String(row.sourceId),String(row.offerId),{role:'buyer',id:String(buyerId)},{historical:true})
+    const trade=await resolve(row.kind,String(row.sourceId),String(row.offerId),{role:'buyer',id:String(review.buyerId)},{historical:true,loaded})
     return matches(row,trade.identity)
   }catch(error){if([404,409].includes(error.status))return false;throw error}
 }
-module.exports={confirm,list,eligible,resolve,matches,historicalEvidence}
+async function historicalEvidence(review){
+  if(!validHistoricalReview(review))return false
+  const {buyerId,supplierId,productId,tradeConfirmationId,date}=review
+  const row=await Confirmation.findOne({_id:tradeConfirmationId,buyerId,supplierId,buyerConfirmedAt:{$type:'date',$lte:date},supplierConfirmedAt:{$type:'date',$lte:date},...(productId?{productId}:{})}).read('primary').maxTimeMS(8000).lean()
+  return verifyHistoricalRow(row,review)
+}
+const asMap=rows=>new Map(rows.map(r=>[String(r._id),r]))
+const uniqueIds=rows=>[...new Set(rows.map(String))]
+async function historicalEvidenceBatch(reviews){
+  if(!Array.isArray(reviews)||reviews.length>64)throw Error('Invalid review evidence batch')
+  const candidates=reviews.filter(validHistoricalReview)
+  if(!candidates.length)return reviews.map(()=>false)
+  const confirmations=asMap(await Confirmation.find({_id:{$in:uniqueIds(candidates.map(r=>r.tradeConfirmationId))}}).read('primary').maxTimeMS(8000).lean())
+  const rows=candidates.map(r=>{const c=confirmations.get(String(r.tradeConfirmationId));return validHistoricalRow(c,r)?c:null}).filter(Boolean)
+  const rfq=rows.filter(r=>r.kind==='rfq'),sourcing=rows.filter(r=>r.kind==='sourcing')
+  const fetchRows=(Model,filter,ids,fields)=>ids.length?Model.find(filter).select(fields).read('primary').maxTimeMS(8000).lean():Promise.resolve([])
+  const rfqIds=uniqueIds(rfq.map(r=>r.sourceId)),offerIds=uniqueIds(rfq.map(r=>r.offerId)),sourcingIds=uniqueIds(sourcing.map(r=>r.sourceId))
+  const [rfqs,offers,threads,sources]=await Promise.all([
+    fetchRows(RFQ,{_id:{$in:rfqIds}},rfqIds,'buyerId supplierId productId status currentOfferId decision'),
+    fetchRows(Offer,{_id:{$in:offerIds}},offerIds,'rfqId supplierId status decisionId'),
+    fetchRows(Thread,{rfqId:{$in:rfqIds},status:'closed'},rfqIds,'rfqId decisionId'),
+    fetchRows(Sourcing,{_id:{$in:sourcingIds}},sourcingIds,'buyerId status operation quotes')
+  ])
+  const loaded={rfqs:asMap(rfqs),offers:asMap(offers),threads:new Set(threads.filter(t=>[t.rfqId,t.decisionId].every(isOid)).map(t=>String(t.rfqId)+':'+String(t.decisionId))),sourcing:asMap(sources)}
+  return Promise.all(reviews.map(r=>validHistoricalReview(r)?verifyHistoricalRow(confirmations.get(String(r.tradeConfirmationId)),r,loaded):false))
+}
+module.exports={confirm,list,eligible,resolve,matches,historicalEvidence,historicalEvidenceBatch}
