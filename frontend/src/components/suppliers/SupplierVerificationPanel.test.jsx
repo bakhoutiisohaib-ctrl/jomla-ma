@@ -88,3 +88,14 @@ test('a regressive profile revision cannot replace the latest confirmed dossier'
  await waitFor(()=>expect(screen.getByLabelText('ICE')).toBeEnabled());
  expect(apiRequest.mock.calls.filter(([,o])=>o.method==='POST')).toHaveLength(0);
 });
+test('owner checks a paused submission and resumes only its saved identifier, then refreshes the profile',async()=>{
+ const op='3'.repeat(24),paused={...initial,verificationSync:'paused'};
+ const state={supplierId:owner,verificationRevision:0,verificationStatus:'unverified',isVerified:false,operation:{id:op,kind:'submit',phase:'reserved',baseRevision:0,attempts:10,canResume:true}};
+ apiRequest.mockResolvedValueOnce(paused).mockResolvedValueOnce(state).mockResolvedValueOnce({...state,verificationRevision:1,verificationStatus:'pending',operation:{...state.operation,phase:'completed',canResume:false}}).mockResolvedValueOnce(pending);
+ render(<LanguageProvider><SupplierVerificationPanel owner={owner}/></LanguageProvider>);
+ fireEvent.click(await screen.findByRole('button',{name:'التحقق من العملية المحفوظة'}));
+ fireEvent.click(await screen.findByRole('button',{name:'استكمال العملية نفسها'}));
+ await screen.findByText(/تم استكمال العملية المحفوظة/);
+ expect(screen.getByLabelText('ICE')).toBeDisabled();
+ expect(apiRequest.mock.calls.filter(([,o])=>o.method==='POST').map(([p,o])=>[p,o.body])).toEqual([['/suppliers/me/verification-recover',{operationId:op}]]);
+});
