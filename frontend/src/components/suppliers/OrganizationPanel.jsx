@@ -20,6 +20,10 @@ export default function OrganizationPanel({
     description: '',
     country: 'MA'
   });
+  const [declareCountry,setDeclareCountry]=useState(false);
+  const profileOwner=profile.ownerId||profile._id;
+  const countryCode=typeof organization.country==='string'?organization.country.toUpperCase():'';
+  const validCountry=/^[A-Z]{2}$/.test(countryCode);
   const [members, setMembers] = useState([]),
     [invitations, setInvitations] = useState([]),
     [token, setToken] = useState('');
@@ -39,16 +43,20 @@ export default function OrganizationPanel({
     ]);
     if (!current()) return false;
     if (!Array.isArray(org.memberships) || !Array.isArray(inv.data)) throw new Error('Invalid company data');
-    if (org.organization) setOrganization(org.organization);
+    if (org.organization) {
+      if(typeof org.organization._id!=='string'||(profile.role==='supplier'&&org.organization.ownerSupplierId!==profileOwner))throw Error('Invalid company identity');
+      setOrganization(org.organization);
+      setDeclareCountry(typeof org.organization.country==='string'&&/^[A-Z]{2}$/.test(org.organization.country)&&org.organization.declaredCountry===org.organization.country);
+    } else {setOrganization({name:profile.organization||profile.name,city:profile.city||'',description:'',country:'MA'});setDeclareCountry(false);}
     setMembers(org.memberships);
     setInvitations(inv.data);
     setReady(true);
-    return true;
-  }, []);
+    return org;
+  }, [profile.organization,profile.name,profile.city,profile.role,profileOwner]);
   useEffect(() => {
     const controller = new AbortController();
     const current = () => !controller.signal.aborted && session === getSessionToken();
-    setReady(false);setMembers([]);setInvitations([]);setToken('');setTokens({});setError('');setMessage('');
+    setReady(false);setDeclareCountry(false);setMembers([]);setInvitations([]);setToken('');setTokens({});setError('');setMessage('');
     if (session) load(session,controller.signal,current).catch(e=>{if(current())setError(e.message);});
     return () => controller.abort();
   }, [load,session,retry]);
@@ -60,6 +68,12 @@ export default function OrganizationPanel({
     try {
       const result = await callback(request);
       if (!active.current()) return;
+      if(result?.verifyCompany){
+        setReady(false);const fresh=await load(active.token,active.signal,active.current);
+        if(!active.current())return;
+        if(!fresh||!result.verifyCompany(fresh.organization))throw Error(result.unconfirmed);
+        setMessage(result.message);onChanged?.();return;
+      }
       if (result?.acceptanceToken) setToken(result.acceptanceToken);
       if (result?.message) setMessage(result.message);
       onChanged?.();
@@ -78,17 +92,17 @@ export default function OrganizationPanel({
         e.preventDefault();
         action(async request => {
           const body = Object.fromEntries(['name', 'city', 'country', 'description'].map(k => [k, organization[k] || '']));
-          await request('/suppliers/me/organization', {
-            method: 'PUT',
-            body
-          });
-          return {message:l('تم حفظ ملف الشركة', 'Entreprise enregistrée')};
+          body.country=countryCode;body.declareCountry=declareCountry;
+          if(declareCountry&&!validCountry)throw Error(l('رمز البلد غير صالح','Code pays invalide','Invalid country code'));
+          const saved=await request('/suppliers/me/organization', {method:'PUT',body});
+          const o=saved?.organization;
+          const unconfirmed=l('تعذر تأكيد حفظ تصريح البلد. أعد تحميل الشركة.','Déclaration non confirmée. Rechargez l’entreprise.','Country declaration not confirmed. Reload company.');
+          const matches=c=>c&&typeof c._id==='string'&&(!organization._id||c._id===organization._id)&&c.ownerSupplierId===profileOwner&&c.country===body.country&&(declareCountry?c.declaredCountry===body.country:c.declaredCountry==null);
+          if(!matches(o))throw Error(unconfirmed);
+          return {message:l('تم حفظ ملف الشركة', 'Entreprise enregistrée','Company saved'),verifyCompany:c=>matches(c)&&c._id===o._id,unconfirmed};
         });
       }}>
-        <div className="form-grid">{[['name', l('اسم الشركة', 'Raison sociale')], ['city', l('المدينة', 'Ville')], ['country', l('رمز البلد', 'Pays (code)')], ['description', l('وصف الشركة', 'Présentation')]].map(([k, label]) => <Field key={k} label={label} disabled={busy || !ready} value={organization[k] || ''} required={k === 'name'} onChange={e => setOrganization({
-            ...organization,
-            [k]: e.target.value
-          })} />)}</div><button className="primary" disabled={busy || !ready} style={{
+        <div className="form-grid">{[['name', l('اسم الشركة', 'Raison sociale')], ['city', l('المدينة', 'Ville')], ['country', l('رمز البلد', 'Pays (code)')], ['description', l('وصف الشركة', 'Présentation')]].map(([k, label]) => <Field key={k} label={label} disabled={busy || !ready} value={organization[k] || ''} required={k === 'name'} onChange={e => {if(k==='country'&&e.target.value.toUpperCase()!==countryCode)setDeclareCountry(false);setOrganization({...organization,[k]:e.target.value});}} />)}</div><label className="check"><input type="checkbox" checked={declareCountry} disabled={busy||!ready||!validCountry} onChange={e=>setDeclareCountry(e.target.checked)}/>{l('أصرح بأن هذا هو بلد مقر شركتي','Je déclare le pays de mon entreprise','I declare this as my company’s country')}</label><p className="muted">{l('اختياري. يتيح ظهور شركتك في فلتر البلد بناءً على تصريحك، وليس توثيقاً للموقع. يمكنك إلغاء التصريح ثم الحفظ.','Facultatif. Ce filtre repose sur votre déclaration, sans vérification de localisation. Décochez puis enregistrez pour retirer la déclaration.','Optional. The country filter uses your declaration, not verified location. Uncheck and save to withdraw.')}</p><button className="primary" disabled={busy || !ready || (countryCode!==''&&!validCountry) || (declareCountry&&!validCountry)} style={{
           marginTop: 12
         }}>{l('حفظ الشركة', 'Enregistrer l’entreprise')}</button>
       </form><BusinessTypeEditor onChanged={onChanged}/><hr /><h3>{l('دعوة موظف', 'Inviter un collaborateur')}</h3><form onSubmit={e => {

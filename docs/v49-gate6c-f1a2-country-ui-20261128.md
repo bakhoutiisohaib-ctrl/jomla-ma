@@ -1,0 +1,8 @@
+# Gate 6C.2A.2 (F1) - declared country UI - 2026-11-28
+
+**PASS: scoped frontend increment; country browser acceptance and F1 remain OPEN.** Baseline 3bda2d341786dd69837b9932b43d4f00bcf55896.
+
+- Activate existing Morocco control as explicitly self-declared company country. One trust selection at a time, existing business activity/taxonomy/search scopes preserved; existing request paths carry declared_ma to products, categories, stores, text and visual search. External discovery remains suppressed. Directory empty state scoped. Top-rated and fast response remain disabled.
+- Owner company form has optional explicit checkbox, unchecked for default country; a changed country resets the checkbox, withdrawal saves false. Validate returned company and owner identity, country/declaration and fresh authenticated readback before success; unconfirmed responses lock edits pending reload. Existing session cancellation retained. Country code syntax only; no verified location/nationality/product origin claim. AR/FR/EN copy; no CSS changes.
+- First targeted FE 72/72 (7 suites). Review added identity/readback validation and stale readback regression; final FE 73/73 in seven suites (24.073s), strict CI build PASS (combined exit 0, 46.32s), main.a2bf6b49.js. [Evidence](evidence/v49-gate6c-f1a2-20261128/summary.json). Raw logs local.
+- No backend changes or fresh backend/full regression in this increment. Previous BE 96/96 is historical. Actual Chrome/HTTP/Mongo acceptance next; physical devices, country registry, independent location proof, production scale and rating/response metrics remain open. Original reference and original checkout unchanged. No deployment or original DB change.

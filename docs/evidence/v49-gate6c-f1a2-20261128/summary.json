@@ -1,0 +1,56 @@
+{
+  "baseline": "3bda2d341786dd69837b9932b43d4f00bcf55896",
+  "passed": 73,
+  "total": 73,
+  "suites": [
+    {
+      "name": "SupplierDashboard.test.jsx",
+      "passed": 30,
+      "total": 30,
+      "status": "passed"
+    },
+    {
+      "name": "RoutingPages.test.jsx",
+      "passed": 16,
+      "total": 16,
+      "status": "passed"
+    },
+    {
+      "name": "SupplierTrustJourneys.test.jsx",
+      "passed": 5,
+      "total": 5,
+      "status": "passed"
+    },
+    {
+      "name": "StructuredSearchJourneys.test.jsx",
+      "passed": 6,
+      "total": 6,
+      "status": "passed"
+    },
+    {
+      "name": "VisualSearchJourneys.test.jsx",
+      "passed": 5,
+      "total": 5,
+      "status": "passed"
+    },
+    {
+      "name": "MarketHome.test.jsx",
+      "passed": 2,
+      "total": 2,
+      "status": "passed"
+    },
+    {
+      "name": "CompanyLifecycle.test.jsx",
+      "passed": 9,
+      "total": 9,
+      "status": "passed"
+    }
+  ],
+  "skipped": 0,
+  "exitCode": 0,
+  "build": {
+    "status": "PASS",
+    "ci": true,
+    "artifact": "main.a2bf6b49.js"
+  }
+}

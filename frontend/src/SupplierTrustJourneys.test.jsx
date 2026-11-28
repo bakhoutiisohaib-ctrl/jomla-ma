@@ -19,7 +19,7 @@ beforeEach(()=>{
   const page=Number(u.searchParams.get('page')||b?.page||1);
   const type=u.searchParams.get('businessType')||b?.businessType||b?.get?.('businessType')||'';
   seen.push({p,trust,page,type,signal:opt.signal});
-  const filter=items=>trust==='verified'?items.slice(0,1):items;
+  const filter=items=>trust==='verified'?items.slice(0,1):trust==='declared_ma'?items.slice(1):items;
   const result=data=>({data,pagination:{page,limit:12,total:data.length,pages:data.length?1:0,hasNextPage:false,hasPrevPage:false}});
   if(p.endsWith('/stores')){
    const data=result(trust && noVerifiedStores ? [] : filter(stores));
@@ -41,7 +41,7 @@ test('verified is optional and unavailable signals cannot be selected; verified 
  render(<App/>);await screen.findByText(other.name);
  const toggle=within(trust()).getByRole('button',{name:'موردون موثقون'});
  expect(toggle).toHaveAttribute('aria-pressed','false');
- for(const label of ['الأعلى تقييماً','سرعة الاستجابة','داخل المغرب'])expect(within(trust()).getByRole('button',{name:label})).toBeDisabled();
+ for(const label of ['الأعلى تقييماً','سرعة الاستجابة'])expect(within(trust()).getByRole('button',{name:label})).toBeDisabled();
  choose('المصنعون');choose('موردون موثقون');
  await waitFor(()=>expect(screen.queryByText(other.name)).toBeNull());
  await screen.findByText(product.name);
@@ -79,4 +79,30 @@ test('empty verified directory does not claim that all approved stores are absen
  await screen.findByText('لا توجد متاجر لموردين موثقين تطابق هذا الاختيار حالياً.');
  expect(screen.queryByText('لا توجد متاجر معتمدة بعد')).toBeNull();
  choose('إلغاء فلترة الثقة');await screen.findByText(stores[1].name);
+});
+
+test('declared Morocco is distinct from verification and is propagated to every search path',async()=>{
+ render(<App/>);await screen.findByText(product.name);
+ const toggle=within(trust()).getByRole('button',{name:'المغرب (بتصريح المورد)'});
+ expect(toggle).toBeEnabled();choose('المغرب (بتصريح المورد)');
+ await screen.findByText(other.name);await waitFor(()=>expect(screen.queryByText(product.name)).toBeNull());
+ expect(toggle).toHaveAttribute('aria-pressed','true');
+ expect(screen.queryByText('Unverified external item')).toBeNull();
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/products/categories')&&r.trust==='declared_ma')).toBe(true));
+ fireEvent.change(screen.getByLabelText('البحث في الكتالوج'),{target:{value:'shoe'}});
+ fireEvent.submit(screen.getByRole('search'));
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/ai-search')&&r.trust==='declared_ma')).toBe(true));
+ fireEvent.click(screen.getByRole('button',{name:'بحث بالصورة'}));
+ fireEvent.change(screen.getByLabelText('صورة البحث'),{target:{files:[new File(['synthetic'],'sample.png',{type:'image/png'})]}});
+ await waitFor(()=>expect(seen.some(r=>r.p.endsWith('/image-search')&&r.trust==='declared_ma')).toBe(true));
+ choose('موردون موثقون');await screen.findByText(product.name);
+ expect(toggle).toHaveAttribute('aria-pressed','false');
+ expect(seen.filter(r=>r.p.endsWith('/image-search')).at(-1)).toMatchObject({trust:'verified',page:1});
+});
+test('declared Morocco directory empty state is scoped and clear restores all stores',async()=>{
+ window.history.replaceState({},'','/stores');noVerifiedStores=true;
+ render(<App/>);await screen.findByText(stores[1].name);choose('المغرب (بتصريح المورد)');
+ await screen.findByText('لا توجد متاجر تطابق تصريح المغرب حالياً.');
+ expect(screen.queryByText('لا توجد متاجر معتمدة بعد')).toBeNull();
+ choose('إلغاء فلترة الثقة');await screen.findByText(stores[0].name);await screen.findByText(stores[1].name);
 });

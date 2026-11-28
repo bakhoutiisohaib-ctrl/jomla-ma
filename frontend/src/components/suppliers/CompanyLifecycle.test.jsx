@@ -6,7 +6,7 @@ import {apiRequest} from '../../api/config';
 import {setSession} from '../../api/session';
 jest.mock('../../api/config',()=>({apiRequest:jest.fn(),assetUrl:()=>''}));
 const owner={_id:'owner',role:'supplier',name:'Owner',city:'Rabat',businessTypes:[]};
-const organization={_id:'company',name:'Synthetic company',city:'Rabat',country:'MA'};
+const organization={_id:'company',ownerSupplierId:owner._id,name:'Synthetic company',city:'Rabat',country:'MA'};
 const pending={_id:'pending',name:'Pending store',city:'Rabat',reviewStatus:'pending',isActive:false};
 const approved={_id:'approved',name:'Approved store',city:'Rabat',reviewStatus:'approved',isActive:true};
 const suspended={_id:'suspended',name:'Suspended store',city:'Rabat',reviewStatus:'approved',adminSuspended:true,isActive:false};
@@ -73,4 +73,41 @@ test('mismatched store response does not report success or discard edit inputs',
  fireEvent.submit(screen.getByRole('button',{name:'حفظ المتجر'}).closest('form'));
  await screen.findByText('تعذر تأكيد حفظ المتجر');
  expect(screen.getByLabelText('اسم المتجر')).toHaveValue('Edited name');expect(changed).not.toHaveBeenCalled();
+});
+
+test('default country is not a declaration, owner explicitly opts in and may withdraw',async()=>{
+ const base=apiRequest.getMockImplementation();let saved={...organization,ownerSupplierId:owner._id};
+ apiRequest.mockImplementation(async(p,o)=>{
+  if(p!=='/suppliers/me/organization')return base(p,o);
+  if(o?.method==='PUT'){saved={...saved,...o.body,declaredCountry:o.body.declareCountry?o.body.country:undefined};return {organization:saved}}
+  return {organization:saved,memberships:[]};
+ });
+ company(jest.fn());const checkbox=await screen.findByRole('checkbox',{name:'أصرح بأن هذا هو بلد مقر شركتي'});
+ await waitFor(()=>expect(checkbox).toBeEnabled());expect(checkbox).not.toBeChecked();
+ const save=()=>fireEvent.click(screen.getByRole('button',{name:'حفظ الشركة'}));
+ save();await screen.findByText('تم حفظ ملف الشركة');
+ expect(apiRequest.mock.calls.filter(([,o])=>o?.method==='PUT').at(-1)[1].body.declareCountry).toBe(false);
+ await waitFor(()=>expect(checkbox).toBeEnabled());fireEvent.click(checkbox);save();
+ await waitFor(()=>expect(saved.declaredCountry).toBe('MA'));await waitFor(()=>expect(checkbox).toBeEnabled());expect(checkbox).toBeChecked();
+ fireEvent.change(screen.getByLabelText('رمز البلد'),{target:{value:'FR'}});expect(checkbox).not.toBeChecked();
+ save();await waitFor(()=>expect(saved.country).toBe('FR'));await waitFor(()=>expect(checkbox).toBeEnabled());
+ fireEvent.click(checkbox);save();await waitFor(()=>expect(saved.declaredCountry).toBe('FR'));await waitFor(()=>expect(checkbox).toBeEnabled());
+ fireEvent.click(checkbox);save();await waitFor(()=>expect(saved.declaredCountry).toBeUndefined());
+});
+test('wrong owner country receipt cannot report success',async()=>{
+ const base=apiRequest.getMockImplementation();const changed=jest.fn();
+ apiRequest.mockImplementation(async(p,o)=>o?.method==='PUT'?{organization:{...organization,ownerSupplierId:'foreign',declaredCountry:'MA'}}:base(p,o));
+ company(changed);const checkbox=await screen.findByRole('checkbox',{name:'أصرح بأن هذا هو بلد مقر شركتي'});
+ await waitFor(()=>expect(checkbox).toBeEnabled());fireEvent.click(checkbox);fireEvent.click(screen.getByRole('button',{name:'حفظ الشركة'}));
+ await screen.findByText('تعذر تأكيد حفظ تصريح البلد. أعد تحميل الشركة.');
+ expect(changed).not.toHaveBeenCalled();expect(screen.getByRole('button',{name:'حفظ الشركة'})).toBeDisabled();
+});
+
+test('successful write receipt followed by mismatched readback does not claim declaration saved',async()=>{
+ const base=apiRequest.getMockImplementation(),changed=jest.fn();
+ apiRequest.mockImplementation(async(p,o)=>o?.method==='PUT'?{organization:{...organization,declaredCountry:'MA'}}:base(p,o));
+ company(changed);const checkbox=await screen.findByRole('checkbox',{name:'أصرح بأن هذا هو بلد مقر شركتي'});
+ await waitFor(()=>expect(checkbox).toBeEnabled());fireEvent.click(checkbox);fireEvent.click(screen.getByRole('button',{name:'حفظ الشركة'}));
+ await screen.findByText('تعذر تأكيد حفظ تصريح البلد. أعد تحميل الشركة.');
+ expect(changed).not.toHaveBeenCalled();expect(screen.queryByText('تم حفظ ملف الشركة')).not.toBeInTheDocument();
 });
