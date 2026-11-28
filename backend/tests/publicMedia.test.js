@@ -48,7 +48,7 @@ async function blocked(url, token, options) {
   expect(res.headers['cache-control']).toMatch(/no-store/)
 }
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create({ instance: { dbName: 'c1_public_media' } })
+  mongo = await MongoMemoryServer.create({ instance: { dbName: 'c1_public_media', storageEngine: 'wiredTiger' } })
   await mongoose.connect(mongo.getUri('c1_public_media'))
 })
 beforeEach(async () => {

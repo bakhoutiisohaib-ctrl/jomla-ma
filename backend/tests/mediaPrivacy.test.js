@@ -101,7 +101,7 @@ async function create(imageUrl, { actor = a, published = false, extra = {} } = {
 }
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create()
+  mongo = await MongoMemoryServer.create({ instance: { storageEngine: 'wiredTiger' } })
   await mongoose.connect(mongo.getUri('phase_a_privacy_source'))
   await Promise.all([Supplier.init(), Organization.init(), Membership.init(), Store.init(), MediaAsset.init(), BackgroundJob.init(), VisualEmbedding.init()])
   red = await sharp({ create: { width: 13, height: 7, channels: 3, background: '#d61035' } }).png().toBuffer()

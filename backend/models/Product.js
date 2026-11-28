@@ -46,6 +46,14 @@ const ProductSchema = new mongoose.Schema({
   moderatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
   moderatedAt: Date,
   createdAt: { type: Date, default: Date.now },
+  // Merchant edit revision is independent of view counters and timestamps.
+  editRevision: { type: Number, default: 0, min: 0, validate: Number.isSafeInteger },
+  updateReceipt: { type: new mongoose.Schema({
+    version: { type: Number, enum: [1], required: true },
+    key: { type: String, required: true }, hash: { type: String, required: true },
+    baseRevision: { type: Number, required: true }, actorId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    organizationId: { type: mongoose.Schema.Types.ObjectId, default: null }
+  }, { _id: false }), select: false, default: undefined },
   // Internal receipt is inserted atomically with the product, never accepted
   // from editable input and never exposed in catalog/editor serialization.
   creationReceipt: {
@@ -87,6 +95,6 @@ ProductSchema.index({ supplierId: 1, 'creationReceipt.key': 1 }, {
   partialFilterExpression: { 'creationReceipt.key': { $type: 'string' } }
 })
 for (const format of ['toJSON', 'toObject']) ProductSchema.set(format, {
-  transform: (_document, value) => { delete value.creationReceipt; return value }
+  transform: (_document, value) => { delete value.creationReceipt; delete value.updateReceipt; return value }
 })
 module.exports = mongoose.model('Product', ProductSchema)

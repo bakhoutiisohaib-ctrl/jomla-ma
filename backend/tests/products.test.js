@@ -30,7 +30,7 @@ const published = (extra = {}) => ({
 const create = (body, auth = token) => request(app).post('/api/products').set('Authorization', 'Bearer ' + auth).send(body)
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create()
+  mongo = await MongoMemoryServer.create({ instance: { storageEngine: 'wiredTiger' } })
   await mongoose.connect(mongo.getUri())
   ;[owner, other, buyer] = await Supplier.create([
     { name: 'مصنع الأمل', email: 'owner@catalog.test', password: 'test', role: 'supplier', phone: '+212611111111' },
