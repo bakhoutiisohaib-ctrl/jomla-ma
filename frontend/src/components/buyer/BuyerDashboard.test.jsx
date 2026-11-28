@@ -337,3 +337,18 @@ test('buyer opens independent direct conversation inbox',async()=>{
  fireEvent.click(await screen.findByRole('button',{name:'المحادثات المباشرة'}));await screen.findByText('لا توجد محادثات مباشرة بعد.');
  expect(apiRequest.mock.calls.some(([p])=>p==='/direct-conversations?page=1')).toBe(true);
 });
+
+test('buyer notification opens scoped direct chat and marks the exact notice only after validation',async()=>{
+ const actor='buyer-1',id='3'.repeat(24),pid='2'.repeat(24),nid='4'.repeat(24),now='2026-11-28T09:00:00Z',base=apiRequest.getMockImplementation();
+ const n={_id:nid,type:'direct_message',resourceType:'direct_conversation',resourceId:id,readAt:null,createdAt:now};
+ let read=false;
+ apiRequest.mockImplementation(async(p,o)=>{
+ if(p==='/notifications')return {data:[{...n,readAt:read?now:null}],unreadCount:read?0:1};
+ if(p==='/direct-conversations/'+id)return {actorId:actor,role:'buyer',conversation:{_id:id,productId:pid,productName:'Synthetic notice product',counterpartName:'Synthetic supplier',lastMessageAt:now},messages:[{clientId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',role:'supplier',content:'Synthetic notice reply',sentAt:now}],canSend:true};
+ if(p==='/notifications/'+nid+'/read'){read=true;return {notification:{...n,readAt:now}}}return base(p,o)
+ });
+ render(<LanguageProvider><BuyerDashboard user={{_id:actor,role:'buyer',name:'Synthetic buyer'}} onBack={()=>{}}/></LanguageProvider>);
+ fireEvent.click(await screen.findByRole('button',{name:'الإشعارات (1)'}));fireEvent.click(await screen.findByRole('button',{name:'فتح المحادثة'}));
+ await screen.findByText('Synthetic notice reply');await screen.findByRole('button',{name:'الإشعارات (0)'});
+ expect(apiRequest.mock.calls.filter(([p])=>p==='/notifications/'+nid+'/read')).toHaveLength(1);
+});

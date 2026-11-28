@@ -1,0 +1,53 @@
+{
+  "baseline": "555e9dbb66e4385fac41872582b5ba53b204f1cc",
+  "first": {
+    "passed": 104,
+    "total": 107,
+    "failed": 3
+  },
+  "final": {
+    "passed": 107,
+    "total": 107,
+    "suites": [
+      {
+        "name": "SupplierDashboard.test.jsx",
+        "passed": 32,
+        "total": 32,
+        "status": "passed"
+      },
+      {
+        "name": "DirectConversation.test.jsx",
+        "passed": 15,
+        "total": 15,
+        "status": "passed"
+      },
+      {
+        "name": "BuyerDashboard.test.jsx",
+        "passed": 26,
+        "total": 26,
+        "status": "passed"
+      },
+      {
+        "name": "ProductDetailAfter.test.jsx",
+        "passed": 28,
+        "total": 28,
+        "status": "passed"
+      },
+      {
+        "name": "Language.test.jsx",
+        "passed": 6,
+        "total": 6,
+        "status": "passed"
+      }
+    ],
+    "skipped": 0,
+    "exitCode": 0
+  },
+  "build": {
+    "status": "PASS",
+    "ci": true,
+    "artifact": "main.dfe10100.js",
+    "css": "main.ecb125ac.css",
+    "exitCode": 0
+  }
+}

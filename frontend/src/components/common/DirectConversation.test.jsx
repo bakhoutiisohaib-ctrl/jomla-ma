@@ -1,5 +1,5 @@
 import {render,screen,fireEvent,act,waitFor} from '@testing-library/react';
-import DirectConversationPanel,{DirectProductDialog} from './DirectConversation';
+import DirectConversationPanel,{DirectProductDialog,DirectNoticeDialog} from './DirectConversation';
 import {LanguageProvider} from '../../i18n/LanguageContext';
 import {apiRequest} from '../../api/config';
 import {setSession} from '../../api/session';
@@ -48,3 +48,31 @@ test('supplier inbox opens scoped read-only history and does not offer a send ac
  inbox(supplier);fireEvent.click(await screen.findByRole('button',{name:'فتح المحادثة'}));await screen.findByText('Synthetic inquiry');expect(screen.getByText('المحادثة للقراءة فقط حالياً.')).toBeInTheDocument();expect(screen.queryByLabelText('رسالتك')).not.toBeInTheDocument();
 });
 test('staff cannot load private inbox',()=>{inbox({_id:actor,role:'staff'});expect(apiRequest).not.toHaveBeenCalled();});
+
+const directNotice={_id:'4'.repeat(24),type:'direct_message',resourceType:'direct_conversation',resourceId:thread,createdAt:now,readAt:null};
+const incoming={clientId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',role:'supplier',content:'Synthetic notified reply',sentAt:now};
+const openNotice=(onRead=jest.fn(),u=user,n=directNotice)=>render(<LanguageProvider><DirectNoticeDialog user={u} notice={n} onClose={jest.fn()} onRead={onRead}/></LanguageProvider>);
+test('direct notice verifies scoped history before marking exact notification and shows the conversation',async()=>{
+ const onRead=jest.fn(),ack={...directNotice,readAt:now};
+ apiRequest.mockImplementation((p,o)=>Promise.resolve(o.method==='PUT'?{notification:ack}:history([incoming])));
+ openNotice(onRead);await screen.findByText(incoming.content);await waitFor(()=>expect(onRead).toHaveBeenCalledWith(ack));
+ expect(apiRequest.mock.calls.map(([p])=>p)).toEqual(['/direct-conversations/'+thread,'/notifications/'+directNotice._id+'/read']);
+});
+test.each(['actor','thread','no incoming','unavailable'])('invalid notification target (%s) remains unread',async kind=>{
+ const response=kind==='actor'?history([incoming],{actorId:'foreign'}):kind==='thread'?history([incoming],{conversation:{...summary,_id:'5'.repeat(24)}}):history([{...incoming,role:'buyer'}]);
+ apiRequest.mockImplementation(()=>kind==='unavailable'?Promise.reject(Error('404')):Promise.resolve(response));
+ openNotice();await screen.findByText('تعذر تأكيد المحادثة المرتبطة بهذا الإشعار.');
+ expect(apiRequest.mock.calls.some(([,o])=>o.method==='PUT')).toBe(false);expect(screen.queryByText(incoming.content)).not.toBeInTheDocument();
+});
+test('wrong read receipt keeps verified conversation open with warning; retry verifies again',async()=>{
+ const onRead=jest.fn();let good=false;
+ apiRequest.mockImplementation((p,o)=>Promise.resolve(o.method==='PUT'?{notification:{...directNotice,resourceId:good?thread:'5'.repeat(24),readAt:now}}:history([incoming])));
+ openNotice(onRead);await screen.findByText('تم فتح المحادثة، لكن لم يتأكد تعليم الإشعار كمقروء.');expect(await screen.findByText(incoming.content)).toBeInTheDocument();expect(onRead).not.toHaveBeenCalled();
+ good=true;fireEvent.click(screen.getByRole('button',{name:'إعادة التحقق من الإشعار'}));await waitFor(()=>expect(onRead).toHaveBeenCalledTimes(1));expect(apiRequest.mock.calls.filter(([,o])=>o.method==='PUT')).toHaveLength(2);
+});
+test('session change during lookup does not mark notice or reveal old text',async()=>{
+ let finish;apiRequest.mockImplementation(()=>new Promise(r=>{finish=r}));openNotice();await waitFor(()=>expect(finish).toBeDefined());
+ act(()=>setSession('replacement-token'));await act(async()=>finish(history([incoming])));
+ expect(apiRequest.mock.calls.some(([,o])=>o.method==='PUT')).toBe(false);expect(screen.queryByText(incoming.content)).not.toBeInTheDocument();
+});
+test('staff cannot open a direct notice even with a syntactically valid reference',()=>{openNotice(jest.fn(),{...user,role:'staff'});expect(apiRequest).not.toHaveBeenCalled();});

@@ -329,3 +329,16 @@ test('owner opens direct conversation inbox in simple office mode',async()=>{
  show();fireEvent.click(await screen.findByRole('button',{name:'المحادثات المباشرة'}));await screen.findByText('لا توجد محادثات مباشرة بعد.');
  expect(apiRequest.mock.calls.some(([p])=>p==='/direct-conversations?page=1')).toBe(true);
 });
+
+test('owner notification opens direct conversation and refreshes unread count',async()=>{
+ const id='3'.repeat(24),pid='2'.repeat(24),nid='4'.repeat(24),now='2026-11-28T09:00:00Z',base=apiRequest.getMockImplementation();
+ const n={_id:nid,type:'direct_message',resourceType:'direct_conversation',resourceId:id,readAt:null,createdAt:now};let read=false;
+ apiRequest.mockImplementation(async(p,o)=>{
+ if(p==='/notifications?limit=50')return {data:[{...n,readAt:read?now:null}],unreadCount:read?0:1};
+ if(p==='/direct-conversations/'+id)return {actorId:user._id,role:'supplier',conversation:{_id:id,productId:pid,productName:'Synthetic owner notice',counterpartName:'Synthetic buyer',lastMessageAt:now},messages:[{clientId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',role:'buyer',content:'Synthetic owner inquiry',sentAt:now}],canSend:true};
+ if(p==='/notifications/'+nid+'/read'){read=true;return {notification:{...n,readAt:now}}}return base(p,o)
+ });
+ show();fireEvent.click(await screen.findByRole('button',{name:'الإشعارات (1)'}));fireEvent.click(await screen.findByRole('button',{name:'فتح المحادثة'}));
+ await screen.findByText('Synthetic owner inquiry');await screen.findByRole('button',{name:'الإشعارات (0)'});
+ expect(apiRequest.mock.calls.filter(([p])=>p==='/notifications/'+nid+'/read')).toHaveLength(1);
+});

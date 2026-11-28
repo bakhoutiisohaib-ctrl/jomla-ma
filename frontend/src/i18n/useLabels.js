@@ -55,6 +55,7 @@ export function notificationLabel(type, lang) {
     rfq_created: ['طلب عرض سعر جديد', 'Nouvelle demande de devis'],
     offer_received: ['وصل عرض سعر', 'Une offre est arrivée'],
     offer_decision: ['صدر قرار على عرض السعر', 'Décision sur une offre'],
+    direct_message: ['رسالة مباشرة جديدة','Nouveau message direct','New direct message'],
     message_received: ['رسالة جديدة في محادثة الطلب', 'Nouveau message dans la conversation'],
     sourcing_offer: ['عرض جديد على طلب التوريد', 'Nouvelle offre de sourcing'],
     sourcing_decision: ['صدر قرار على عرض التوريد', 'Décision sur une offre de sourcing']

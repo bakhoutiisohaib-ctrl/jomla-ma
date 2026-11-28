@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {useLabels,notificationLabel} from '../../i18n/useLabels';
 import {useTranslation} from '../../i18n/LanguageContext';
 import {TradeTime} from './NegotiationUI';
+import {isDirectNotice} from './DirectConversation';
 
 // Presentational only: the workspace owns loading/polling and account isolation.
 export default function NotificationCenter({items,unread,busy,onRead,onReadAll,onOpen,loading,error}) {
@@ -13,7 +14,7 @@ export default function NotificationCenter({items,unread,busy,onRead,onReadAll,o
     {!loading && !error && !visible.length && <p className="buyer-empty">{l('لا توجد إشعارات في هذه القائمة.','Aucune notification dans cette liste.')}</p>}
     {visible.map(n=><article key={n._id} className={'buyer-notification '+(!n.readAt?'unread':'')}><div className="buyer-notification-top"><h3>{lang==='en'?n.titleEn || notificationLabel(n.type,lang):lang==='fr'?n.titleFr || notificationLabel(n.type,lang):n.titleAr || notificationLabel(n.type,lang)}</h3><span className="trade-status">{n.readAt?l('مقروء','Lue'):l('غير مقروء','Non lue')}</span></div><TradeTime value={n.createdAt}/>
       {(lang==='en'?n.bodyEn:lang==='fr'?n.bodyFr:n.bodyAr) && <p>{lang==='en'?n.bodyEn:lang==='fr'?n.bodyFr:n.bodyAr}</p>}<small>{l('النوع','Type')}: {notificationLabel(n.type,lang)}</small>
-      <div className="actions"><button disabled={busy || !['rfq','sourcing'].includes(n.resourceType)} onClick={()=>onOpen(n)}>{l('فتح الطلب','Ouvrir la demande')}</button>{!n.readAt && <button disabled={busy} onClick={()=>onRead(n)}>{l('تعليم كمقروء','Marquer comme lu')}</button>}</div>
+      <div className="actions"><button disabled={busy || (!['rfq','sourcing'].includes(n.resourceType)&&!isDirectNotice(n))} onClick={()=>onOpen(n)}>{isDirectNotice(n)?l('فتح المحادثة','Ouvrir la conversation','Open conversation'):l('فتح الطلب','Ouvrir la demande')}</button>{!n.readAt && <button disabled={busy} onClick={()=>onRead(n)}>{l('تعليم كمقروء','Marquer comme lu')}</button>}</div>
     </article>)}
     {items.length>=100 && <p className="muted">{l('تعرض الخدمة أحدث 100 إشعار. العداد من الخادم وقد يشمل إشعارات أقدم.','Le service affiche les 100 dernières notifications. Le compteur serveur peut inclure des notifications plus anciennes.')}</p>}
   </section>;

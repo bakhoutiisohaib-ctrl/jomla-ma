@@ -14,7 +14,7 @@ import AtlasDialog from '../common/AtlasDialog';
 import { NegotiationMessages, OfferHistory } from '../common/NegotiationUI';
 import NotificationCenter from '../common/NotificationCenter';
 import TradeCompletionPanel from '../common/TradeCompletionPanel';
-import DirectConversationPanel from '../common/DirectConversation';
+import DirectConversationPanel,{DirectNoticeDialog,isDirectNotice} from '../common/DirectConversation';
 import { Notice } from '../common/WorkspaceUI';
 import { MarketIcon } from '../common/MarketLayout';
 import useBuyerWorkspace from './useBuyerWorkspace';
@@ -60,6 +60,7 @@ function BuyerContent({user,onBack,onLogout,sessionToken}) {
   const countRequests=predicate=>w.loading || requestUnavailable ? '—' : w.rfqs.filter(predicate).length;
   const [tab,setTab]=useState('rfqs'),[filter,setFilter]=useState('all'),[messageBusy,setMessageBusy]=useState(false),[showSourcing,setShowSourcing]=useState(false);
   const [choice,setChoice]=useState(null),[pane,setPane]=useState('offers'),[sourcingTarget,setSourcingTarget]=useState(null);
+  const [directNotice,setDirectNotice]=useState(null);
   const confirmTitle=useRef(null);
   useEffect(()=>{setChoice(null);setPane('offers');},[w.selectedId]);
   useEffect(()=>{if(choice)confirmTitle.current?.focus();},[choice]);
@@ -86,6 +87,7 @@ function BuyerContent({user,onBack,onLogout,sessionToken}) {
     setChoice(null);
   }
   async function openNotice(n){
+    if(isDirectNotice(n)){if(!w.busy&&!messageBusy&&!w.opening&&!selected&&!directNotice)setDirectNotice(n);return;}
     const type=await w.verifiedNotificationTarget(n);if(!type)return;
     setTab(type==='rfq'?'rfqs':'sourcing');if(type==='sourcing')setSourcingTarget(n.resourceId);
     if(!n.readAt)await w.run(options=>apiRequest('/notifications/'+n._id+'/read',{...options,method:'PUT'}));
@@ -117,6 +119,7 @@ function BuyerContent({user,onBack,onLogout,sessionToken}) {
     {tab==='trades' && <TradeCompletionPanel user={user}/>}
     {tab==='notifications' && <NotificationCenter items={w.notifications} unread={w.unread} loading={w.loading} error={w.loadErrors['/notifications']} busy={(w.busy||messageBusy) || w.opening} onOpen={openNotice} onRead={n=>w.run(options=>apiRequest('/notifications/'+n._id+'/read',{...options,method:'PUT'}))} onReadAll={()=>w.run(options=>apiRequest('/notifications/read-all',{...options,method:'PUT'}))}/>}
     </main></div>
+    {directNotice&&<DirectNoticeDialog user={user} notice={directNotice} onClose={()=>{setDirectNotice(null);w.refresh();}} onRead={()=>w.refresh()}/>}
     {selected && <AtlasDialog key={selected._id} title={agreedProduct(selected)?.name || c.original} label={l('العروض والمحادثة','Offres et conversation')} busy={(w.busy||messageBusy)} onClose={closeTrade}>
       <div className="trade-request-context"><span className="trade-status">{c[selected.status] || selected.status}</span><p>{c.reference}: {selected._id}</p><p>{l('قبول العرض يثبت الاتفاق التجاري فقط؛ لا يؤكد دفعاً أو تسليماً.','Accepter fixe uniquement l’accord commercial ; cela ne confirme ni paiement ni livraison.')}</p></div>
       <Notice error>{w.error || w.threadError || errors}</Notice><Notice>{w.feedback}</Notice>

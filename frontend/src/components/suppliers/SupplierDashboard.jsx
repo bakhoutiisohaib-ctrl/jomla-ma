@@ -14,7 +14,7 @@ import ProductEditor from './ProductEditor';
 import WholesaleWorkspace from '../wholesale/WholesaleWorkspace';
 import SupplierVerificationPanel from './SupplierVerificationPanel';
 import TradeCompletionPanel from '../common/TradeCompletionPanel';
-import DirectConversationPanel from '../common/DirectConversation';
+import DirectConversationPanel,{DirectNoticeDialog,isDirectNotice} from '../common/DirectConversation';
 import SupplierReviewReply from './SupplierReviewReply';
 import { reviewBasisLabel, validReviewRows, validReviewStars } from '../reviews/reviewPresentation';
 import JobsPanel from './JobsPanel';
@@ -72,6 +72,7 @@ function SupplierContent({
   const sourcingContext = useRef({ active: true, generation: 0, controller: null });
   useEffect(() => { const context = sourcingContext.current; context.active = true; return () => { context.active = false; context.generation++; context.controller?.abort(); } }, []);
   const can = useCallback(permission => ['supplier', 'admin'].includes(profile.role) || profile.permissions?.includes(permission), [profile.role, profile.permissions]);
+  const [directNotice,setDirectNotice]=useState(null);
   const [openingTarget,setOpeningTarget]=useState(false),[noticeReadError,setNoticeReadError]=useState('');
   const targetScope=useRef({active:true,generation:0,controller:null});
   const owner=String(profile.ownerId||profile._id||profile.id||'');
@@ -269,6 +270,7 @@ function SupplierContent({
   }
   const supportedNotice=n=>n?.resourceType==='rfq'?['rfq_created','offer_decision','message_received'].includes(n.type):n?.resourceType==='sourcing'&&n.type==='sourcing_decision';
   async function openNotice(n){
+    if(isDirectNotice(n)){if(profile.role==='supplier'&&!busy&&!openingTarget&&!selected&&!quoteTarget&&!directNotice)setDirectNotice(n);return;}
     const t=targetScope.current, token=getSessionToken(), scope=targetAccess.current;
     if(t.controller||busy||selected||quoteTarget||!scope.allowed||!token)return;
     const unavailable=()=>labels.current('تعذر تأكيد الطلب المرتبط بهذا الإشعار. حدّث القائمة أو تحقق من الصلاحيات.','Impossible de confirmer la demande liée à cette notification. Actualisez ou vérifiez les droits.','The notification target could not be confirmed. Refresh or check access.');
@@ -365,11 +367,12 @@ function SupplierContent({
     {tab === 'sourcing' && can('manage_rfq') && <section className="panel"><h2>{l('طلبات توريد مفتوحة', 'Demandes de sourcing ouvertes')}</h2>{sourcing.map(s => <article className="panel" key={s._id}><h3>{s.productName}</h3><p>{s.quantity} {s.unit} · {s.buyerCity}</p><p>{s.notes}</p><p>{l('عدد العروض', 'Nombre d’offres')}: {s.quotesCount}</p><button onClick={() => openSourcing(s._id)}>{s.offerRecovery ? l('استكمال العرض المحفوظ', 'Reprendre l’offre enregistrée') : l('تقديم عرض محفوظ', 'Soumettre une offre')}</button></article>)}</section>}
     {tab === 'verification' && profile.role === 'supplier' && <SupplierVerificationPanel owner={profile._id || profile.id} onConfirmed={saved=>setProfile(saved)}/>}
     {tab === 'direct' && profile.role === 'supplier' && <DirectConversationPanel user={profile}/>}
+    {directNotice&&profile.role==='supplier'&&<DirectNoticeDialog user={profile} notice={directNotice} onClose={()=>{setDirectNotice(null);refresh();}} onRead={()=>refresh()}/>}
     {tab === 'trades' && profile.role === 'supplier' && <TradeCompletionPanel user={profile}/>}
     {tab === 'reviews' && <section className="panel"><h2>{l('تقييمات العملاء', 'Avis clients')}</h2>{loadedMetrics.reviews&&reviews.map(r => <article className="panel" key={r._id}><strong>{r.userName || r.buyerName || r.name}</strong><p>{validReviewStars(r.stars)?'★'.repeat(r.stars):''} {r.comment}</p><p className="muted">{reviewBasisLabel(l,r)}</p>{r.reply?.text && <p className="notice">{r.reply.text}</p>}<SupplierReviewReply key={revision+':'+r._id} review={r} owner={profile._id||profile.id} onSaved={saved=>setReviews(rows=>rows.map(row=>row._id===saved._id?saved:row))} onRefresh={()=>{setReviews([]);refresh();}}/></article>)}{!loadedMetrics.reviews&&<p role="status">{l('قائمة التقييمات غير مؤكدة. حدّث مساحة العمل.','Liste des avis non confirmée. Actualisez.','Review list unconfirmed. Refresh.')}</p>}{loadedMetrics.reviews&&!reviews.length && <p>{l('لا توجد تقييمات', 'Aucun avis','No reviews')}</p>}</section>}
     {tab === 'notifications' && <section className="panel"><div className="actions"><h2>{l('الإشعارات', 'Notifications')}</h2><button disabled={busy||openingTarget} onClick={() => action(() => apiRequest('/notifications/read-all', {
             method: 'PUT'
-          }))}>{l('تحديد الكل كمقروء', 'Tout marquer comme lu')}</button><button onClick={refresh}>{l('تحديث', 'Actualiser')}</button></div>{notifications.map(n => <article className="message" key={n._id}><p>{lang === 'en' ? n.titleEn || notificationLabel(n.type, lang) : lang === 'fr' ? n.titleFr || n.title || notificationLabel(n.type, lang) : n.titleAr || n.title || notificationLabel(n.type, lang)}</p><p>{lang === 'en' ? n.bodyEn : lang === 'fr' ? n.bodyFr || n.body || n.message : n.bodyAr || n.body || n.message}</p><button disabled={busy||openingTarget||!can('manage_rfq')||!supportedNotice(n)||!n.resourceId} onClick={()=>openNotice(n)}>{l('فتح الطلب', 'Ouvrir la demande')}</button>{!n.readAt && <button disabled={busy||openingTarget} onClick={() => action(() => apiRequest('/notifications/' + n._id + '/read', {
+          }))}>{l('تحديد الكل كمقروء', 'Tout marquer comme lu')}</button><button onClick={refresh}>{l('تحديث', 'Actualiser')}</button></div>{notifications.map(n => <article className="message" key={n._id}><p>{lang === 'en' ? n.titleEn || notificationLabel(n.type, lang) : lang === 'fr' ? n.titleFr || n.title || notificationLabel(n.type, lang) : n.titleAr || n.title || notificationLabel(n.type, lang)}</p><p>{lang === 'en' ? n.bodyEn : lang === 'fr' ? n.bodyFr || n.body || n.message : n.bodyAr || n.body || n.message}</p><button disabled={busy||openingTarget||(isDirectNotice(n)?profile.role!=='supplier':(!can('manage_rfq')||!supportedNotice(n)||!n.resourceId))} onClick={()=>openNotice(n)}>{isDirectNotice(n)?l('فتح المحادثة','Ouvrir la conversation','Open conversation'):l('فتح الطلب', 'Ouvrir la demande')}</button>{!n.readAt && <button disabled={busy||openingTarget} onClick={() => action(() => apiRequest('/notifications/' + n._id + '/read', {
             method: 'PUT'
           }))}>{l('قرأت', 'Marquer comme lu')}</button>}</article>)}</section>}
     </main></div>

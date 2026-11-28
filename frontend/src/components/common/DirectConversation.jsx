@@ -33,9 +33,9 @@ function readAttempt(slot){
 }
 function writeAttempt(slot,a){sessionStorage.setItem(slot,JSON.stringify(a));const b=readAttempt(slot);if(b?.key!==a.key||b.thread!==a.thread)throw invalid();}
 
-function Chat({actor,role,token,productId,threadId}){
+function Chat({actor,role,token,productId,threadId,initialData}){
  const l=useLabels(),slot=slotFor(actor,role,productId,threadId);
- const [data,setData]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[text,setText]=useState('');
+ const [data,setData]=useState(initialData||null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[text,setText]=useState('');
  const [attempt,setAttempt]=useState(()=>{try{return {value:readAttempt(slot),bad:false}}catch{return {value:null,bad:true}}});
  const op=useRef(null),alive=useRef(true),frozen=useRef(null);
  const readPath=threadId?base+'/'+threadId:base+'/product/'+productId;
@@ -65,7 +65,7 @@ function Chat({actor,role,token,productId,threadId}){
   }catch(e){if(o.valid())setError(e.message==='UNCONFIRMED'?unconfirmed():l('تعذر تحميل المحادثة. حدّثها للمحاولة.','Conversation indisponible. Actualisez.','Could not load conversation. Refresh to retry.'));}
   finally{end(o);}
  }
- useEffect(()=>{alive.current=true;read();return()=>{alive.current=false;op.current?.abort();op.current=null;}; // Initial load is scoped by the keyed parent.
+ useEffect(()=>{alive.current=true;if(initialData){try{if(!attempt.bad)settle(initialData,readAttempt(slot));setData(initialData);}catch{setError(unconfirmed());}}else read();return()=>{alive.current=false;op.current?.abort();op.current=null;}; // Initial load is scoped by the keyed parent.
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[]);
  async function send(e){
@@ -110,6 +110,49 @@ export function DirectProductDialog({user,productId,onClose}){
  const token=useSessionToken(),actor=user?._id||user?.id,l=useLabels();
  if(!token||!actor||user?.role!=='buyer')return null;
  return <AtlasDialog title={l('مراسلة المورد','Contacter le fournisseur','Contact supplier')} subtitle={l('محادثة مباشرة','Conversation directe','Direct conversation')} onClose={onClose}><Chat key={token+':'+actor+':'+productId} {...{token,actor,productId}} role="buyer"/></AtlasDialog>;
+}
+export const isDirectNotice=n=>n?.type==='direct_message'&&n.resourceType==='direct_conversation'&&idPattern.test(n._id||'')&&idPattern.test(n.resourceId||'');
+export function DirectNoticeDialog({user,notice,onClose,onRead}){
+ const token=useSessionToken(),actor=user?._id||user?.id,l=useLabels();
+ const origin=useRef({token,actor,role:user?.role});
+ if(!token||!actor||token!==origin.current.token||actor!==origin.current.actor||user?.role!==origin.current.role||!['buyer','supplier'].includes(user?.role)||!isDirectNotice(notice))return null;
+ return <NoticeTarget key={token+':'+actor+':'+user.role+':'+notice._id} {...{token,actor,notice,onClose,onRead}} role={user.role} l={l}/>;
+}
+function NoticeTarget({token,actor,role,notice,onClose,onRead,l}){
+ const [target,setTarget]=useState(null),[error,setError]=useState(''),[readError,setReadError]=useState(false),[revision,retry]=useState(0);
+ const readCallback=useRef(onRead),labels=useRef(l);readCallback.current=onRead;labels.current=l;
+ const id=notice.resourceId,noticeId=notice._id,alreadyRead=Boolean(notice.readAt);
+ useEffect(()=>{
+  const controller=new AbortController(),options={token,signal:controller.signal,cache:'no-store'};
+  const valid=()=>!controller.signal.aborted&&getSessionToken()===token;
+  const unavailable=()=>labels.current('تعذر تأكيد المحادثة المرتبطة بهذا الإشعار.','Impossible de confirmer la conversation liée à cette notification.','Could not confirm the conversation linked to this notification.');
+  setError('');setReadError(false);
+  (async()=>{
+   try{
+    const raw=await apiRequest(base+'/'+id,options);
+    if(!valid())return;
+    const verified=detail(raw,actor,role,raw?.conversation?.productId,id);
+    if(!verified.messages.some(m=>m.role!==role))throw invalid();
+    setTarget(verified);
+    if(alreadyRead)return;
+    try{
+     const ack=await apiRequest('/notifications/'+noticeId+'/read',{...options,method:'PUT'});
+     if(!valid())return;
+     const n=ack?.notification;
+     if(!isDirectNotice(n)||n._id!==noticeId||n.resourceId!==id||!date(n.readAt))throw invalid();
+     readCallback.current?.(n);
+    }catch{if(valid())setReadError(true);}
+   }catch{if(valid()){setTarget(null);setError(unavailable());}}
+  })();
+  return()=>controller.abort();
+ },[token,actor,role,id,noticeId,alreadyRead,revision]);
+ return <AtlasDialog title={target?.conversation.productName||l('المحادثة المباشرة','Conversation directe','Direct conversation')} subtitle={l('محادثة مباشرة','Conversation directe','Direct conversation')} onClose={onClose}>
+  {error&&<Notice error>{error}</Notice>}
+  {!target&&!error&&<p role="status">{l('جاري التحميل…','Chargement…','Loading…')}</p>}
+  {readError&&<Notice error>{l('تم فتح المحادثة، لكن لم يتأكد تعليم الإشعار كمقروء.','Conversation ouverte, mais lecture de la notification non confirmée.','Conversation opened, but notification read state is unconfirmed.')}</Notice>}
+  {(error||readError)&&<button type="button" onClick={()=>retry(v=>v+1)}>{l('إعادة التحقق من الإشعار','Revérifier la notification','Recheck notification')}</button>}
+  {target&&<Chat key={id} {...{token,actor,role}} productId={target.conversation.productId} threadId={id} initialData={target}/>}
+ </AtlasDialog>;
 }
 export default function DirectConversationPanel({user}){
  const token=useSessionToken(),actor=user?._id||user?.id;
