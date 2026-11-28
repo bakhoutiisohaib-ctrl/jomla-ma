@@ -329,3 +329,11 @@ test('uncertain decisions are retained separately for different requests', async
   await screen.findByRole('button',{name:'تحديث حالة الطلب'});
   await waitFor(()=>expect(screen.getByRole('button',{name:'رفض العرض'})).toBeDisabled());
 });
+
+test('buyer opens independent direct conversation inbox',async()=>{
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation((p,o)=>p==='/direct-conversations?page=1'?Promise.resolve({actorId:'buyer-1',role:'buyer',page:1,hasNext:false,data:[]}):base(p,o));
+ render(<LanguageProvider><BuyerDashboard user={{_id:'buyer-1',name:'Synthetic buyer',role:'buyer'}} onBack={()=>{}}/></LanguageProvider>);
+ fireEvent.click(await screen.findByRole('button',{name:'المحادثات المباشرة'}));await screen.findByText('لا توجد محادثات مباشرة بعد.');
+ expect(apiRequest.mock.calls.some(([p])=>p==='/direct-conversations?page=1')).toBe(true);
+});

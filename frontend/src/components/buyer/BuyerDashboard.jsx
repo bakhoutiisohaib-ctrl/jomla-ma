@@ -14,6 +14,7 @@ import AtlasDialog from '../common/AtlasDialog';
 import { NegotiationMessages, OfferHistory } from '../common/NegotiationUI';
 import NotificationCenter from '../common/NotificationCenter';
 import TradeCompletionPanel from '../common/TradeCompletionPanel';
+import DirectConversationPanel from '../common/DirectConversation';
 import { Notice } from '../common/WorkspaceUI';
 import { MarketIcon } from '../common/MarketLayout';
 import useBuyerWorkspace from './useBuyerWorkspace';
@@ -66,7 +67,7 @@ function BuyerContent({user,onBack,onLogout,sessionToken}) {
   const selected=w.selected, money=(value,currency)=>value==null?'—':currency?formatMoney(value,currency,lang):value+' '+l('عملة غير محددة','Devise non précisée');
   const statuses=['creating','pending','responded','offering','deciding','accepted','rejected'];
   const shown=w.rfqs.filter(r=>filter==='all' || (filter==='review'?['creating','responded','offering','deciding'].includes(r.status):r.status===filter));
-  const tabs=[{key:'rfqs',icon:'message',label:c.rfqs},{key:'sourcing',icon:'search',label:c.sourcing},{key:'trades',icon:'package',label:l('تأكيد التعاملات','Confirmation des transactions','Confirm transactions')},{key:'notifications',icon:'bell',label:c.notifications+' ('+(w.unread ?? '—')+')'}];
+  const tabs=[{key:'rfqs',icon:'message',label:c.rfqs},{key:'direct',icon:'message',label:l('المحادثات المباشرة','Conversations directes','Direct conversations')},{key:'sourcing',icon:'search',label:c.sourcing},{key:'trades',icon:'package',label:l('تأكيد التعاملات','Confirmation des transactions','Confirm transactions')},{key:'notifications',icon:'bell',label:c.notifications+' ('+(w.unread ?? '—')+')'}];
   const quickLinks=[{to:'/cart',icon:'package',label:l('سلة العروض','Sélection de devis','Quote cart'),count:cart?.items.length},{to:'/favorites',icon:'heart',label:l('المفضلة','Favoris','Favorites')},{to:'/',icon:'store',label:l('السوق','Catalogue','Marketplace')}];
   function closeTrade(){setChoice(null);w.chooseRequest(null);}
   function choose(id){setChoice(null);w.chooseRequest(id);}
@@ -112,6 +113,7 @@ function BuyerContent({user,onBack,onLogout,sessionToken}) {
       <section className="buyer-request-grid" aria-label={c.rfqs}>{shown.map(r=>{const values=r.decision?.agreement || r.offer;return <article key={r._id} className={'buyer-request status-'+r.status}><div className="buyer-request-heading"><span className="trade-status">{c[r.status] || r.status}</span>{['responded','deciding'].includes(r.status) && <small>{l('يحتاج متابعتك','À suivre')}</small>}</div><h2>{agreedProduct(r)?.name || c.original}</h2><p>{c.supplier}: {r.decision?.agreement?.supplier?.name || r.supplierId?.name || '—'}</p><p>{c.quantity}: {r.decision?.agreement?.quantity ?? r.quantity} {agreedProduct(r)?.unit}</p>{values && <div className="buyer-quote-amount"><strong>{money(values.unitPrice,values.currency || r.currency)}</strong><small>/ {r.decision?.agreement?.unit || agreedProduct(r)?.unit}</small><p>{c.total}: {money(values.totalPrice,values.currency || r.currency)}</p></div>}{r.status==='accepted' && <p className="trade-help">{l('اتفاق تجاري؛ لا توجد حالة دفع أو تسليم في هذا المسار.','Accord commercial ; aucun état de paiement ou de livraison dans ce parcours.')}</p>}{r.status==='creating'?<RfqCreationRecovery id={r._id} onRefresh={w.refresh}/>:<button className={['responded','deciding'].includes(r.status)?'primary':''} disabled={(w.busy||messageBusy)} onClick={()=>choose(r._id)}>{c.view}</button>}</article>;})}</section>
     </>}
     {tab==='sourcing' && <section className="buyer-sourcing"><div className="buyer-section-heading"><h2>{c.sourcing}</h2><button className="primary" onClick={()=>setShowSourcing(true)}>{c.newSourcing}</button></div>{!w.loading && !w.loadErrors['/sourcing/buyer'] && !w.sourcing.length && <p className="buyer-empty">{c.noRequests}</p>}{w.sourcing.map(s=><SourcingDecisionCard key={s._id} sourcing={s} user={user} sessionToken={sessionToken} busy={(w.busy||messageBusy) || Boolean(w.loadErrors['/sourcing/buyer'])} onUpdated={()=>w.refresh()}/>)}</section>}
+    {tab==='direct' && <DirectConversationPanel user={user}/>}
     {tab==='trades' && <TradeCompletionPanel user={user}/>}
     {tab==='notifications' && <NotificationCenter items={w.notifications} unread={w.unread} loading={w.loading} error={w.loadErrors['/notifications']} busy={(w.busy||messageBusy) || w.opening} onOpen={openNotice} onRead={n=>w.run(options=>apiRequest('/notifications/'+n._id+'/read',{...options,method:'PUT'}))} onReadAll={()=>w.run(options=>apiRequest('/notifications/read-all',{...options,method:'PUT'}))}/>}
     </main></div>

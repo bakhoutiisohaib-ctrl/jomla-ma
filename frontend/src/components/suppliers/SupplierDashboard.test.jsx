@@ -322,3 +322,10 @@ test('reply confirmation can remove unsupported classification without changing 
  expect(screen.queryByText('تعامل أقره الطرفان')).not.toBeInTheDocument();
  expect(screen.getByText(/Synthetic negative kept/)).toBeInTheDocument();
 });
+
+test('owner opens direct conversation inbox in simple office mode',async()=>{
+ const base=apiRequest.getMockImplementation();
+ apiRequest.mockImplementation((p,o)=>p==='/direct-conversations?page=1'?Promise.resolve({actorId:user._id,role:'supplier',page:1,hasNext:false,data:[]}):base(p,o));
+ show();fireEvent.click(await screen.findByRole('button',{name:'المحادثات المباشرة'}));await screen.findByText('لا توجد محادثات مباشرة بعد.');
+ expect(apiRequest.mock.calls.some(([p])=>p==='/direct-conversations?page=1')).toBe(true);
+});

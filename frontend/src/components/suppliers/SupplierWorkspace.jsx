@@ -15,7 +15,7 @@ export function SupplierHeader({ profile, unread, onNotifications, onBack, onLog
 }
 
 export const advancedSupplierTabs = ['wholesale','jobs','verification','reviews','trades'];
-const navIcons = {overview:'grid',organization:'user',stores:'store',products:'package',drafts:'eye',add:'package',rfq:'message',sourcing:'search',notifications:'bell',wholesale:'truck',jobs:'camera',verification:'user',reviews:'heart',trades:'package'};
+const navIcons = {overview:'grid',organization:'user',stores:'store',products:'package',drafts:'eye',add:'package',rfq:'message',direct:'message',sourcing:'search',notifications:'bell',wholesale:'truck',jobs:'camera',verification:'user',reviews:'heart',trades:'package'};
 export function SupplierSidebar({ tabs, tab, onTab, advanced, onModeChange }) {
   const l = useLabels();
   const [expanded, setExpanded] = useState(() => window.innerWidth > 700);

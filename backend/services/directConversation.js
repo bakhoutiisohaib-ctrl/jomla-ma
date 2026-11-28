@@ -119,4 +119,14 @@ async function start(actor,input) {
   if(!stored)throw unavailable()
   return receipt(saved,actor,stored,false)
 }
-module.exports={parse,detail,list,start,append,validId}
+async function byProduct(productId,actor){
+  if(!validId(productId))throw notFound()
+  const candidate=await Product.findById(productId).select('supplierId').read('primary').maxTimeMS(5000).lean()
+  if(!candidate||!oid(candidate.supplierId))throw notFound()
+  const id=threadId(actor.id,candidate.supplierId,candidate._id)
+  const row=await load(id,actor)
+  if(row)return {...await detail(id,actor),productId}
+  if(!await visibleProduct(productId,candidate.supplierId))throw notFound()
+  return {...envelope(actor),productId,conversation:null,messages:[],canSend:true}
+}
+module.exports={parse,detail,list,start,append,validId,byProduct}

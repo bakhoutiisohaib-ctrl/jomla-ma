@@ -382,3 +382,18 @@ test('failed evidence read offers explicit retry and does not leave a false empt
  reviewStatus=200;fireEvent.click(within(section).getByRole('button',{name:'إعادة تحميل التقييمات'}));
  await within(section).findByText('لا توجد تعليقات منشورة في هذه الصفحة بعد.');
 });
+
+test('guest contact preserves product return route and makes no private request',async()=>{
+ await open();fireEvent.click(screen.getByRole('button',{name:'مراسلة المورد'}));
+ expect(window.location.pathname).toBe('/login');expect(new URLSearchParams(window.location.search).get('returnTo')).toBe('/products/'+pid);
+ expect(fetch.mock.calls.some(([url])=>String(url).includes('/direct-conversations'))).toBe(false);
+});
+test('buyer product contact loads existing conversation without starting an RFQ or sending a message',async()=>{
+ localStorage.setItem('supplierToken','test.'+btoa(JSON.stringify({id:buyerId,exp:9999999999}))+'.signature');
+ const base=fetch.getMockImplementation(),thread='8'.repeat(24),now='2026-11-28T09:00:00Z';
+ fetch.mockImplementation((url,options={})=>String(url).endsWith('/direct-conversations/product/'+pid)?response({actorId:buyerId,role:'buyer',productId:pid,conversation:{_id:thread,productId:pid,productName:source.name,counterpartName:'Synthetic supplier',lastMessageAt:now},messages:[{clientId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',role:'supplier',content:'Synthetic existing reply',sentAt:now}],canSend:true}):base(url,options));
+ await open();fireEvent.click(await screen.findByRole('button',{name:'مراسلة المورد'}));
+ await within(screen.getByRole('dialog')).findByText('Synthetic existing reply');
+ expect(fetch.mock.calls.filter(([url,options])=>String(url).includes('/direct-conversations')&&options?.method==='POST')).toHaveLength(0);
+ expect(fetch.mock.calls.filter(([url,options])=>String(url).includes('/api/rfq')&&options?.method==='POST')).toHaveLength(0);
+});

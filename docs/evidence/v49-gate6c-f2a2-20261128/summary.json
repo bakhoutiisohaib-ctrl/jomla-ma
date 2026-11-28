@@ -1,0 +1,79 @@
+{
+  "baseline": "5094ce1a18b49a20d562ad00b3c60fba85321023",
+  "backend": {
+    "passed": 44,
+    "total": 44,
+    "suites": [
+      {
+        "name": "security.test.js",
+        "passed": 16,
+        "total": 16,
+        "status": "passed"
+      },
+      {
+        "name": "rfq_creation.test.js",
+        "passed": 19,
+        "total": 19,
+        "status": "passed"
+      },
+      {
+        "name": "directConversation.test.js",
+        "passed": 9,
+        "total": 9,
+        "status": "passed"
+      }
+    ],
+    "skipped": 0,
+    "exitCode": 0
+  },
+  "frontend": {
+    "passed": 117,
+    "total": 117,
+    "suites": [
+      {
+        "name": "BuyerDashboard.test.jsx",
+        "passed": 25,
+        "total": 25,
+        "status": "passed"
+      },
+      {
+        "name": "SupplierDashboard.test.jsx",
+        "passed": 31,
+        "total": 31,
+        "status": "passed"
+      },
+      {
+        "name": "ProductDetailAfter.test.jsx",
+        "passed": 28,
+        "total": 28,
+        "status": "passed"
+      },
+      {
+        "name": "DirectConversation.test.jsx",
+        "passed": 7,
+        "total": 7,
+        "status": "passed"
+      },
+      {
+        "name": "RoutingPages.test.jsx",
+        "passed": 16,
+        "total": 16,
+        "status": "passed"
+      },
+      {
+        "name": "RfqMessageComposer.test.jsx",
+        "passed": 10,
+        "total": 10,
+        "status": "passed"
+      }
+    ],
+    "skipped": 0,
+    "exitCode": 0
+  },
+  "build": {
+    "status": "PASS",
+    "ci": true,
+    "artifact": "main.9ecce97d.js",
+    "exitCode": 0
+  }
+}

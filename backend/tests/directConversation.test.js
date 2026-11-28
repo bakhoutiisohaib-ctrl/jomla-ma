@@ -105,3 +105,15 @@ test('per-actor write budget is isolated and cannot be bypassed with repeated cl
  const other=await reply(a.body.conversation._id,{clientId:randomUUID(),content:'Independent supplier budget'});expect(other.status).toBe(201)
  expect((await get(a.body.conversation._id)).body.messages).toHaveLength(2)
 })
+
+test('buyer product lookup returns only their own current-supplier conversation without creating one',async()=>{
+ const path=url+'/product/'+f.product._id
+ const empty=await request(app).get(path).set(auth(f.tokens.buyer));expect(empty.status).toBe(200);expect(empty.body).toMatchObject({actorId:String(f.buyer._id),role:'buyer',productId:String(f.product._id),conversation:null,messages:[],canSend:true});expect(await Conversation.countDocuments()).toBe(0)
+ const started=await start(),found=await request(app).get(path).set(auth(f.tokens.buyer));expect(found.status).toBe(200);expect(found.body.conversation._id).toBe(started.body.conversation._id);expect(found.body.messages).toHaveLength(1)
+ expect((await request(app).get(path).set(auth(f.tokens.otherBuyer))).body.conversation).toBeNull()
+ expect((await request(app).get(path).set(auth(f.tokens.supplier))).status).toBe(403)
+ await Product.updateOne({_id:f.product._id},{$set:{isDraft:true}})
+ expect((await request(app).get(path).set(auth(f.tokens.buyer))).body.canSend).toBe(false)
+ expect((await request(app).get(path).set(auth(f.tokens.otherBuyer))).status).toBe(404)
+ expect(await Conversation.countDocuments()).toBe(1)
+})

@@ -15,6 +15,7 @@ const handle=fn=>asyncHandler(async(req,res)=>{
   }
 })
 router.get('/',handle(async(req,res)=>res.json(await service.list(req.supplier,req.query))))
+router.get('/product/:id',requireRole('buyer'),handle(async(req,res)=>res.json(await service.byProduct(req.params.id,req.supplier))))
 router.get('/:id',handle(async(req,res)=>res.json(await service.detail(req.params.id,req.supplier))))
 router.post('/',requireRole('buyer'),writeBudget,handle(async(req,res)=>{
   const result=await service.start(req.supplier,service.parse(req.body,true))

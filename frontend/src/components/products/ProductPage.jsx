@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useSessionToken } from '../../api/session';
+import { DirectProductDialog } from '../common/DirectConversation';
 import { useLabels } from '../../i18n/useLabels';
 import { Link, productPath, storePath, supplierPath, navigate } from '../../navigation';
 import { Notice } from '../common/WorkspaceUI';
@@ -17,7 +19,8 @@ import AddToQuoteCart from '../cart/AddToQuoteCart';
 import '../../styles/atlas-product-detail.css';
 
 export default function ProductPage({ id, search, user, sessionLoading, onBack, onRequireLogin, onRfqCreated }) {
-  const l = useLabels();
+  const l = useLabels(),chatToken=useSessionToken();
+  const [chat,setChat]=useState(null);
   const { data, error, loading } = usePublicResource('/products/' + id);
   const [rfqIntent, setRfqIntent] = useState(null), [enteredQuantity, setEnteredQuantity] = useState(null);
   // Only the display budget survives visibility revalidation; cards never do.
@@ -55,6 +58,7 @@ export default function ProductPage({ id, search, user, sessionLoading, onBack, 
             <div className="atlas-detail-stock"><span className={'badge ' + (available ? 'green' : 'amber')}>{available ? l('متوفر بحسب المورد', 'Disponible selon le fournisseur') : l('غير متوفر', 'Indisponible')}</span><span>{product.city || supplier?.city}</span></div>
             <ProductQuantityPricing product={product} quantity={rawQuantity} onQuantityChange={setEnteredQuantity} />
             <div className="atlas-detail-request" role="region" aria-label={l('إجراءات المنتج', 'Actions du produit', 'Product actions')}><button className="primary" disabled={sessionLoading || !available || quantity === null || Boolean(user && user.role !== 'buyer')} onClick={() => !user ? onRequireLogin(rfqPath(quantity)) : setRfqIntent({ id, quantity })}>{l('طلب عرض سعر', 'Demander un devis')}</button>
+            <button type="button" disabled={sessionLoading||!available||Boolean(user&&user.role!=='buyer')} onClick={()=>!user?onRequireLogin(productPath(id)):setChat({id,token:chatToken,actor:user._id||user.id})}>{l('مراسلة المورد','Contacter le fournisseur','Contact supplier')}</button>
             <button type="button" onClick={()=>setComparison({id,quantity:parseQuantity(rawQuantity)})}>{l('مقارنة','Comparer','Compare')}</button>
             {!sessionLoading && <AddToQuoteCart product={product} user={user} />}
             {store?._id && <Link className="atlas-detail-store-action button-link" to={storePath(store._id)}>{l('المتجر', 'Boutique', 'Store')}</Link>}</div>
@@ -75,6 +79,7 @@ export default function ProductPage({ id, search, user, sessionLoading, onBack, 
         </div>
         <RelatedProducts key={id} product={product} visible={recommendationLimit} setVisible={setRecommendationLimit} user={user} onRequireLogin={onRequireLogin} onRfqCreated={onRfqCreated} />
       </>}
+      {product&&available&&chat?.id===id&&chat.token===chatToken&&chat.actor===(user?._id||user?.id)&&user?.role==='buyer'&&<DirectProductDialog user={user} productId={id} onClose={()=>setChat(null)}/>}
       {product&&comparison?.id===id&&<ComparableOffersDialog productId={id} initialQuantity={comparison.quantity} onClose={()=>setComparison(null)}/>}
       {product && available && rfqIntent?.id === id && <RFQModal key={id + ':' + (user?._id || 'visitor')} product={product} user={user} initialQuantity={rfqIntent.quantity} onClose={() => setRfqIntent(null)} onRequireLogin={() => onRequireLogin(rfqPath(rfqIntent.quantity))} onSuccess={onRfqCreated} />}
     </main></>;
