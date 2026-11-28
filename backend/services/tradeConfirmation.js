@@ -92,6 +92,23 @@ async function list(actor,kind,page,limit) {
   return {actorId:actor.id,role:actor.role,kind,page,data,unavailable,hasNext:rows.length>limit}
 }
 async function eligible(buyerId,supplierId,productId) {
-  return Confirmation.findOne({buyerId,supplierId,buyerConfirmedAt:{$type:'date'},supplierConfirmedAt:{$type:'date'},...(productId?{productId}:{})}).select('_id').lean()
+  // Dates alone are not proof of a valid, scoped accepted agreement. Reuse the
+  // same receipt checks as confirmation; never repair or delete historical rows here.
+  const candidates=Confirmation.find({buyerId,supplierId,buyerConfirmedAt:{$type:'date'},supplierConfirmedAt:{$type:'date'},...(productId?{productId}:{})})
+    .read('primary').maxTimeMS(10000).lean().cursor()
+  for await (const row of candidates) {
+    if(!['rfq','sourcing'].includes(row.kind)||!validId(String(row.sourceId))||!validId(String(row.offerId))||
+      !same(row.buyerId,buyerId)||!same(row.supplierId,supplierId)||!same(row._id,key(row.kind,String(row.sourceId),String(row.offerId)))||
+      (productId&&!same(row.productId,productId)))continue
+    let trade
+    try {
+      trade=await resolve(row.kind,String(row.sourceId),String(row.offerId),{role:'buyer',id:String(buyerId)})
+    } catch(error) {
+      if([404,409].includes(error.status))continue
+      throw error
+    }
+    if(matches(row,trade.identity))return {_id:row._id}
+  }
+  return null
 }
 module.exports={confirm,list,eligible}

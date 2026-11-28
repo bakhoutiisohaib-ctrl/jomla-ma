@@ -194,3 +194,45 @@ test('legacy accepted without immutable receipt cannot be confirmed or rated',as
  expect((await confirm('/api/trade-confirmations/rfq/'+id+'/'+offerId,{token:f.tokens.buyer})).status).toBe(409)
  expect(await Confirmation.countDocuments()).toBe(0)
 })
+
+
+test('orphaned or mismatched confirmation cannot authorize a new review',async()=>{
+ const owner=await account('supplier'),buyer=await account();
+ const url=await completed(buyer,owner),saved=await Confirmation.findOne().lean();
+ const eligibility=()=>request(app).get('/api/reviews/eligibility/'+owner.user._id).set(auth(buyer.token));
+ const submit=()=>request(app).post('/api/reviews').set(auth(buyer.token)).send({supplierId:String(owner.user._id),stars:4});
+ expect((await eligibility()).body.eligible).toBe(true);
+ await Confirmation.collection.updateOne({_id:saved._id},{$set:{decisionHash:'0'.repeat(64)}});
+ expect((await eligibility()).body).toMatchObject({eligible:false,reason:'no_confirmation'});
+ expect((await submit()).status).toBe(403);
+ await Confirmation.collection.updateOne({_id:saved._id},{$set:{decisionHash:saved.decisionHash}});
+ await Sourcing.collection.deleteOne({_id:saved.sourceId});
+ expect((await eligibility()).body).toMatchObject({eligible:false,reason:'no_confirmation'});
+ expect((await submit()).status).toBe(403);
+ expect(await Review.countDocuments()).toBe(0);
+ expect(await Confirmation.countDocuments()).toBe(1);
+});
+
+test('eligibility skips invalid historical candidates but permits an independently valid confirmation',async()=>{
+ const owner=await account('supplier'),buyer=await account();
+ await completed(buyer,owner);const invalid=await Confirmation.findOne().lean();
+ await Confirmation.collection.updateOne({_id:invalid._id},{$set:{decisionId:new mongoose.Types.ObjectId()}});
+ await completed(buyer,owner);
+ const valid=await Confirmation.findOne({_id:{$ne:invalid._id}}).lean();
+ const result=await request(app).post('/api/reviews').set(auth(buyer.token)).send({supplierId:String(owner.user._id),stars:4});
+ expect(result.status).toBe(201);
+ const review=await Review.findById(result.body.review._id).select('+tradeConfirmationId').lean();
+ expect(String(review.tradeConfirmationId)).toBe(String(valid._id));
+ expect(await Confirmation.countDocuments()).toBe(2);
+});
+
+test('noncanonical copied confirmation does not qualify even with matching agreement and timestamps',async()=>{
+ const owner=await account('supplier'),buyer=await account();await completed(buyer,owner);
+ const saved=await Confirmation.findOne().lean();
+ await Confirmation.collection.insertOne({...saved,_id:new mongoose.Types.ObjectId()});
+ await Confirmation.collection.deleteOne({_id:saved._id});
+ const response=await request(app).get('/api/reviews/eligibility/'+owner.user._id).set(auth(buyer.token));
+ expect(response.status).toBe(200);expect(response.body.eligible).toBe(false);
+ expect((await request(app).post('/api/reviews').set(auth(buyer.token)).send({supplierId:String(owner.user._id),stars:5})).status).toBe(403);
+ expect(await Review.countDocuments()).toBe(0);
+});
